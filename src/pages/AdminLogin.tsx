@@ -35,8 +35,11 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <Card className="w-full max-w-sm animate-fade-in">
+    <div className="relative min-h-screen flex items-center justify-center px-4">
+      <div className="orb orb-1" />
+      <div className="orb orb-2" />
+      <div className="orb orb-3" />
+      <Card className="relative z-10 w-full max-w-sm animate-fade-in">
         <CardHeader className="text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
             <Lock className="w-6 h-6 text-primary" />
@@ -64,5 +67,6 @@ const AdminLogin = () => {
     </div>
   );
 };
+
 
 export default AdminLogin;

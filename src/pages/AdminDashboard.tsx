@@ -119,8 +119,8 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card sticky top-0 z-10">
+    <div className="min-h-screen">
+      <header className="border-b border-white/10 bg-black/30 backdrop-blur-md sticky top-0 z-10">
         <div className="container flex items-center justify-between h-14">
           <h1 className="font-heading font-bold text-lg">Panel Admin</h1>
           <Button variant="ghost" size="sm" onClick={signOut}>
@@ -130,13 +130,13 @@ const AdminDashboard = () => {
       </header>
 
       <div className="container mt-4">
-        <div className="flex gap-1 bg-muted p-1 rounded-lg mb-4">
+        <div className="flex gap-1 bg-white/5 border border-white/10 p-1 rounded-lg mb-4">
           {tabs.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-sm font-medium transition-all ${
-                tab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                tab === t.id ? "bg-white/10 text-foreground shadow-sm border border-white/20" : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {t.icon}{t.label}
@@ -200,10 +200,10 @@ const AdminDashboard = () => {
             </div>
 
             {/* Full-width scrollable table */}
-            <div className="rounded-lg border overflow-x-auto">
+            <div className="rounded-lg border border-white/10 overflow-x-auto bg-white/5">
               <Table className="text-xs min-w-[1400px]">
                 <TableHeader>
-                  <TableRow className="bg-muted/50">
+                  <TableRow className="bg-white/5 border-b border-white/10">
                     <TableHead className="whitespace-nowrap">Nombres</TableHead>
                     <TableHead className="whitespace-nowrap">Apellidos</TableHead>
                     <TableHead className="whitespace-nowrap">Fecha Nac.</TableHead>

@@ -39,7 +39,7 @@ const DownloadInvitation = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -47,35 +47,39 @@ const DownloadInvitation = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
-        <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-        <h1 className="text-xl font-bold text-foreground mb-2">{error}</h1>
-        <p className="text-muted-foreground">El enlace puede ser incorrecto o la invitación ya no está disponible.</p>
+      <div className="relative min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <div className="orb orb-1" /><div className="orb orb-2" />
+        <AlertCircle className="relative z-10 h-12 w-12 text-destructive mb-4" />
+        <h1 className="relative z-10 text-xl font-bold text-foreground mb-2">{error}</h1>
+        <p className="relative z-10 text-muted-foreground">El enlace puede ser incorrecto o la invitación ya no está disponible.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
-      <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-        <Download className="h-8 w-8 text-primary" />
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <div className="orb orb-1" /><div className="orb orb-2" /><div className="orb orb-3" />
+      <div className="relative z-10 glass-card rounded-2xl p-10 max-w-sm w-full">
+        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mb-6 mx-auto">
+          <Download className="h-8 w-8 text-primary" />
+        </div>
+        <h1 className="text-2xl font-bold font-heading text-foreground mb-2">
+          Invitación de {name}
+        </h1>
+        <p className="text-muted-foreground mb-8 max-w-sm">
+          Haz clic en el botón para descargar tu invitación en formato PDF.
+        </p>
+        {pdfUrl ? (
+          <Button size="lg" asChild className="w-full">
+            <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
+              <Download className="mr-2 h-5 w-5" />
+              Descargar Invitación
+            </a>
+          </Button>
+        ) : (
+          <p className="text-muted-foreground">La invitación aún se está generando. Intenta de nuevo en unos segundos.</p>
+        )}
       </div>
-      <h1 className="text-2xl font-bold font-heading text-foreground mb-2">
-        Invitación de {name}
-      </h1>
-      <p className="text-muted-foreground mb-8 max-w-sm">
-        Haz clic en el botón para descargar tu invitación en formato PDF.
-      </p>
-      {pdfUrl ? (
-        <Button size="lg" asChild>
-          <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-            <Download className="mr-2 h-5 w-5" />
-            Descargar Invitación
-          </a>
-        </Button>
-      ) : (
-        <p className="text-muted-foreground">La invitación aún se está generando. Intenta de nuevo en unos segundos.</p>
-      )}
     </div>
   );
 };
