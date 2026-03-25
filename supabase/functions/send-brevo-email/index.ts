@@ -12,7 +12,20 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const brevoApiKey = Deno.env.get("BREVO_API_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Try to get Brevo API key from app_secrets table first, fallback to env
+    let brevoApiKey = Deno.env.get("BREVO_API_KEY");
+    const { data: secretRow } = await supabase
+      .from("app_secrets")
+      .select("value")
+      .eq("key", "BREVO_API_KEY")
+      .maybeSingle();
+    if (secretRow?.value) {
+      brevoApiKey = secretRow.value;
+    }
     if (!brevoApiKey) {
       throw new Error("BREVO_API_KEY is not configured");
     }
@@ -25,9 +38,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
 
     // Fetch registration
     const { data: reg, error: regErr } = await supabase
