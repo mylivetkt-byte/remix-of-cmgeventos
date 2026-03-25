@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Loader2, Save, Upload, ImageIcon } from "lucide-react";
+import { Loader2, Save, Upload, ImageIcon, Eye, EyeOff, Key } from "lucide-react";
 
 export function EventConfigManager() {
   const queryClient = useQueryClient();
