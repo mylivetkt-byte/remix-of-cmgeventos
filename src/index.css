@@ -9,33 +9,33 @@
     --font-heading: 'DM Sans', sans-serif;
     --font-body: 'Inter', sans-serif;
 
-    --background: 210 20% 98%;
+    --background: 90 60% 92%;
     --foreground: 220 25% 10%;
 
-    --card: 0 0% 100%;
+    --card: 90 50% 95%;
     --card-foreground: 220 25% 10%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 220 25% 10%;
 
-    --primary: 215 90% 52%;
+    --primary: 90 65% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 30% 94%;
+    --secondary: 90 40% 88%;
     --secondary-foreground: 220 25% 20%;
 
-    --muted: 210 20% 96%;
-    --muted-foreground: 215 15% 47%;
+    --muted: 90 30% 90%;
+    --muted-foreground: 215 15% 40%;
 
-    --accent: 160 60% 45%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 50 95% 50%;
+    --accent-foreground: 220 25% 10%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 20% 90%;
-    --input: 214 20% 90%;
-    --ring: 215 90% 52%;
+    --border: 50 90% 55%;
+    --input: 50 90% 55%;
+    --ring: 90 65% 45%;
 
     --radius: 0.75rem;
 
