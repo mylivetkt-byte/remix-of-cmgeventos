@@ -155,6 +155,8 @@ export function EventConfigManager() {
         </div>
       </div>
 
+      <BrevoApiKeySection />
+
       <div>
         <h2 className="text-lg font-semibold mb-4">Correo Electrónico</h2>
         <div className="space-y-4">
