@@ -205,3 +205,81 @@ export function EventConfigManager() {
     </div>
   );
 }
+
+function BrevoApiKeySection() {
+  const [apiKey, setApiKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [hasExisting, setHasExisting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("app_secrets")
+        .select("value")
+        .eq("key", "BREVO_API_KEY")
+        .maybeSingle();
+      if (data?.value) {
+        setHasExisting(true);
+        setApiKey(data.value);
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    if (!apiKey.trim()) {
+      toast.error("Ingresa una API Key válida");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("app_secrets")
+        .upsert({ key: "BREVO_API_KEY", value: apiKey.trim(), updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (error) throw error;
+      setHasExisting(true);
+      toast.success("API Key de Brevo guardada correctamente");
+    } catch (err: any) {
+      toast.error("Error al guardar: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        <Key className="w-5 h-5" /> API Key de Brevo
+      </h2>
+      <div className="space-y-3">
+        <div>
+          <Label>Brevo API Key {hasExisting && <span className="text-xs text-green-600 ml-1">✓ Configurada</span>}</Label>
+          <div className="flex gap-2 mt-1">
+            <div className="relative flex-1">
+              <Input
+                type={showKey ? "text" : "password"}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={loading ? "Cargando..." : hasExisting ? "••••••••••••••••" : "xkeysib-xxxxxxxx..."}
+                disabled={loading}
+              />
+            </div>
+            <Button type="button" variant="ghost" size="icon" onClick={() => setShowKey(!showKey)}>
+              {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Obtén tu API Key en <a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener noreferrer" className="underline text-primary">Brevo → Configuración → API Keys</a>
+          </p>
+        </div>
+        <Button size="sm" onClick={handleSave} disabled={saving || loading}>
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          {hasExisting ? "Actualizar API Key" : "Guardar API Key"}
+        </Button>
+      </div>
+    </div>
+  );
+}
