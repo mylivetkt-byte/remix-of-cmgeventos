@@ -256,7 +256,7 @@ function BrevoApiKeySection() {
       </h2>
       <div className="space-y-3">
         <div>
-          <Label>Brevo API Key {hasExisting && <span className="text-xs text-green-600 ml-1">✓ Configurada</span>}</Label>
+          <Label>Brevo API Key {hasExisting && <span className="text-xs text-success ml-1">✓ Configurada</span>}</Label>
           <div className="flex gap-2 mt-1">
             <div className="relative flex-1">
               <Input
