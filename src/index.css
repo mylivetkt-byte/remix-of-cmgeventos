@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,36 +6,36 @@
 
 @layer base {
   :root {
-    --font-heading: 'DM Sans', sans-serif;
+    --font-heading: 'Playfair Display', serif;
     --font-body: 'Inter', sans-serif;
 
-    --background: 90 60% 92%;
-    --foreground: 220 25% 10%;
+    --background: 262 35% 12%;
+    --foreground: 45 60% 96%;
 
-    --card: 90 50% 95%;
-    --card-foreground: 220 25% 10%;
+    --card: 260 30% 17%;
+    --card-foreground: 45 60% 96%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 10%;
+    --popover: 260 30% 17%;
+    --popover-foreground: 45 60% 96%;
 
-    --primary: 90 65% 45%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 43 90% 58%;
+    --primary-foreground: 260 40% 10%;
 
-    --secondary: 90 40% 88%;
-    --secondary-foreground: 220 25% 20%;
+    --secondary: 262 25% 22%;
+    --secondary-foreground: 45 60% 90%;
 
-    --muted: 90 30% 90%;
-    --muted-foreground: 215 15% 40%;
+    --muted: 262 20% 22%;
+    --muted-foreground: 262 15% 65%;
 
-    --accent: 50 95% 50%;
-    --accent-foreground: 220 25% 10%;
+    --accent: 43 90% 58%;
+    --accent-foreground: 260 40% 10%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 50 90% 55%;
-    --input: 50 90% 55%;
-    --ring: 90 65% 45%;
+    --border: 262 20% 28%;
+    --input: 262 20% 24%;
+    --ring: 43 90% 58%;
 
     --radius: 0.75rem;
 
@@ -45,44 +45,14 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 215 90% 52%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 30% 94%;
-    --sidebar-accent-foreground: 220 25% 20%;
-    --sidebar-border: 214 20% 90%;
-    --sidebar-ring: 215 90% 52%;
-  }
-
-  .dark {
-    --background: 222 30% 8%;
-    --foreground: 210 20% 96%;
-    --card: 222 25% 12%;
-    --card-foreground: 210 20% 96%;
-    --popover: 222 25% 12%;
-    --popover-foreground: 210 20% 96%;
-    --primary: 215 90% 58%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 217 20% 18%;
-    --secondary-foreground: 210 20% 96%;
-    --muted: 217 20% 18%;
-    --muted-foreground: 215 15% 60%;
-    --accent: 160 60% 50%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 210 20% 96%;
-    --border: 217 20% 18%;
-    --input: 217 20% 18%;
-    --ring: 215 90% 58%;
-    --sidebar-background: 222 25% 10%;
-    --sidebar-foreground: 210 20% 96%;
-    --sidebar-primary: 215 90% 58%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 20% 18%;
-    --sidebar-accent-foreground: 210 20% 96%;
-    --sidebar-border: 217 20% 18%;
-    --sidebar-ring: 215 90% 58%;
+    --sidebar-background: 262 35% 10%;
+    --sidebar-foreground: 45 60% 90%;
+    --sidebar-primary: 43 90% 58%;
+    --sidebar-primary-foreground: 260 40% 10%;
+    --sidebar-accent: 262 25% 20%;
+    --sidebar-accent-foreground: 45 60% 90%;
+    --sidebar-border: 262 20% 22%;
+    --sidebar-ring: 43 90% 58%;
   }
 }
 
@@ -90,10 +60,19 @@
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-body);
+
+  html, body, #root {
+    min-height: 100%;
   }
+
+  body {
+    @apply text-foreground;
+    font-family: var(--font-body);
+    background: radial-gradient(ellipse at top left, hsl(280, 50%, 18%) 0%, hsl(262, 35%, 10%) 50%, hsl(240, 40%, 8%) 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
   }
@@ -102,5 +81,49 @@
 @layer components {
   .form-field-mobile {
     @apply w-full min-h-[3rem] text-base rounded-lg;
+  }
+
+  /* Glass card effect for the registration form */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  /* Gold shimmer on primary button */
+  .gold-btn {
+    background: linear-gradient(135deg, hsl(43, 90%, 58%), hsl(36, 95%, 50%));
+    box-shadow: 0 4px 20px hsla(43, 90%, 58%, 0.35);
+    transition: box-shadow 0.2s, transform 0.2s;
+  }
+  .gold-btn:hover {
+    box-shadow: 0 6px 28px hsla(43, 90%, 58%, 0.55);
+    transform: translateY(-1px);
+  }
+
+  /* Decorative orbs */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb-1 {
+    width: 500px; height: 500px;
+    top: -120px; left: -150px;
+    background: radial-gradient(circle, hsla(280, 70%, 40%, 0.35) 0%, transparent 70%);
+  }
+  .orb-2 {
+    width: 400px; height: 400px;
+    bottom: -100px; right: -100px;
+    background: radial-gradient(circle, hsla(43, 90%, 50%, 0.2) 0%, transparent 70%);
+  }
+  .orb-3 {
+    width: 300px; height: 300px;
+    top: 40%; left: 60%;
+    background: radial-gradient(circle, hsla(200, 80%, 40%, 0.15) 0%, transparent 70%);
   }
 }

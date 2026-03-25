@@ -23,21 +23,31 @@ const Index = () => {
 
   if (successData) {
     return (
-      <div className="min-h-screen bg-background">
-        <SuccessScreen
-          nombres={successData.nombres}
-          pdfUrl={successData.pdfUrl}
-          whatsappUrl={getWhatsAppUrl()}
-          onReset={() => setSuccessData(null)}
-          registrationId={successData.registrationId}
-        />
+      <div className="relative min-h-screen flex items-center justify-center px-4 py-10">
+        <div className="orb orb-1" />
+        <div className="orb orb-2" />
+        <div className="orb orb-3" />
+        <div className="relative z-10 w-full max-w-lg glass-card rounded-2xl">
+          <SuccessScreen
+            nombres={successData.nombres}
+            pdfUrl={successData.pdfUrl}
+            whatsappUrl={getWhatsAppUrl()}
+            onReset={() => setSuccessData(null)}
+            registrationId={successData.registrationId}
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background pb-10">
-      <RegistrationForm onSuccess={setSuccessData} />
+    <div className="relative min-h-screen flex items-center justify-center px-4 py-10">
+      <div className="orb orb-1" />
+      <div className="orb orb-2" />
+      <div className="orb orb-3" />
+      <div className="relative z-10 w-full max-w-lg glass-card rounded-2xl shadow-2xl">
+        <RegistrationForm onSuccess={setSuccessData} />
+      </div>
     </div>
   );
 };
