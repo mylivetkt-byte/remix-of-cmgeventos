@@ -6,12 +6,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { LogOut, Users, Settings, List, Search, Download } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
+import { AttendanceScanner } from "@/components/admin/AttendanceScanner";
 import { useCatalog } from "@/hooks/useCatalogs";
 
-type Tab = "registros" | "catalogos" | "config";
+type Tab = "registros" | "asistencia" | "catalogos" | "config";
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
@@ -112,6 +113,7 @@ const AdminDashboard = () => {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "registros", label: "Registros", icon: <Users className="w-4 h-4" /> },
+    { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-4 h-4" /> },
     { id: "catalogos", label: "Catálogos", icon: <List className="w-4 h-4" /> },
     { id: "config", label: "Configuración", icon: <Settings className="w-4 h-4" /> },
   ];
@@ -141,6 +143,12 @@ const AdminDashboard = () => {
             </button>
           ))}
         </div>
+
+        {tab === "asistencia" && (
+          <div className="animate-fade-in pb-8">
+            <AttendanceScanner />
+          </div>
+        )}
 
         {tab === "registros" && (
           <div className="space-y-4 animate-fade-in pb-8">
