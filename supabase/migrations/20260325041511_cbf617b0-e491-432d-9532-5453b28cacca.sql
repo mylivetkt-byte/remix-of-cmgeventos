@@ -1,0 +1,1 @@
+ALTER TABLE public.event_config ADD COLUMN IF NOT EXISTS correo_remitente text NOT NULL DEFAULT 'noreply@tudominio.com';
