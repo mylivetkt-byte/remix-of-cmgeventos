@@ -9,33 +9,33 @@
     --font-heading: 'Playfair Display', serif;
     --font-body: 'Inter', sans-serif;
 
-    --background: 0 0% 97%;
-    --foreground: 220 25% 10%;
+    --background: 168 60% 94%;
+    --foreground: 168 40% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 25% 10%;
+    --card-foreground: 168 40% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 25% 10%;
+    --popover-foreground: 168 40% 10%;
 
     --primary: 43 95% 50%;
-    --primary-foreground: 220 25% 10%;
+    --primary-foreground: 168 40% 10%;
 
-    --secondary: 220 15% 92%;
-    --secondary-foreground: 220 25% 20%;
+    --secondary: 168 30% 88%;
+    --secondary-foreground: 168 40% 15%;
 
-    --muted: 220 15% 92%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 168 20% 88%;
+    --muted-foreground: 168 15% 40%;
 
     --accent: 43 95% 50%;
-    --accent-foreground: 220 25% 10%;
+    --accent-foreground: 168 40% 10%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 85%;
-    --input: 220 15% 85%;
-    --ring: 43 95% 50%;
+    --border: 168 25% 80%;
+    --input: 168 25% 80%;
+    --ring: 168 60% 38%;
 
     --radius: 0.75rem;
 
@@ -45,14 +45,14 @@
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 220 25% 10%;
+    --sidebar-background: 168 50% 92%;
+    --sidebar-foreground: 168 40% 10%;
     --sidebar-primary: 43 95% 50%;
-    --sidebar-primary-foreground: 220 25% 10%;
-    --sidebar-accent: 220 15% 92%;
-    --sidebar-accent-foreground: 220 25% 20%;
-    --sidebar-border: 220 15% 85%;
-    --sidebar-ring: 43 95% 50%;
+    --sidebar-primary-foreground: 168 40% 10%;
+    --sidebar-accent: 168 30% 88%;
+    --sidebar-accent-foreground: 168 40% 15%;
+    --sidebar-border: 168 25% 80%;
+    --sidebar-ring: 168 60% 38%;
   }
 }
 
@@ -60,11 +60,19 @@
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
     font-family: var(--font-body);
     min-height: 100vh;
+    background-color: #e0f5ef;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(0, 168, 120, 0.18) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 80%, rgba(0, 140, 100, 0.12) 0%, transparent 55%),
+      radial-gradient(ellipse at 60% 10%, rgba(100, 220, 180, 0.15) 0%, transparent 45%);
+    background-attachment: fixed;
+    color: hsl(168, 40%, 10%);
   }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
   }
@@ -73,5 +81,14 @@
 @layer components {
   .form-field-mobile {
     @apply w-full min-h-[3rem] text-base rounded-lg;
+  }
+
+  /* Tarjeta glass verde suave */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 8px 32px rgba(0, 120, 90, 0.12), 0 2px 8px rgba(0,0,0,0.06);
   }
 }

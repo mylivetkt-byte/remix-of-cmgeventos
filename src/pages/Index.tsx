@@ -23,8 +23,8 @@ const Index = () => {
 
   if (successData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-lg">
+      <div className="min-h-screen flex items-center justify-center px-4 py-10">
+        <div className="w-full max-w-lg glass-card rounded-2xl">
           <SuccessScreen
             nombres={successData.nombres}
             pdfUrl={successData.pdfUrl}
@@ -38,8 +38,10 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background px-4 py-10">
-      <RegistrationForm onSuccess={setSuccessData} />
+    <div className="min-h-screen px-4 py-10">
+      <div className="w-full max-w-lg mx-auto glass-card rounded-2xl">
+        <RegistrationForm onSuccess={setSuccessData} />
+      </div>
     </div>
   );
 };
