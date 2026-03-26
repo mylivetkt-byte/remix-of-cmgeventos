@@ -23,12 +23,12 @@ Deno.serve(async (req) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase    = createClient(supabaseUrl, serviceKey);
 
     const { data: reg, error: regErr } = await supabase
       .from("registrations")
-      .select("*, catalog_tipo_documento(nombre), catalog_cdp(nombre), catalog_red(nombre)")
+      .select("*")
       .eq("id", registrationId)
       .single();
 
@@ -58,138 +58,155 @@ Deno.serve(async (req) => {
         })
       : "";
 
-    // QR code
+    // QR code — blanco sobre verde oscuro
     const qrDataUrl = await QRCode.toDataURL(registrationId, {
       width: 300,
-      margin: 1,
-      color: { dark: "#1a3a2a", light: "#ffffff" },
+      margin: 2,
+      color: { dark: "#004030", light: "#ffffff" },
     });
 
-    // ── PDF (A4 portrait) ──────────────────────────────────────────────
-    const doc      = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const W        = doc.internal.pageSize.getWidth();   // 210
-    const H        = doc.internal.pageSize.getHeight();  // 297
+    // ── PDF horizontal (297 x 210 mm) ─────────────────────────────────
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const W   = doc.internal.pageSize.getWidth();  // 297
+    const H   = doc.internal.pageSize.getHeight(); // 210
 
-    // ── 1. Fondo blanco total ─────────────────────────────────────────
-    doc.setFillColor(255, 255, 255);
+    // ── FONDO VERDE OSCURO ────────────────────────────────────────────
+    doc.setFillColor(0, 80, 55);
     doc.rect(0, 0, W, H, "F");
 
-    // ── 2. Franja verde superior ──────────────────────────────────────
-    const headerH = 70;
-    doc.setFillColor(0, 168, 120);   // verde CMG
-    doc.rect(0, 0, W, headerH, "F");
+    // ── PANEL DERECHO BLANCO (60% del ancho) ──────────────────────────
+    const panelX = W * 0.40;
+    const panelW = W - panelX;
+    doc.setFillColor(255, 255, 255);
+    doc.rect(panelX, 0, panelW, H, "F");
 
-    // ── 3. Logo centrado en franja verde ─────────────────────────────
-    let logoBottomY = 10;
+    // ── FRANJA AMARILLA VERTICAL entre panel y fondo ──────────────────
+    doc.setFillColor(255, 210, 0);
+    doc.rect(panelX - 3, 0, 6, H, "F");
+
+    // ── LADO IZQUIERDO: logo + nombre evento + lugar ──────────────────
+
+    // Logo centrado en panel izquierdo
+    let logoBottomY = 20;
     if (config?.logo_url) {
       try {
         const logoRes = await fetch(config.logo_url);
         if (logoRes.ok) {
           const logoBuffer = await logoRes.arrayBuffer();
           const logoBytes  = new Uint8Array(logoBuffer);
-          const ct         = logoRes.headers.get("content-type") || "image/png";
-          const fmt        = ct.includes("png") ? "PNG" : "JPEG";
-          const logoW = 55, logoH = 45;
-          doc.addImage(logoBytes, fmt, W / 2 - logoW / 2, 8, logoW, logoH);
-          logoBottomY = 8 + logoH;
+          const ct  = logoRes.headers.get("content-type") || "image/png";
+          const fmt = ct.includes("png") ? "PNG" : "JPEG";
+          const logoW = 70, logoH = 55;
+          const logoX = (panelX - logoW) / 2;
+          doc.addImage(logoBytes, fmt, logoX, 15, logoW, logoH);
+          logoBottomY = 15 + logoH + 8;
         }
-      } catch (_) { /* sin logo */ }
+      } catch (_) {}
     }
 
-    // ── 4. Nombre del evento debajo del logo ──────────────────────────
+    // Línea decorativa amarilla bajo el logo
+    doc.setDrawColor(255, 210, 0);
+    doc.setLineWidth(1.5);
+    doc.line(15, logoBottomY, panelX - 15, logoBottomY);
+
+    // Nombre del evento
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
     doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text(eventName.toUpperCase(), W / 2, logoBottomY + 8, { align: "center" });
+    const eventLines = doc.splitTextToSize(eventName.toUpperCase(), panelX - 30);
+    doc.text(eventLines, panelX / 2, logoBottomY + 14, { align: "center" });
 
-    // ── 5. Franja decorativa amarilla delgada ─────────────────────────
-    doc.setFillColor(255, 220, 0);
-    doc.rect(0, headerH, W, 4, "F");
+    // Fecha
+    if (eventDate) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(255, 235, 100);
+      const dateText = eventDate + (eventTime ? "  ·  " + eventTime : "");
+      doc.text(dateText, panelX / 2, logoBottomY + 28, { align: "center" });
+    }
 
-    // ── 6. Etiqueta "INVITACIÓN PERSONAL" ────────────────────────────
-    doc.setFillColor(245, 245, 245);
-    doc.rect(0, headerH + 4, W, 14, "F");
-    doc.setTextColor(0, 140, 100);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("✦  INVITACIÓN PERSONAL  ✦", W / 2, headerH + 14, { align: "center" });
-
-    // ── 7. Nombre del asistente ───────────────────────────────────────
-    const nameY = headerH + 36;
-    doc.setTextColor(20, 20, 20);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.text(`${reg.nombres} ${reg.apellidos}`, W / 2, nameY, { align: "center" });
-
-    // línea decorativa bajo el nombre
-    doc.setDrawColor(0, 168, 120);
-    doc.setLineWidth(0.8);
-    doc.line(30, nameY + 4, W - 30, nameY + 4);
-
-    // ── 8. Datos del evento ───────────────────────────────────────────
-    let infoY = nameY + 18;
-
-    const drawInfoRow = (icon: string, label: string, value: string, y: number) => {
-      // ícono/label
+    // Lugar
+    if (eventPlace) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.setTextColor(0, 140, 100);
-      doc.text(`${icon} ${label}`, 25, y);
-      // valor
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(11);
-      doc.setTextColor(30, 30, 30);
-      doc.text(value, 25, y + 6);
-    };
-
-    if (eventDate) {
-      drawInfoRow("📅", "FECHA", eventDate + (eventTime ? `  ·  ${eventTime}` : ""), infoY);
-      infoY += 18;
+      doc.setTextColor(200, 255, 220);
+      doc.text("📍 " + eventPlace, panelX / 2, logoBottomY + 38, { align: "center" });
     }
 
-    if (eventPlace) {
-      drawInfoRow("📍", "LUGAR", eventPlace, infoY);
-      infoY += 18;
-    }
+    // ── LADO DERECHO: "INVITACIÓN", nombre persona, QR ────────────────
+    const rightCenterX = panelX + panelW / 2;
 
-    // separador
-    doc.setDrawColor(220, 220, 220);
-    doc.setLineWidth(0.3);
-    doc.line(25, infoY, W - 25, infoY);
-    infoY += 8;
+    // Encabezado "INVITACIÓN" con fondo amarillo
+    doc.setFillColor(255, 210, 0);
+    doc.rect(panelX + 3, 0, panelW - 3, 22, "F");
 
-    // ── 9. QR grande centrado ─────────────────────────────────────────
-    const qrSize = 70;
-    const qrX    = W / 2 - qrSize / 2;
-    doc.addImage(qrDataUrl, "PNG", qrX, infoY, qrSize, qrSize);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(0, 60, 40);
+    doc.text("I N V I T A C I Ó N", rightCenterX, 14, { align: "center" });
 
-    // marco verde alrededor del QR
+    // Subtítulo
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text("PERSONAL  ·  INTRANSFERIBLE", rightCenterX, 30, { align: "center" });
+
+    // Línea decorativa
+    doc.setDrawColor(0, 80, 55);
+    doc.setLineWidth(0.5);
+    doc.line(panelX + 20, 34, W - 20, 34);
+
+    // Texto "Se invita cordialmente a"
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(120, 120, 120);
+    doc.text("Se invita cordialmente a:", rightCenterX, 44, { align: "center" });
+
+    // Nombre de la persona — grande y destacado
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.setTextColor(0, 60, 40);
+    const fullName = `${reg.nombres} ${reg.apellidos}`;
+    const nameLines = doc.splitTextToSize(fullName, panelW - 30);
+    doc.text(nameLines, rightCenterX, 58, { align: "center" });
+
+    // Línea decorativa verde bajo el nombre
     doc.setDrawColor(0, 168, 120);
     doc.setLineWidth(1);
-    doc.rect(qrX - 2, infoY - 2, qrSize + 4, qrSize + 4);
+    doc.line(panelX + 30, 68, W - 30, 68);
 
-    const qrBottomY = infoY + qrSize + 6;
+    // QR centrado
+    const qrSize = 65;
+    const qrX    = rightCenterX - qrSize / 2;
+    const qrY    = 74;
 
-    // texto bajo el QR
+    // Sombra suave del QR
+    doc.setFillColor(230, 230, 230);
+    doc.rect(qrX + 2, qrY + 2, qrSize, qrSize, "F");
+
+    // QR
+    doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+
+    // Marco verde del QR
+    doc.setDrawColor(0, 80, 55);
+    doc.setLineWidth(1.5);
+    doc.rect(qrX, qrY, qrSize, qrSize);
+
+    // Texto bajo QR
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setTextColor(140, 140, 140);
-    doc.text("Escanea este código en la entrada del evento", W / 2, qrBottomY, { align: "center" });
+    doc.text("Presenta este código en la entrada", rightCenterX, qrY + qrSize + 7, { align: "center" });
 
-    // ── 10. Footer verde ──────────────────────────────────────────────
-    const footerY = H - 20;
-    doc.setFillColor(0, 168, 120);
-    doc.rect(0, footerY, W, 20, "F");
-
-    doc.setFillColor(255, 220, 0);
-    doc.rect(0, footerY, W, 3, "F");
-
+    // ── FOOTER en panel derecho ───────────────────────────────────────
+    doc.setFillColor(0, 80, 55);
+    doc.rect(panelX + 3, H - 14, panelW - 3, 14, "F");
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(7);
+    doc.setTextColor(200, 255, 220);
     doc.text(
-      `Registro: ${new Date(reg.created_at).toLocaleDateString("es-CO")}   ·   ID: ${registrationId.slice(0, 8).toUpperCase()}`,
-      W / 2, footerY + 12, { align: "center" }
+      `ID: ${registrationId.slice(0, 8).toUpperCase()}`,
+      rightCenterX, H - 5, { align: "center" }
     );
 
     // ── Subir PDF ──────────────────────────────────────────────────────
@@ -215,7 +232,6 @@ Deno.serve(async (req) => {
       .update({ pdf_url: pdfUrl, qr_code: registrationId })
       .eq("id", registrationId);
 
-    // Enviar email
     try {
       await supabase.functions.invoke("send-brevo-email", { body: { registrationId } });
     } catch (_) {}
