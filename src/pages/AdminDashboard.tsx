@@ -6,7 +6,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { LogOut, Users, Settings, List, Search, Download, QrCode } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Pencil, Trash } from "lucide-react";
+import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
@@ -45,10 +49,21 @@ const HEADERS = [
 
 const AdminDashboard = () => {
   const { signOut } = useAuth();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("registros");
   const [search, setSearch] = useState("");
   const [filterRed, setFilterRed] = useState<string>("all");
   const [filterCdp, setFilterCdp] = useState<string>("all");
+
+  // Estados para eliminar
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Estados para editar
+  const [editReg, setEditReg] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
   const reds = useCatalog("catalog_red");
   const cdps = useCatalog("catalog_cdp");
@@ -109,6 +124,59 @@ const AdminDashboard = () => {
     const map: Record<string, number> = {};
     data.forEach((r) => { const k = (r as any).catalog_red?.nombre ?? "Sin RED"; map[k] = (map[k] ?? 0) + 1; });
     downloadCSV(buildCSV(["RED", "Total"], Object.entries(map).sort((a, b) => b[1] - a[1])), "consolidado_red.csv");
+  };
+
+  // ── Eliminar uno ────────────────────────────────────────────────────
+  const handleDeleteOne = async () => {
+    if (!deleteId) return;
+    setDeleting(true);
+    const { error } = await supabase.from("registrations").delete().eq("id", deleteId);
+    setDeleting(false);
+    setDeleteId(null);
+    if (error) { toast.error("Error al eliminar: " + error.message); return; }
+    toast.success("Registro eliminado");
+    queryClient.invalidateQueries({ queryKey: ["admin_registrations"] });
+  };
+
+  // ── Eliminar todos ──────────────────────────────────────────────────
+  const handleDeleteAll = async () => {
+    setDeleting(true);
+    const { error } = await supabase.from("registrations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    setDeleting(false);
+    setConfirmDeleteAll(false);
+    if (error) { toast.error("Error al eliminar: " + error.message); return; }
+    toast.success("Todos los registros eliminados");
+    queryClient.invalidateQueries({ queryKey: ["admin_registrations"] });
+  };
+
+  // ── Abrir edición ───────────────────────────────────────────────────
+  const openEdit = (r: any) => {
+    setEditReg(r);
+    setEditForm({
+      nombres: r.nombres ?? "",
+      apellidos: r.apellidos ?? "",
+      telefono: r.telefono ?? "",
+      correo: r.correo ?? "",
+      direccion: r.direccion ?? "",
+      barrio: r.barrio ?? "",
+      numero_documento: r.numero_documento ?? "",
+      nombre_invitador: r.nombre_invitador ?? "",
+    });
+  };
+
+  // ── Guardar edición ─────────────────────────────────────────────────
+  const handleSaveEdit = async () => {
+    if (!editReg) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("registrations")
+      .update(editForm)
+      .eq("id", editReg.id);
+    setSaving(false);
+    if (error) { toast.error("Error al guardar: " + error.message); return; }
+    toast.success("Registro actualizado");
+    setEditReg(null);
+    queryClient.invalidateQueries({ queryKey: ["admin_registrations"] });
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -196,6 +264,9 @@ const AdminDashboard = () => {
                 <Button variant="outline" size="sm" onClick={exportConsolidadoRED}>
                   <Download className="w-4 h-4 mr-1" /> Por RED
                 </Button>
+                <Button variant="destructive" size="sm" onClick={() => setConfirmDeleteAll(true)} disabled={!data.length}>
+                  <Trash className="w-4 h-4 mr-1" /> Eliminar todos
+                </Button>
               </div>
             </div>
 
@@ -220,6 +291,7 @@ const AdminDashboard = () => {
                     <TableHead className="whitespace-nowrap">RED</TableHead>
                     <TableHead className="whitespace-nowrap">Nombre Invitador</TableHead>
                     <TableHead className="whitespace-nowrap">Fecha Registro</TableHead>
+                    <TableHead className="whitespace-nowrap">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -241,6 +313,16 @@ const AdminDashboard = () => {
                       <TableCell className="whitespace-nowrap">{(r as any).catalog_red?.nombre}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.nombre_invitador ?? "-"}</TableCell>
                       <TableCell className="whitespace-nowrap">{new Date(r.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-400 hover:text-blue-300" onClick={() => openEdit(r)}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:text-red-300" onClick={() => setDeleteId(r.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                   {!data.length && (
@@ -259,6 +341,74 @@ const AdminDashboard = () => {
         {tab === "catalogos" && <CatalogManager />}
         {tab === "config" && <EventConfigManager />}
       </div>
+
+      {/* ── Modal: Eliminar uno ── */}
+      <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Eliminar registro?</DialogTitle>
+            <DialogDescription>Esta acción no se puede deshacer.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteId(null)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDeleteOne} disabled={deleting}>
+              {deleting ? "Eliminando..." : "Sí, eliminar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal: Eliminar todos ── */}
+      <Dialog open={confirmDeleteAll} onOpenChange={setConfirmDeleteAll}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>¿Eliminar TODOS los registros?</DialogTitle>
+            <DialogDescription>Se eliminarán {data.length} registros. Esta acción no se puede deshacer.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmDeleteAll(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDeleteAll} disabled={deleting}>
+              {deleting ? "Eliminando..." : "Sí, eliminar todos"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal: Editar registro ── */}
+      <Dialog open={!!editReg} onOpenChange={() => setEditReg(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Editar registro</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3 py-2">
+            {[
+              { field: "nombres",           label: "Nombres" },
+              { field: "apellidos",         label: "Apellidos" },
+              { field: "telefono",          label: "Teléfono" },
+              { field: "correo",            label: "Correo" },
+              { field: "numero_documento",  label: "N° Documento" },
+              { field: "barrio",            label: "Barrio" },
+              { field: "direccion",         label: "Dirección" },
+              { field: "nombre_invitador",  label: "Nombre Invitador" },
+            ].map(({ field, label }) => (
+              <div key={field} className={field === "direccion" ? "col-span-2" : ""}>
+                <Label className="text-xs mb-1 block">{label}</Label>
+                <Input
+                  value={editForm[field] ?? ""}
+                  onChange={(e) => setEditForm((p) => ({ ...p, [field]: e.target.value }))}
+                  className="h-8 text-sm"
+                />
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditReg(null)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} disabled={saving}>
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
