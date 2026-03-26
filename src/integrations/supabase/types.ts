@@ -248,6 +248,7 @@ export type Database = {
       registrations: {
         Row: {
           apellidos: string
+          asistio: boolean
           barrio: string
           cdp_id: string
           correo: string
@@ -270,6 +271,7 @@ export type Database = {
         }
         Insert: {
           apellidos: string
+          asistio?: boolean
           barrio: string
           cdp_id: string
           correo: string
@@ -292,6 +294,7 @@ export type Database = {
         }
         Update: {
           apellidos?: string
+          asistio?: boolean
           barrio?: string
           cdp_id?: string
           correo?: string

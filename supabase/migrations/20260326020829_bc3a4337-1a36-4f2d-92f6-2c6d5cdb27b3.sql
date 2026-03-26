@@ -1,0 +1,1 @@
+ALTER TABLE public.registrations ADD COLUMN asistio boolean NOT NULL DEFAULT false;
