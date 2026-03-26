@@ -49,7 +49,7 @@ export const AttendanceScanner = () => {
 
       const registration = await supabase
         .from("registrations")
-        .select("id, nombres, apellidos, asistio")
+        .select("id, nombres, apellidos")
         .eq("qr_code", qrData)
         .maybeSingle();
 
@@ -70,7 +70,7 @@ export const AttendanceScanner = () => {
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ registration_id: registrationId }),
@@ -83,7 +83,7 @@ export const AttendanceScanner = () => {
 
       const result = await response.json();
 
-      if (registration.data.asistio) {
+      if (result.already_checked_in) {
         toast({
           title: "Ya registrado",
           description: `${registration.data.nombres} ${registration.data.apellidos} ya había marcado asistencia`,
@@ -91,7 +91,7 @@ export const AttendanceScanner = () => {
       } else {
         toast({
           title: "Asistencia registrada",
-          description: `Bienvenido ${result.nombres} ${result.apellidos}!`,
+          description: `Bienvenido ${registration.data.nombres} ${registration.data.apellidos}!`,
         });
       }
 
