@@ -20,15 +20,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseUrl  = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase    = createClient(supabaseUrl, serviceKey);
 
-    if (!resendApiKey) {
-      throw new Error("RESEND_API_KEY no configurada en Supabase Secrets");
+    let brevoApiKey = Deno.env.get("BREVO_API_KEY") || "";
+    const { data: secretRow } = await supabase
+      .from("app_secrets")
+      .select("value")
+      .eq("key", "BREVO_API_KEY")
+      .maybeSingle();
+    if (secretRow?.value) brevoApiKey = secretRow.value;
+
+    if (!brevoApiKey) {
+      throw new Error("BREVO_API_KEY no configurada");
     }
-
-    const supabase = createClient(supabaseUrl, serviceKey);
 
     // Obtener registro
     const { data: reg, error: regErr } = await supabase
@@ -55,7 +61,7 @@ Deno.serve(async (req) => {
     const emailSubject = config?.asunto_correo   || `Tu invitación a ${eventName}`;
     const emailMessage = config?.mensaje_correo  || "Te invitamos a nuestro evento especial.";
     const eventPlace   = config?.lugar_evento    || "";
-    const senderEmail  = config?.correo_remitente || "onboarding@resend.dev";
+    const senderEmail  = config?.correo_remitente || "cmgeventos0@gmail.com";
 
     const eventDate = config?.fecha_evento
       ? new Date(config.fecha_evento).toLocaleDateString("es-CO", {
@@ -127,17 +133,18 @@ Deno.serve(async (req) => {
 </html>`;
 
     // Enviar via Resend
-    const response = await fetch("https://api.resend.com/emails", {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
+        "accept": "application/json",
+        "api-key": brevoApiKey,
+        "content-type": "application/json",
       },
       body: JSON.stringify({
-        from: `${eventName} <${senderEmail}>`,
-        to: [reg.correo],
+        sender: { name: eventName, email: senderEmail },
+        to: [{ email: reg.correo, name: `${reg.nombres} ${reg.apellidos}` }],
         subject: emailSubject,
-        html: htmlContent,
+        htmlContent,
       }),
     });
 
@@ -150,7 +157,7 @@ Deno.serve(async (req) => {
 
     console.log("✅ Email enviado a:", reg.correo, "id:", result.id);
     return new Response(
-      JSON.stringify({ success: true, id: result.id }),
+      JSON.stringify({ success: true, messageId: result.messageId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
