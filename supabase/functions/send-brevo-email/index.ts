@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { SmtpClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,18 +17,21 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Try to get Brevo API key from app_secrets table first, fallback to env
-    let brevoApiKey = Deno.env.get("BREVO_API_KEY");
-    const { data: secretRow } = await supabase
-      .from("app_secrets")
-      .select("value")
-      .eq("key", "BREVO_API_KEY")
-      .maybeSingle();
-    if (secretRow?.value) {
-      brevoApiKey = secretRow.value;
-    }
-    if (!brevoApiKey) {
-      throw new Error("BREVO_API_KEY is not configured");
+    // Obtener credenciales SMTP de Brevo desde app_secrets
+    const getSecret = async (key: string): Promise<string | null> => {
+      const { data } = await supabase
+        .from("app_secrets")
+        .select("value")
+        .eq("key", key)
+        .maybeSingle();
+      return data?.value || Deno.env.get(key) || null;
+    };
+
+    const smtpLogin    = await getSecret("BREVO_SMTP_LOGIN");
+    const smtpPassword = await getSecret("BREVO_SMTP_PASSWORD");
+
+    if (!smtpLogin || !smtpPassword) {
+      throw new Error("Credenciales SMTP de Brevo no configuradas (BREVO_SMTP_LOGIN / BREVO_SMTP_PASSWORD)");
     }
 
     const { registrationId } = await req.json();
@@ -38,8 +42,7 @@ Deno.serve(async (req) => {
       });
     }
 
-
-    // Fetch registration
+    // Obtener registro
     const { data: reg, error: regErr } = await supabase
       .from("registrations")
       .select("*")
@@ -53,16 +56,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch event config
+    // Obtener configuración del evento
     const { data: config } = await supabase
       .from("event_config")
       .select("*")
       .limit(1)
       .single();
 
-    const eventName = config?.nombre_evento || "Evento";
+    const eventName    = config?.nombre_evento || "Evento";
     const emailSubject = config?.asunto_correo || "Tu invitación al evento";
     const emailMessage = config?.mensaje_correo || "Te invitamos a nuestro evento especial.";
+    const fromEmail    = config?.correo_remitente || smtpLogin;
+
     const eventDate = config?.fecha_evento
       ? new Date(config.fecha_evento).toLocaleDateString("es-CO", {
           year: "numeric", month: "long", day: "numeric",
@@ -70,12 +75,11 @@ Deno.serve(async (req) => {
       : "";
     const eventPlace = config?.lugar_evento || "";
 
-    // Build download URL
-    const projectId = Deno.env.get("SUPABASE_URL")!.match(/\/\/([^.]+)/)?.[1] || "";
-    // Use the app's public URL for the download link
-    const downloadUrl = reg.pdf_url || `https://id-preview--4d25c4e0-21df-421d-8790-b42f08873fdd.lovable.app/descargar/${registrationId}`;
+    const downloadUrl =
+      reg.pdf_url ||
+      `https://id-preview--4d25c4e0-21df-421d-8790-b42f08873fdd.lovable.app/descargar/${registrationId}`;
 
-    // Build HTML email
+    // Construir HTML del correo
     const htmlContent = `
 <!DOCTYPE html>
 <html lang="es">
@@ -84,14 +88,12 @@ Deno.serve(async (req) => {
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:30px 0;">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
-        <!-- Header -->
         <tr>
           <td style="background-color:#1a1a2e;padding:30px 40px;text-align:center;">
             <h1 style="color:#ffffff;margin:0;font-size:24px;">${eventName.toUpperCase()}</h1>
             <p style="color:#a5b4fc;margin:8px 0 0;font-size:14px;">INVITACIÓN PERSONAL</p>
           </td>
         </tr>
-        <!-- Body -->
         <tr>
           <td style="padding:30px 40px;">
             <h2 style="color:#1a1a2e;margin:0 0 15px;font-size:20px;">¡Hola ${reg.nombres}!</h2>
@@ -104,7 +106,6 @@ Deno.serve(async (req) => {
               </td></tr>
             </table>
             ` : ""}
-            <!-- CTA Button -->
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr><td align="center" style="padding:10px 0 25px;">
                 <a href="${downloadUrl}" target="_blank"
@@ -119,7 +120,6 @@ Deno.serve(async (req) => {
             </p>
           </td>
         </tr>
-        <!-- Footer -->
         <tr>
           <td style="background-color:#1a1a2e;padding:20px 40px;text-align:center;">
             <p style="color:#a5b4fc;margin:0;font-size:12px;">Este correo fue enviado automáticamente. No responder.</p>
@@ -131,63 +131,33 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    // Crear o actualizar contacto en Brevo antes de enviar
-    try {
-      await fetch("https://api.brevo.com/v3/contacts", {
-        method: "POST",
-        headers: {
-          "accept": "application/json",
-          "api-key": brevoApiKey,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          email: reg.correo,
-          attributes: {
-            FIRSTNAME: reg.nombres,
-            LASTNAME: reg.apellidos,
-          },
-          updateEnabled: true,
-        }),
-      });
-    } catch (_) { /* continuar aunque falle */ }
-
-    // Send via Brevo API
-    const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        "accept": "application/json",
-        "api-key": brevoApiKey,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        sender: {
-          name: eventName,
-          email: config?.correo_remitente || "cmgeventos0@gmail.com",
-        },
-        to: [{ email: reg.correo, name: `${reg.nombres} ${reg.apellidos}` }],
-        subject: emailSubject,
-        htmlContent,
-      }),
+    // Enviar via SMTP de Brevo
+    const client = new SmtpClient();
+    await client.connectTLS({
+      hostname: "smtp-relay.brevo.com",
+      port: 587,
+      username: smtpLogin,
+      password: smtpPassword,
     });
 
-    const brevoData = await brevoResponse.json();
+    await client.send({
+      from: `${eventName} <${fromEmail}>`,
+      to: reg.correo,
+      subject: emailSubject,
+      html: htmlContent,
+    });
 
-    if (!brevoResponse.ok) {
-      console.error("Brevo API error:", brevoData);
-      return new Response(
-        JSON.stringify({ error: "Failed to send email", details: brevoData }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    await client.close();
 
-    console.log("Email sent successfully via Brevo:", brevoData);
+    console.log("Email enviado via SMTP Brevo a:", reg.correo);
 
     return new Response(
-      JSON.stringify({ success: true, messageId: brevoData.messageId }),
+      JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (err) {
-    console.error("Error sending email:", err);
+    console.error("Error enviando email:", err);
     return new Response(
       JSON.stringify({ error: err.message || "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

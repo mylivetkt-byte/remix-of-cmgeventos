@@ -224,41 +224,44 @@ export function EventConfigManager() {
 }
 
 function BrevoApiKeySection() {
-  const [apiKey, setApiKey] = useState("");
-  const [showKey, setShowKey] = useState(false);
+  const [smtpLogin, setSmtpLogin] = useState("");
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [hasExisting, setHasExisting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from("app_secrets")
-        .select("value")
-        .eq("key", "BREVO_API_KEY")
-        .maybeSingle();
-      if (data?.value) {
-        setHasExisting(true);
-        setApiKey(data.value);
-      }
+      const [{ data: loginData }, { data: passData }] = await Promise.all([
+        supabase.from("app_secrets").select("value").eq("key", "BREVO_SMTP_LOGIN").maybeSingle(),
+        supabase.from("app_secrets").select("value").eq("key", "BREVO_SMTP_PASSWORD").maybeSingle(),
+      ]);
+      if (loginData?.value) setSmtpLogin(loginData.value);
+      if (passData?.value) setSmtpPassword(passData.value);
+      if (loginData?.value && passData?.value) setHasExisting(true);
       setLoading(false);
     };
     load();
   }, []);
 
   const handleSave = async () => {
-    if (!apiKey.trim()) {
-      toast.error("Ingresa una API Key válida");
+    if (!smtpLogin.trim() || !smtpPassword.trim()) {
+      toast.error("Ingresa el login y la contraseña SMTP");
       return;
     }
     setSaving(true);
     try {
-      const { error } = await supabase
+      const now = new Date().toISOString();
+      const { error: e1 } = await supabase
         .from("app_secrets")
-        .upsert({ key: "BREVO_API_KEY", value: apiKey.trim(), updated_at: new Date().toISOString() }, { onConflict: "key" });
-      if (error) throw error;
+        .upsert({ key: "BREVO_SMTP_LOGIN", value: smtpLogin.trim(), updated_at: now }, { onConflict: "key" });
+      const { error: e2 } = await supabase
+        .from("app_secrets")
+        .upsert({ key: "BREVO_SMTP_PASSWORD", value: smtpPassword.trim(), updated_at: now }, { onConflict: "key" });
+      if (e1 || e2) throw e1 || e2;
       setHasExisting(true);
-      toast.success("API Key de Brevo guardada correctamente");
+      toast.success("Credenciales SMTP de Brevo guardadas correctamente");
     } catch (err: any) {
       toast.error("Error al guardar: " + err.message);
     } finally {
@@ -269,32 +272,53 @@ function BrevoApiKeySection() {
   return (
     <div>
       <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-        <Key className="w-5 h-5" /> API Key de Brevo
+        <Key className="w-5 h-5" /> Configuración SMTP Brevo
+        {hasExisting && <span className="text-xs text-green-500 font-normal">✓ Configurado</span>}
       </h2>
       <div className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Servidor: <strong>smtp-relay.brevo.com</strong> · Puerto: <strong>587</strong> (TLS)
+        </p>
         <div>
-          <Label>Brevo API Key {hasExisting && <span className="text-xs text-success ml-1">✓ Configurada</span>}</Label>
+          <Label>Login SMTP (tu correo de Brevo)</Label>
+          <Input
+            type="email"
+            value={smtpLogin}
+            onChange={(e) => setSmtpLogin(e.target.value)}
+            placeholder={loading ? "Cargando..." : "tucorreo@ejemplo.com"}
+            disabled={loading}
+            className="mt-1"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Es el correo con el que te registraste en Brevo
+          </p>
+        </div>
+        <div>
+          <Label>Contraseña SMTP (Master password de Brevo)</Label>
           <div className="flex gap-2 mt-1">
             <div className="relative flex-1">
               <Input
-                type={showKey ? "text" : "password"}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder={loading ? "Cargando..." : hasExisting ? "••••••••••••••••" : "xkeysib-xxxxxxxx..."}
+                type={showPassword ? "text" : "password"}
+                value={smtpPassword}
+                onChange={(e) => setSmtpPassword(e.target.value)}
+                placeholder={loading ? "Cargando..." : hasExisting ? "••••••••••••••••" : "Ingresa tu master password..."}
                 disabled={loading}
               />
             </div>
-            <Button type="button" variant="ghost" size="icon" onClick={() => setShowKey(!showKey)}>
-              {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <Button type="button" variant="ghost" size="icon" onClick={() => setShowPassword(!showPassword)}>
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Obtén tu API Key en <a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener noreferrer" className="underline text-primary">Brevo → Configuración → API Keys</a>
+            Encuéntrala en{" "}
+            <a href="https://app.brevo.com/settings/keys/smtp" target="_blank" rel="noopener noreferrer" className="underline text-primary">
+              Brevo → Configuración → SMTP & API
+            </a>
           </p>
         </div>
         <Button size="sm" onClick={handleSave} disabled={saving || loading}>
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          {hasExisting ? "Actualizar API Key" : "Guardar API Key"}
+          {hasExisting ? "Actualizar credenciales SMTP" : "Guardar credenciales SMTP"}
         </Button>
       </div>
     </div>
