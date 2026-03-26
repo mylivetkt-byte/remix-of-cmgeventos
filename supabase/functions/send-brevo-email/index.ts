@@ -131,6 +131,26 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
+    // Crear o actualizar contacto en Brevo antes de enviar
+    try {
+      await fetch("https://api.brevo.com/v3/contacts", {
+        method: "POST",
+        headers: {
+          "accept": "application/json",
+          "api-key": brevoApiKey,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email: reg.correo,
+          attributes: {
+            FIRSTNAME: reg.nombres,
+            LASTNAME: reg.apellidos,
+          },
+          updateEnabled: true,
+        }),
+      });
+    } catch (_) { /* continuar aunque falle */ }
+
     // Send via Brevo API
     const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
