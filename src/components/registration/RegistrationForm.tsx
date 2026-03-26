@@ -134,28 +134,15 @@ export function RegistrationForm({ onSuccess }: Props) {
 
       toast.success("¡Registro exitoso! Generando invitación...");
 
-      // Trigger PDF generation and email sending in background
+      // Flujo correcto: primero genera el PDF, luego send-brevo-email se llama desde dentro
       const registrationId = data.id;
       supabase.functions
         .invoke("generate-invitation", {
           body: { registrationId },
         })
-        .then(({ data: invData, error: invErr }) => {
+        .then(({ error: invErr }) => {
           if (invErr) {
             console.error("Error generating invitation:", invErr);
-          }
-        });
-
-      // Send Brevo email automatically
-      supabase.functions
-        .invoke("send-brevo-email", {
-          body: { registrationId },
-        })
-        .then(({ data: emailData, error: emailErr }) => {
-          if (emailErr) {
-            console.error("Error sending email:", emailErr);
-          } else {
-            console.log("Email sent successfully");
           }
         });
 
