@@ -26,17 +26,9 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Fetch registration with catalog names
     const { data: reg, error: regErr } = await supabase
       .from("registrations")
-      .select(`
-        *,
-        catalog_tipo_documento(nombre),
-        catalog_estado_civil(nombre),
-        catalog_sexo(nombre),
-        catalog_cdp(nombre),
-        catalog_red(nombre)
-      `)
+      .select("*, catalog_tipo_documento(nombre), catalog_cdp(nombre), catalog_red(nombre)")
       .eq("id", registrationId)
       .single();
 
@@ -47,247 +39,192 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Fetch event config
     const { data: config } = await supabase
       .from("event_config")
       .select("*")
       .limit(1)
       .single();
 
-    const eventName = config?.nombre_evento || "Evento";
-    const eventDate = config?.fecha_evento
+    const eventName  = config?.nombre_evento || "Evento";
+    const eventPlace = config?.lugar_evento  || "";
+    const eventDate  = config?.fecha_evento
       ? new Date(config.fecha_evento).toLocaleDateString("es-CO", {
-          year: "numeric", month: "long", day: "numeric",
+          weekday: "long", year: "numeric", month: "long", day: "numeric",
         })
       : "";
-    const eventPlace = config?.lugar_evento || "";
+    const eventTime = config?.fecha_evento
+      ? new Date(config.fecha_evento).toLocaleTimeString("es-CO", {
+          hour: "2-digit", minute: "2-digit",
+        })
+      : "";
 
-    // Generate QR code as data URL
-    const qrValue = registrationId;
-    const qrDataUrl = await QRCode.toDataURL(qrValue, {
-      width: 200,
+    // QR code
+    const qrDataUrl = await QRCode.toDataURL(registrationId, {
+      width: 300,
       margin: 1,
-      color: { dark: "#1a1a2e", light: "#ffffff" },
+      color: { dark: "#1a3a2a", light: "#ffffff" },
     });
 
-    // Generate PDF
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const pageWidth = doc.internal.pageSize.getWidth();
+    // ── PDF (A4 portrait) ──────────────────────────────────────────────
+    const doc      = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const W        = doc.internal.pageSize.getWidth();   // 210
+    const H        = doc.internal.pageSize.getHeight();  // 297
 
-    // Header background
-    const logoUrl = config?.logo_url || null;
-    let headerHeight = 55;
-    let contentStartY = 60;
+    // ── 1. Fondo blanco total ─────────────────────────────────────────
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, W, H, "F");
 
-    if (logoUrl) {
+    // ── 2. Franja verde superior ──────────────────────────────────────
+    const headerH = 70;
+    doc.setFillColor(0, 168, 120);   // verde CMG
+    doc.rect(0, 0, W, headerH, "F");
+
+    // ── 3. Logo centrado en franja verde ─────────────────────────────
+    let logoBottomY = 10;
+    if (config?.logo_url) {
       try {
-        const logoRes = await fetch(logoUrl);
+        const logoRes = await fetch(config.logo_url);
         if (logoRes.ok) {
           const logoBuffer = await logoRes.arrayBuffer();
-          const logoBytes = new Uint8Array(logoBuffer);
-          const contentType = logoRes.headers.get("content-type") || "image/png";
-          const logoFormat = contentType.includes("png") ? "PNG" : "JPEG";
-          
-          // Add logo at the top
-          const logoH = 25;
-          const logoW = 50;
-          doc.addImage(logoBytes, logoFormat, pageWidth / 2 - logoW / 2, 5, logoW, logoH);
-          headerHeight = 75;
-          contentStartY = 80;
-          
-          doc.setFillColor(26, 26, 46);
-          doc.rect(0, 32, pageWidth, headerHeight - 32, "F");
-          
-          // Event title below logo
-          doc.setTextColor(255, 255, 255);
-          doc.setFontSize(22);
-          doc.setFont("helvetica", "bold");
-          doc.text(eventName.toUpperCase(), pageWidth / 2, 47, { align: "center" });
-
-          doc.setFontSize(11);
-          doc.setFont("helvetica", "normal");
-          doc.text("INVITACIÓN PERSONAL", pageWidth / 2, 57, { align: "center" });
-
-          if (eventDate || eventPlace) {
-            doc.setFontSize(9);
-            const subline = [eventDate, eventPlace].filter(Boolean).join(" · ");
-            doc.text(subline, pageWidth / 2, 66, { align: "center" });
-          }
-        } else {
-          throw new Error("Logo fetch failed");
+          const logoBytes  = new Uint8Array(logoBuffer);
+          const ct         = logoRes.headers.get("content-type") || "image/png";
+          const fmt        = ct.includes("png") ? "PNG" : "JPEG";
+          const logoW = 55, logoH = 45;
+          doc.addImage(logoBytes, fmt, W / 2 - logoW / 2, 8, logoW, logoH);
+          logoBottomY = 8 + logoH;
         }
-      } catch (logoErr) {
-        console.error("Could not load logo, using text-only header:", logoErr);
-        // Fallback: text-only header
-        doc.setFillColor(26, 26, 46);
-        doc.rect(0, 0, pageWidth, 55, "F");
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(24);
-        doc.setFont("helvetica", "bold");
-        doc.text(eventName.toUpperCase(), pageWidth / 2, 25, { align: "center" });
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "normal");
-        doc.text("INVITACIÓN PERSONAL", pageWidth / 2, 35, { align: "center" });
-        if (eventDate || eventPlace) {
-          doc.setFontSize(9);
-          const subline = [eventDate, eventPlace].filter(Boolean).join(" · ");
-          doc.text(subline, pageWidth / 2, 45, { align: "center" });
-        }
-      }
-    } else {
-      doc.setFillColor(26, 26, 46);
-      doc.rect(0, 0, pageWidth, 55, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
-      doc.setFont("helvetica", "bold");
-      doc.text(eventName.toUpperCase(), pageWidth / 2, 25, { align: "center" });
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.text("INVITACIÓN PERSONAL", pageWidth / 2, 35, { align: "center" });
-      if (eventDate || eventPlace) {
-        doc.setFontSize(9);
-        const subline = [eventDate, eventPlace].filter(Boolean).join(" · ");
-        doc.text(subline, pageWidth / 2, 45, { align: "center" });
-      }
+      } catch (_) { /* sin logo */ }
     }
 
-    // Divider line
-    doc.setDrawColor(79, 70, 229); // indigo accent
-    doc.setLineWidth(0.8);
-    doc.line(20, contentStartY, pageWidth - 20, contentStartY);
-
-    // Attendee name
-    doc.setTextColor(26, 26, 46);
-    doc.setFontSize(18);
+    // ── 4. Nombre del evento debajo del logo ──────────────────────────
+    doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
-    doc.text(`${reg.nombres} ${reg.apellidos}`, pageWidth / 2, contentStartY + 15, { align: "center" });
+    doc.setFontSize(16);
+    doc.text(eventName.toUpperCase(), W / 2, logoBottomY + 8, { align: "center" });
 
-    // Details section
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(80, 80, 80);
+    // ── 5. Franja decorativa amarilla delgada ─────────────────────────
+    doc.setFillColor(255, 220, 0);
+    doc.rect(0, headerH, W, 4, "F");
 
-    const leftX = 25;
-    const rightX = pageWidth / 2 + 10;
-    let y = contentStartY + 30;
-    const lineH = 8;
+    // ── 6. Etiqueta "INVITACIÓN PERSONAL" ────────────────────────────
+    doc.setFillColor(245, 245, 245);
+    doc.rect(0, headerH + 4, W, 14, "F");
+    doc.setTextColor(0, 140, 100);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("✦  INVITACIÓN PERSONAL  ✦", W / 2, headerH + 14, { align: "center" });
 
-    const addField = (label: string, value: string, x: number, yPos: number) => {
+    // ── 7. Nombre del asistente ───────────────────────────────────────
+    const nameY = headerH + 36;
+    doc.setTextColor(20, 20, 20);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text(`${reg.nombres} ${reg.apellidos}`, W / 2, nameY, { align: "center" });
+
+    // línea decorativa bajo el nombre
+    doc.setDrawColor(0, 168, 120);
+    doc.setLineWidth(0.8);
+    doc.line(30, nameY + 4, W - 30, nameY + 4);
+
+    // ── 8. Datos del evento ───────────────────────────────────────────
+    let infoY = nameY + 18;
+
+    const drawInfoRow = (icon: string, label: string, value: string, y: number) => {
+      // ícono/label
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(26, 26, 46);
-      doc.text(label, x, yPos);
+      doc.setFontSize(9);
+      doc.setTextColor(0, 140, 100);
+      doc.text(`${icon} ${label}`, 25, y);
+      // valor
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(80, 80, 80);
-      doc.text(value || "—", x, yPos + 5);
+      doc.setFontSize(11);
+      doc.setTextColor(30, 30, 30);
+      doc.text(value, 25, y + 6);
     };
 
-    // Two-column layout
-    addField("Tipo Documento", reg.catalog_tipo_documento?.nombre || "—", leftX, y);
-    addField("Nro. Documento", reg.numero_documento, rightX, y);
-    y += lineH * 2;
-
-    addField("Teléfono", reg.telefono, leftX, y);
-    addField("Correo", reg.correo, rightX, y);
-    y += lineH * 2;
-
-    addField("Barrio", reg.barrio, leftX, y);
-    addField("Estado Civil", reg.catalog_estado_civil?.nombre || "—", rightX, y);
-    y += lineH * 2;
-
-    addField("Sexo", reg.catalog_sexo?.nombre || "—", leftX, y);
-    addField("Edad", `${reg.edad} años`, rightX, y);
-    y += lineH * 2;
-
-    addField("CDP", reg.catalog_cdp?.nombre || "—", leftX, y);
-    addField("RED", reg.catalog_red?.nombre || "—", rightX, y);
-    y += lineH * 2;
-
-    if (reg.nombre_invitador) {
-      addField("Invitado por", reg.nombre_invitador, leftX, y);
-      y += lineH * 2;
+    if (eventDate) {
+      drawInfoRow("📅", "FECHA", eventDate + (eventTime ? `  ·  ${eventTime}` : ""), infoY);
+      infoY += 18;
     }
 
-    // QR Code section
-    y += 5;
-    doc.setDrawColor(200, 200, 200);
+    if (eventPlace) {
+      drawInfoRow("📍", "LUGAR", eventPlace, infoY);
+      infoY += 18;
+    }
+
+    // separador
+    doc.setDrawColor(220, 220, 220);
     doc.setLineWidth(0.3);
-    doc.line(20, y, pageWidth - 20, y);
-    y += 10;
+    doc.line(25, infoY, W - 25, infoY);
+    infoY += 8;
 
-    // Add QR image
-    const qrSize = 40;
-    doc.addImage(qrDataUrl, "PNG", pageWidth / 2 - qrSize / 2, y, qrSize, qrSize);
-    y += qrSize + 5;
+    // ── 9. QR grande centrado ─────────────────────────────────────────
+    const qrSize = 70;
+    const qrX    = W / 2 - qrSize / 2;
+    doc.addImage(qrDataUrl, "PNG", qrX, infoY, qrSize, qrSize);
 
+    // marco verde alrededor del QR
+    doc.setDrawColor(0, 168, 120);
+    doc.setLineWidth(1);
+    doc.rect(qrX - 2, infoY - 2, qrSize + 4, qrSize + 4);
+
+    const qrBottomY = infoY + qrSize + 6;
+
+    // texto bajo el QR
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text("Escanea el código QR para validar tu invitación", pageWidth / 2, y, { align: "center" });
-    y += 5;
-    doc.text(`ID: ${registrationId}`, pageWidth / 2, y, { align: "center" });
+    doc.setTextColor(140, 140, 140);
+    doc.text("Escanea este código en la entrada del evento", W / 2, qrBottomY, { align: "center" });
 
-    // Footer
-    const footerY = doc.internal.pageSize.getHeight() - 15;
-    doc.setFillColor(26, 26, 46);
-    doc.rect(0, footerY - 5, pageWidth, 20, "F");
+    // ── 10. Footer verde ──────────────────────────────────────────────
+    const footerY = H - 20;
+    doc.setFillColor(0, 168, 120);
+    doc.rect(0, footerY, W, 20, "F");
+
+    doc.setFillColor(255, 220, 0);
+    doc.rect(0, footerY, W, 3, "F");
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
     doc.text(
-      `Fecha de registro: ${new Date(reg.created_at).toLocaleDateString("es-CO")}`,
-      pageWidth / 2, footerY + 3, { align: "center" }
+      `Registro: ${new Date(reg.created_at).toLocaleDateString("es-CO")}   ·   ID: ${registrationId.slice(0, 8).toUpperCase()}`,
+      W / 2, footerY + 12, { align: "center" }
     );
 
-    // Convert to Uint8Array
-    const pdfOutput = doc.output("arraybuffer");
-    const pdfBytes = new Uint8Array(pdfOutput);
-
-    // Upload to storage
+    // ── Subir PDF ──────────────────────────────────────────────────────
+    const pdfBytes = new Uint8Array(doc.output("arraybuffer"));
     const fileName = `invitation_${registrationId}.pdf`;
+
     const { error: uploadErr } = await supabase.storage
       .from("invitations")
-      .upload(fileName, pdfBytes, {
-        contentType: "application/pdf",
-        upsert: true,
-      });
+      .upload(fileName, pdfBytes, { contentType: "application/pdf", upsert: true });
 
     if (uploadErr) {
-      console.error("Upload error:", uploadErr);
       return new Response(JSON.stringify({ error: "Failed to upload PDF" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from("invitations")
-      .getPublicUrl(fileName);
-
+    const { data: urlData } = supabase.storage.from("invitations").getPublicUrl(fileName);
     const pdfUrl = urlData.publicUrl;
 
-    // Update registration record
     await supabase
       .from("registrations")
-      .update({ pdf_url: pdfUrl, qr_code: qrValue })
+      .update({ pdf_url: pdfUrl, qr_code: registrationId })
       .eq("id", registrationId);
 
-    // Send email via Brevo
+    // Enviar email
     try {
-      const emailResponse = await supabase.functions.invoke("send-brevo-email", {
-        body: { registrationId },
-      });
-      if (emailResponse.error) {
-        console.error("Error sending email via Brevo:", emailResponse.error);
-      } else {
-        console.log("Email sent successfully");
-      }
-    } catch (emailErr) {
-      console.error("Failed to trigger email:", emailErr);
-    }
+      await supabase.functions.invoke("send-brevo-email", { body: { registrationId } });
+    } catch (_) {}
 
     return new Response(
-      JSON.stringify({ success: true, pdfUrl, qrCode: qrValue }),
+      JSON.stringify({ success: true, pdfUrl, qrCode: registrationId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (err) {
     console.error("Error generating invitation:", err);
     return new Response(
