@@ -162,7 +162,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         sender: {
           name: eventName,
-          email: config?.correo_remitente || "noreply@tudominio.com",
+          email: config?.correo_remitente || "cmgeventos0@gmail.com",
         },
         to: [{ email: reg.correo, name: `${reg.nombres} ${reg.apellidos}` }],
         subject: emailSubject,
