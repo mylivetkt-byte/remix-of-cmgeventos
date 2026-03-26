@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import DownloadInvitation from "./pages/DownloadInvitation";
+import CheckIn from "./pages/CheckIn";
 
 const queryClient = new QueryClient();
 
@@ -21,6 +22,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/descargar/:id" element={<DownloadInvitation />} />
+          <Route path="/checkin" element={<CheckIn />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />

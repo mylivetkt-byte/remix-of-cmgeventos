@@ -256,6 +256,7 @@ export type Database = {
           direccion: string
           edad: number
           estado_civil_id: string
+          fecha_asistencia: string | null
           fecha_nacimiento: string
           id: string
           nombre_invitador: string | null
@@ -279,6 +280,7 @@ export type Database = {
           direccion: string
           edad: number
           estado_civil_id: string
+          fecha_asistencia?: string | null
           fecha_nacimiento: string
           id?: string
           nombre_invitador?: string | null
@@ -302,6 +304,7 @@ export type Database = {
           direccion?: string
           edad?: number
           estado_civil_id?: string
+          fecha_asistencia?: string | null
           fecha_nacimiento?: string
           id?: string
           nombre_invitador?: string | null

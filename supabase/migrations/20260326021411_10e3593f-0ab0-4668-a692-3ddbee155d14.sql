@@ -1,0 +1,1 @@
+ALTER TABLE public.registrations ADD COLUMN fecha_asistencia timestamp with time zone DEFAULT null;
