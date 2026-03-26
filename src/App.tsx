@@ -9,6 +9,7 @@ import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import DownloadInvitation from "./pages/DownloadInvitation";
+import CheckIn from "./pages/CheckIn";
 
 const queryClient = new QueryClient();
 
