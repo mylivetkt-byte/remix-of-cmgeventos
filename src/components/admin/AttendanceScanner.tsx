@@ -49,7 +49,7 @@ export const AttendanceScanner = () => {
 
       const registration = await supabase
         .from("registrations")
-        .select("id, nombres, apellidos")
+        .select("id, nombres, apellidos, asistio")
         .eq("qr_code", qrData)
         .maybeSingle();
 
