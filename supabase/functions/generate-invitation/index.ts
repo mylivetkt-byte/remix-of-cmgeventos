@@ -8,6 +8,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Dibuja un rectángulo con esquinas redondeadas
+function roundedRect(doc: any, x: number, y: number, w: number, h: number, r: number, style: string) {
+  doc.roundedRect(x, y, w, h, r, r, style);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -58,36 +63,58 @@ Deno.serve(async (req) => {
         })
       : "";
 
-    // QR code — blanco sobre verde oscuro
+    // ── QR oscuro sobre blanco ────────────────────────────────────────
     const qrDataUrl = await QRCode.toDataURL(registrationId, {
-      width: 300,
-      margin: 2,
-      color: { dark: "#004030", light: "#ffffff" },
+      width: 400,
+      margin: 1,
+      color: { dark: "#0D4F3C", light: "#ffffff" },
     });
 
-    // ── PDF horizontal (297 x 210 mm) ─────────────────────────────────
+    // ── PDF A4 horizontal ─────────────────────────────────────────────
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-    const W   = doc.internal.pageSize.getWidth();  // 297
-    const H   = doc.internal.pageSize.getHeight(); // 210
+    const W = doc.internal.pageSize.getWidth();  // 297
+    const H = doc.internal.pageSize.getHeight(); // 210
 
-    // ── FONDO VERDE OSCURO ────────────────────────────────────────────
-    doc.setFillColor(0, 80, 55);
-    doc.rect(0, 0, W, H, "F");
+    // Colores verde elegante
+    const GREEN_DARK  = [13,  79,  60];   // #0D4F3C
+    const GREEN_MID   = [22, 120,  90];   // #16785A
+    const GREEN_LIGHT = [39, 174, 128];   // #27AE80
+    const GOLD        = [212, 175,  55];  // #D4AF37
+    const WHITE       = [255, 255, 255];
 
-    // ── PANEL DERECHO BLANCO (60% del ancho) ──────────────────────────
-    const panelX = W * 0.40;
-    const panelW = W - panelX;
-    doc.setFillColor(255, 255, 255);
-    doc.rect(panelX, 0, panelW, H, "F");
+    // ── FONDO IZQUIERDO verde oscuro (45% del ancho) ──────────────────
+    const splitX = W * 0.46;
+    doc.setFillColor(...GREEN_DARK as [number,number,number]);
+    doc.rect(0, 0, splitX, H, "F");
 
-    // ── FRANJA AMARILLA VERTICAL entre panel y fondo ──────────────────
-    doc.setFillColor(255, 210, 0);
-    doc.rect(panelX - 3, 0, 6, H, "F");
+    // Decoración: franja diagonal sutil en el verde
+    doc.setFillColor(GREEN_MID[0], GREEN_MID[1], GREEN_MID[2]);
+    doc.triangle(0, H * 0.55, splitX * 0.7, H, 0, H, "F");
 
-    // ── LADO IZQUIERDO: logo + nombre evento + lugar ──────────────────
+    // Patrón de puntos decorativos (esquina inferior derecha del panel verde)
+    doc.setFillColor(GREEN_LIGHT[0], GREEN_LIGHT[1], GREEN_LIGHT[2]);
+    for (let col = 0; col < 5; col++) {
+      for (let row = 0; row < 4; row++) {
+        const px = splitX - 28 + col * 6;
+        const py = H - 30 + row * 7;
+        if (px < splitX - 2) {
+          doc.circle(px, py, 0.8, "F");
+        }
+      }
+    }
 
-    // Logo centrado en panel izquierdo
-    let logoBottomY = 20;
+    // ── PANEL DERECHO BLANCO ──────────────────────────────────────────
+    doc.setFillColor(...WHITE as [number,number,number]);
+    doc.rect(splitX, 0, W - splitX, H, "F");
+
+    // Franja dorada vertical separadora
+    doc.setFillColor(...GOLD as [number,number,number]);
+    doc.rect(splitX - 2.5, 0, 5, H, "F");
+
+    // ── LOGO (grande, centrado en panel izquierdo) ────────────────────
+    const leftCX = splitX / 2;
+    let logoBottomY = 18;
+
     if (config?.logo_url) {
       try {
         const logoRes = await fetch(config.logo_url);
@@ -96,120 +123,159 @@ Deno.serve(async (req) => {
           const logoBytes  = new Uint8Array(logoBuffer);
           const ct  = logoRes.headers.get("content-type") || "image/png";
           const fmt = ct.includes("png") ? "PNG" : "JPEG";
-          const logoW = 70, logoH = 55;
-          const logoX = (panelX - logoW) / 2;
-          doc.addImage(logoBytes, fmt, logoX, 15, logoW, logoH);
-          logoBottomY = 15 + logoH + 8;
+
+          // Logo más grande: hasta 100mm de ancho, mantener proporción
+          const maxLogoW = splitX - 24;
+          const maxLogoH = 80;
+          const logoW = Math.min(maxLogoW, 100);
+          const logoH = Math.min(maxLogoH, logoW * 0.75);
+          const logoX = leftCX - logoW / 2;
+          const logoY = 12;
+
+          // Sombra suave detrás del logo
+          doc.setFillColor(0, 60, 44);
+          doc.rect(logoX + 2, logoY + 2, logoW, logoH, "F");
+
+          doc.addImage(logoBytes, fmt, logoX, logoY, logoW, logoH);
+          logoBottomY = logoY + logoH + 6;
         }
       } catch (_) {}
     }
 
-    // Línea decorativa amarilla bajo el logo
-    doc.setDrawColor(255, 210, 0);
-    doc.setLineWidth(1.5);
-    doc.line(15, logoBottomY, panelX - 15, logoBottomY);
+    // ── LÍNEA DORADA bajo el logo ─────────────────────────────────────
+    doc.setDrawColor(...GOLD as [number,number,number]);
+    doc.setLineWidth(1.2);
+    doc.line(16, logoBottomY, splitX - 16, logoBottomY);
 
-    // Nombre del evento
+    // ── NOMBRE DEL EVENTO ─────────────────────────────────────────────
+    const nameY = logoBottomY + 10;
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.setTextColor(255, 255, 255);
-    const eventLines = doc.splitTextToSize(eventName.toUpperCase(), panelX - 30);
-    doc.text(eventLines, panelX / 2, logoBottomY + 14, { align: "center" });
+    doc.setFontSize(20);
+    doc.setTextColor(...WHITE as [number,number,number]);
+    const eventLines = doc.splitTextToSize(eventName.toUpperCase(), splitX - 24);
+    doc.text(eventLines, leftCX, nameY, { align: "center" });
 
-    // Fecha
+    // ── ETIQUETA "INVITACIÓN OFICIAL" ─────────────────────────────────
+    const badgeY = nameY + (eventLines.length * 9) + 4;
+    const badgeW = 52, badgeH = 7;
+    roundedRect(doc, leftCX - badgeW / 2, badgeY, badgeW, badgeH, 3, "F");
+    // relleno dorado
+    doc.setFillColor(...GOLD as [number,number,number]);
+    roundedRect(doc, leftCX - badgeW / 2, badgeY, badgeW, badgeH, 3, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(...GREEN_DARK as [number,number,number]);
+    doc.text("✦  INVITACIÓN OFICIAL  ✦", leftCX, badgeY + 5, { align: "center" });
+
+    // ── FECHA ─────────────────────────────────────────────────────────
+    let infoY = badgeY + badgeH + 10;
     if (eventDate) {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(255, 235, 100);
-      const dateText = eventDate + (eventTime ? "  ·  " + eventTime : "");
-      doc.text(dateText, panelX / 2, logoBottomY + 28, { align: "center" });
-    }
+      // Ícono de calendario (rectángulo decorativo)
+      doc.setFillColor(GREEN_LIGHT[0], GREEN_LIGHT[1], GREEN_LIGHT[2]);
+      roundedRect(doc, leftCX - 46, infoY - 4.5, 92, 8, 2, "F");
 
-    // Lugar
-    if (eventPlace) {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.setTextColor(200, 255, 220);
-      doc.text("📍 " + eventPlace, panelX / 2, logoBottomY + 38, { align: "center" });
+      doc.setTextColor(...WHITE as [number,number,number]);
+      const dateStr = eventDate.charAt(0).toUpperCase() + eventDate.slice(1);
+      const dateText = eventTime ? `${dateStr}  ·  ${eventTime}` : dateStr;
+      const dateLines = doc.splitTextToSize(dateText, splitX - 28);
+      doc.text(dateLines, leftCX, infoY, { align: "center" });
+      infoY += dateLines.length * 6 + 5;
     }
 
-    // ── LADO DERECHO: "INVITACIÓN", nombre persona, QR ────────────────
-    const rightCenterX = panelX + panelW / 2;
+    // ── LUGAR ─────────────────────────────────────────────────────────
+    if (eventPlace) {
+      doc.setFillColor(GREEN_LIGHT[0], GREEN_LIGHT[1], GREEN_LIGHT[2]);
+      roundedRect(doc, leftCX - 46, infoY - 4.5, 92, 8, 2, "F");
 
-    // Encabezado "INVITACIÓN" con fondo amarillo
-    doc.setFillColor(255, 210, 0);
-    doc.rect(panelX + 3, 0, panelW - 3, 22, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(...WHITE as [number,number,number]);
+      const placeLines = doc.splitTextToSize("📍 " + eventPlace, splitX - 28);
+      doc.text(placeLines, leftCX, infoY, { align: "center" });
+    }
+
+    // ── PANEL DERECHO: Solo nombre + QR ──────────────────────────────
+    const rightCX = splitX + (W - splitX) / 2;
+    const rightW  = W - splitX;
+
+    // Encabezado verde en panel blanco
+    doc.setFillColor(...GREEN_DARK as [number,number,number]);
+    doc.rect(splitX + 2.5, 0, rightW - 2.5, 18, "F");
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.setTextColor(0, 60, 40);
-    doc.text("I N V I T A C I Ó N", rightCenterX, 14, { align: "center" });
+    doc.setFontSize(10);
+    doc.setTextColor(...GOLD as [number,number,number]);
+    doc.text("C O N F I R M A C I Ó N   D E   A S I S T E N C I A", rightCX, 11, { align: "center" });
 
-    // Subtítulo
+    // Texto "Se invita a:" pequeño y gris
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
-    doc.text("PERSONAL  ·  INTRANSFERIBLE", rightCenterX, 30, { align: "center" });
+    doc.setFontSize(8.5);
+    doc.setTextColor(140, 140, 140);
+    doc.text("Se invita cordialmente a:", rightCX, 28, { align: "center" });
 
-    // Línea decorativa
-    doc.setDrawColor(0, 80, 55);
-    doc.setLineWidth(0.5);
-    doc.line(panelX + 20, 34, W - 20, 34);
-
-    // Texto "Se invita cordialmente a"
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(120, 120, 120);
-    doc.text("Se invita cordialmente a:", rightCenterX, 44, { align: "center" });
-
-    // Nombre de la persona — grande y destacado
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.setTextColor(0, 60, 40);
+    // ── NOMBRE DE LA PERSONA (grande, protagonista) ───────────────────
     const fullName = `${reg.nombres} ${reg.apellidos}`;
-    const nameLines = doc.splitTextToSize(fullName, panelW - 30);
-    doc.text(nameLines, rightCenterX, 58, { align: "center" });
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(24);
+    doc.setTextColor(...GREEN_DARK as [number,number,number]);
+    const namePersonLines = doc.splitTextToSize(fullName, rightW - 20);
+    // Ajustar tamaño si el nombre es muy largo
+    let nameFontSize = 24;
+    while (namePersonLines.length > 2 && nameFontSize > 14) {
+      nameFontSize -= 2;
+      doc.setFontSize(nameFontSize);
+    }
+    doc.text(namePersonLines, rightCX, 44, { align: "center" });
 
-    // Línea decorativa verde bajo el nombre
-    doc.setDrawColor(0, 168, 120);
-    doc.setLineWidth(1);
-    doc.line(panelX + 30, 68, W - 30, 68);
+    // Línea dorada bajo el nombre
+    const nameEndY = 44 + (namePersonLines.length - 1) * (nameFontSize * 0.4) + 6;
+    doc.setDrawColor(...GOLD as [number,number,number]);
+    doc.setLineWidth(1.5);
+    doc.line(splitX + 18, nameEndY, W - 18, nameEndY);
 
-    // QR centrado
-    const qrSize = 65;
-    const qrX    = rightCenterX - qrSize / 2;
-    const qrY    = 74;
+    // ── QR GRANDE Y CENTRADO ─────────────────────────────────────────
+    const qrSize = 80;
+    const qrX = rightCX - qrSize / 2;
+    const qrY = nameEndY + 6;
 
-    // Sombra suave del QR
-    doc.setFillColor(230, 230, 230);
-    doc.rect(qrX + 2, qrY + 2, qrSize, qrSize, "F");
+    // Marco verde elegante alrededor del QR
+    doc.setFillColor(...GREEN_DARK as [number,number,number]);
+    roundedRect(doc, qrX - 4, qrY - 4, qrSize + 8, qrSize + 8, 4, "F");
+
+    // Marco dorado fino interior
+    doc.setDrawColor(...GOLD as [number,number,number]);
+    doc.setLineWidth(0.8);
+    roundedRect(doc, qrX - 2, qrY - 2, qrSize + 4, qrSize + 4, 3, "D");
 
     // QR
     doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
 
-    // Marco verde del QR
-    doc.setDrawColor(0, 80, 55);
-    doc.setLineWidth(1.5);
-    doc.rect(qrX, qrY, qrSize, qrSize);
-
     // Texto bajo QR
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
-    doc.setTextColor(140, 140, 140);
-    doc.text("Presenta este código en la entrada", rightCenterX, qrY + qrSize + 7, { align: "center" });
+    doc.setTextColor(130, 130, 130);
+    doc.text("Presenta este código en la entrada", rightCX, qrY + qrSize + 8, { align: "center" });
 
-    // ── FOOTER en panel derecho ───────────────────────────────────────
-    doc.setFillColor(0, 80, 55);
-    doc.rect(panelX + 3, H - 14, panelW - 3, 14, "F");
+    // ── FOOTER PANEL DERECHO ──────────────────────────────────────────
+    doc.setFillColor(...GREEN_DARK as [number,number,number]);
+    doc.rect(splitX + 2.5, H - 12, rightW - 2.5, 12, "F");
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(200, 255, 220);
+    doc.setFontSize(6.5);
+    doc.setTextColor(...GOLD as [number,number,number]);
     doc.text(
-      `ID: ${registrationId.slice(0, 8).toUpperCase()}`,
-      rightCenterX, H - 5, { align: "center" }
+      `ID: ${registrationId.slice(0, 8).toUpperCase()}  ·  Documento personal e intransferible`,
+      rightCX, H - 4.5, { align: "center" }
     );
 
-    // ── Subir PDF ──────────────────────────────────────────────────────
+    // ── FOOTER PANEL IZQUIERDO ────────────────────────────────────────
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(GREEN_LIGHT[0], GREEN_LIGHT[1], GREEN_LIGHT[2]);
+    doc.text("cmgeventos0@gmail.com", leftCX, H - 4.5, { align: "center" });
+
+    // ── Subir PDF ─────────────────────────────────────────────────────
     const pdfBytes = new Uint8Array(doc.output("arraybuffer"));
     const fileName = `invitation_${registrationId}.pdf`;
 
