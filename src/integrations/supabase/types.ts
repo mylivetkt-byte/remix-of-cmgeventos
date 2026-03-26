@@ -248,7 +248,6 @@ export type Database = {
       registrations: {
         Row: {
           apellidos: string
-          asistio: boolean
           barrio: string
           cdp_id: string
           correo: string
@@ -256,7 +255,6 @@ export type Database = {
           direccion: string
           edad: number
           estado_civil_id: string
-          fecha_asistencia: string | null
           fecha_nacimiento: string
           id: string
           nombre_invitador: string | null
@@ -272,7 +270,6 @@ export type Database = {
         }
         Insert: {
           apellidos: string
-          asistio?: boolean
           barrio: string
           cdp_id: string
           correo: string
@@ -280,7 +277,6 @@ export type Database = {
           direccion: string
           edad: number
           estado_civil_id: string
-          fecha_asistencia?: string | null
           fecha_nacimiento: string
           id?: string
           nombre_invitador?: string | null
@@ -296,7 +292,6 @@ export type Database = {
         }
         Update: {
           apellidos?: string
-          asistio?: boolean
           barrio?: string
           cdp_id?: string
           correo?: string
@@ -304,7 +299,6 @@ export type Database = {
           direccion?: string
           edad?: number
           estado_civil_id?: string
-          fecha_asistencia?: string | null
           fecha_nacimiento?: string
           id?: string
           nombre_invitador?: string | null
