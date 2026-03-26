@@ -19,7 +19,7 @@ export const AttendanceScanner = () => {
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check_in_attendance`;
       const response = await fetch(apiUrl, {
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
       });
       if (!response.ok) throw new Error("Error fetching stats");
