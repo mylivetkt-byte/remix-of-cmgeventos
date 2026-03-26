@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,14 +22,21 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const smtpUser    = Deno.env.get("BREVO_SMTP_LOGIN")!;
-    const smtpPass    = Deno.env.get("BREVO_SMTP_PASSWORD")!;
 
-    if (!smtpUser || !smtpPass) {
-      throw new Error("Credenciales SMTP no configuradas en Supabase Secrets");
+    // API Key REST de Brevo (xkeysib-...) desde secrets o app_secrets
+    let brevoApiKey = Deno.env.get("BREVO_API_KEY") || "";
+    const supabase  = createClient(supabaseUrl, serviceKey);
+
+    const { data: secretRow } = await supabase
+      .from("app_secrets")
+      .select("value")
+      .eq("key", "BREVO_API_KEY")
+      .maybeSingle();
+    if (secretRow?.value) brevoApiKey = secretRow.value;
+
+    if (!brevoApiKey) {
+      throw new Error("BREVO_API_KEY no configurada. Ve al Panel Admin → Configuración → API Key de Brevo");
     }
-
-    const supabase = createClient(supabaseUrl, serviceKey);
 
     // Obtener registro
     const { data: reg, error: regErr } = await supabase
@@ -73,7 +79,6 @@ Deno.serve(async (req) => {
     const appUrl      = Deno.env.get("APP_URL") || "https://cmgeventos.lovable.app";
     const downloadUrl = reg.pdf_url || `${appUrl}/descargar/${registrationId}`;
 
-    // HTML del correo
     const htmlContent = `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
@@ -129,33 +134,37 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    // Enviar via SMTP Brevo
-    const client = new SmtpClient();
-    await client.connectTLS({
-      hostname: "smtp-relay.brevo.com",
-      port: 587,
-      username: smtpUser,
-      password: smtpPass,
+    // Enviar via API REST Brevo
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "api-key": brevoApiKey,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: eventName, email: senderEmail },
+        to: [{ email: reg.correo, name: `${reg.nombres} ${reg.apellidos}` }],
+        subject: emailSubject,
+        htmlContent,
+      }),
     });
 
-    await client.send({
-      from: `${eventName} <${senderEmail}>`,
-      to: reg.correo,
-      subject: emailSubject,
-      content: "Tu invitación al evento",
-      html: htmlContent,
-    });
+    const result = await response.json();
 
-    await client.close();
+    if (!response.ok) {
+      console.error("Brevo error:", JSON.stringify(result));
+      throw new Error(`Brevo: ${result.message || JSON.stringify(result)}`);
+    }
 
-    console.log("Email enviado a:", reg.correo);
+    console.log("Email enviado a:", reg.correo, "messageId:", result.messageId);
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify({ success: true, messageId: result.messageId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (err: any) {
-    console.error("Error enviando email:", err);
+    console.error("Error:", err.message);
     return new Response(
       JSON.stringify({ error: err.message || "Error interno" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
