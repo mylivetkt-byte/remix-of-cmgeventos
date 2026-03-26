@@ -19,8 +19,25 @@ export function EventConfigManager() {
         .from("event_config")
         .select("*")
         .limit(1)
-        .single();
+        .maybeSingle();
       if (error) throw error;
+      if (!data) {
+        const { data: newData, error: insertError } = await supabase
+          .from("event_config")
+          .insert({
+            nombre_evento: "Mi Evento",
+            asunto_correo: "Tu invitacion al evento",
+            mensaje_correo: "Te invitamos a nuestro evento especial.",
+            mensaje_whatsapp: "Hola, aqui esta mi invitacion al evento.",
+            correo_remitente: "noreply@tudominio.com",
+            invitado_obligatorio: false,
+            barrio_como_combo: false,
+          })
+          .select()
+          .single();
+        if (insertError) throw insertError;
+        return newData;
+      }
       return data;
     },
   });
