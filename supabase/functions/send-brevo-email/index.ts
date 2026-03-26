@@ -12,24 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
-
-    // Try to get Brevo API key from app_secrets table first, fallback to env
-    let brevoApiKey = Deno.env.get("BREVO_API_KEY");
-    const { data: secretRow } = await supabase
-      .from("app_secrets")
-      .select("value")
-      .eq("key", "BREVO_API_KEY")
-      .maybeSingle();
-    if (secretRow?.value) {
-      brevoApiKey = secretRow.value;
-    }
-    if (!brevoApiKey) {
-      throw new Error("BREVO_API_KEY is not configured");
-    }
-
+    // 1. Leer body primero
     const { registrationId } = await req.json();
     if (!registrationId) {
       return new Response(JSON.stringify({ error: "registrationId required" }), {
@@ -38,8 +21,25 @@ Deno.serve(async (req) => {
       });
     }
 
+    // 2. Crear cliente Supabase
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase    = createClient(supabaseUrl, serviceKey);
 
-    // Fetch registration
+    // 3. Obtener API Key de Brevo desde app_secrets o env
+    let brevoApiKey = Deno.env.get("BREVO_API_KEY") || "";
+    const { data: secretRow } = await supabase
+      .from("app_secrets")
+      .select("value")
+      .eq("key", "BREVO_API_KEY")
+      .maybeSingle();
+    if (secretRow?.value) brevoApiKey = secretRow.value;
+
+    if (!brevoApiKey) {
+      throw new Error("BREVO_API_KEY no está configurada");
+    }
+
+    // 4. Obtener registro
     const { data: reg, error: regErr } = await supabase
       .from("registrations")
       .select("*")
@@ -47,91 +47,115 @@ Deno.serve(async (req) => {
       .single();
 
     if (regErr || !reg) {
-      return new Response(JSON.stringify({ error: "Registration not found" }), {
+      return new Response(JSON.stringify({ error: "Registro no encontrado" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch event config
+    // 5. Obtener configuración del evento
     const { data: config } = await supabase
       .from("event_config")
       .select("*")
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    const eventName = config?.nombre_evento || "Evento";
-    const emailSubject = config?.asunto_correo || "Tu invitación al evento";
-    const emailMessage = config?.mensaje_correo || "Te invitamos a nuestro evento especial.";
-    const eventDate = config?.fecha_evento
+    const eventName     = config?.nombre_evento  || "Evento";
+    const emailSubject  = config?.asunto_correo  || `Tu invitación a ${eventName}`;
+    const emailMessage  = config?.mensaje_correo || "Te invitamos a nuestro evento especial.";
+    const eventDate     = config?.fecha_evento
       ? new Date(config.fecha_evento).toLocaleDateString("es-CO", {
-          year: "numeric", month: "long", day: "numeric",
+          weekday: "long", year: "numeric", month: "long", day: "numeric",
         })
       : "";
-    const eventPlace = config?.lugar_evento || "";
+    const eventTime = config?.fecha_evento
+      ? new Date(config.fecha_evento).toLocaleTimeString("es-CO", {
+          hour: "2-digit", minute: "2-digit",
+        })
+      : "";
+    const eventPlace    = config?.lugar_evento   || "";
+    const senderEmail   = config?.correo_remitente || "cmgeventos0@gmail.com";
 
-    // Build download URL
-    const projectId = Deno.env.get("SUPABASE_URL")!.match(/\/\/([^.]+)/)?.[1] || "";
-    // Use the app's public URL for the download link
-    const downloadUrl = reg.pdf_url || `https://id-preview--4d25c4e0-21df-421d-8790-b42f08873fdd.lovable.app/descargar/${registrationId}`;
+    // 6. URL de descarga usando el dominio de Supabase para construir la URL de la app
+    const appUrl = Deno.env.get("APP_URL") || "https://cmgeventos.lovable.app";
+    const downloadUrl = reg.pdf_url || `${appUrl}/descargar/${registrationId}`;
 
-    // Build HTML email
+    // 7. HTML del correo — colores CMG verde/amarillo
     const htmlContent = `
 <!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:30px 0;">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background-color:#f0faf5;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0faf5;padding:30px 0;">
     <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
-        <!-- Header -->
+      <table width="600" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+
+        <!-- Header verde -->
         <tr>
-          <td style="background-color:#1a1a2e;padding:30px 40px;text-align:center;">
-            <h1 style="color:#ffffff;margin:0;font-size:24px;">${eventName.toUpperCase()}</h1>
-            <p style="color:#a5b4fc;margin:8px 0 0;font-size:14px;">INVITACIÓN PERSONAL</p>
+          <td style="background-color:#005537;padding:30px 40px;text-align:center;">
+            ${config?.logo_url ? `<img src="${config.logo_url}" alt="${eventName}" style="max-height:80px;max-width:200px;object-fit:contain;margin-bottom:15px;display:block;margin-left:auto;margin-right:auto;">` : ""}
+            <h1 style="color:#ffffff;margin:0;font-size:26px;letter-spacing:2px;">${eventName.toUpperCase()}</h1>
+            <div style="width:60px;height:3px;background-color:#ffd200;margin:12px auto 0;"></div>
           </td>
         </tr>
-        <!-- Body -->
+
+        <!-- Franja amarilla -->
         <tr>
-          <td style="padding:30px 40px;">
-            <h2 style="color:#1a1a2e;margin:0 0 15px;font-size:20px;">¡Hola ${reg.nombres}!</h2>
-            <p style="color:#555;line-height:1.6;margin:0 0 20px;">${emailMessage}</p>
+          <td style="background-color:#ffd200;padding:10px 40px;text-align:center;">
+            <p style="margin:0;font-size:12px;font-weight:bold;color:#005537;letter-spacing:3px;">INVITACIÓN PERSONAL</p>
+          </td>
+        </tr>
+
+        <!-- Cuerpo -->
+        <tr>
+          <td style="background-color:#ffffff;padding:35px 40px;">
+            <h2 style="color:#005537;margin:0 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:1px;">¡Hola!</h2>
+            <h3 style="color:#1a1a1a;margin:0 0 20px;font-size:22px;">${reg.nombres} ${reg.apellidos}</h3>
+            <p style="color:#555;line-height:1.7;margin:0 0 25px;font-size:15px;">${emailMessage}</p>
+
             ${eventDate || eventPlace ? `
-            <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8f9fa;border-radius:6px;margin-bottom:20px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0faf5;border-left:4px solid #005537;border-radius:4px;margin-bottom:25px;">
               <tr><td style="padding:15px 20px;">
-                ${eventDate ? `<p style="color:#333;margin:0 0 5px;"><strong>📅 Fecha:</strong> ${eventDate}</p>` : ""}
-                ${eventPlace ? `<p style="color:#333;margin:0;"><strong>📍 Lugar:</strong> ${eventPlace}</p>` : ""}
+                ${eventDate ? `<p style="color:#333;margin:0 0 6px;font-size:14px;"><strong style="color:#005537;">📅 Fecha:</strong> ${eventDate}${eventTime ? " · " + eventTime : ""}</p>` : ""}
+                ${eventPlace ? `<p style="color:#333;margin:0;font-size:14px;"><strong style="color:#005537;">📍 Lugar:</strong> ${eventPlace}</p>` : ""}
               </td></tr>
             </table>
             ` : ""}
-            <!-- CTA Button -->
+
+            <!-- Botón descarga -->
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr><td align="center" style="padding:10px 0 25px;">
                 <a href="${downloadUrl}" target="_blank"
-                   style="display:inline-block;background-color:#4f46e5;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:6px;font-size:16px;font-weight:bold;">
-                  📄 Descargar Invitación PDF
+                   style="display:inline-block;background-color:#005537;color:#ffffff;text-decoration:none;padding:15px 40px;border-radius:6px;font-size:16px;font-weight:bold;letter-spacing:1px;">
+                  📄 Descargar mi Invitación
                 </a>
               </td></tr>
             </table>
-            <p style="color:#888;font-size:13px;text-align:center;margin:0;">
-              Si el botón no funciona, copia este enlace:<br>
-              <a href="${downloadUrl}" style="color:#4f46e5;">${downloadUrl}</a>
+
+            <p style="color:#999;font-size:12px;text-align:center;margin:0;">
+              Si el botón no funciona, copia este enlace en tu navegador:<br>
+              <a href="${downloadUrl}" style="color:#005537;">${downloadUrl}</a>
             </p>
           </td>
         </tr>
+
         <!-- Footer -->
         <tr>
-          <td style="background-color:#1a1a2e;padding:20px 40px;text-align:center;">
-            <p style="color:#a5b4fc;margin:0;font-size:12px;">Este correo fue enviado automáticamente. No responder.</p>
+          <td style="background-color:#005537;padding:20px 40px;text-align:center;">
+            <p style="color:#a0d4bc;margin:0;font-size:12px;">Este correo fue enviado automáticamente · No responder</p>
           </td>
         </tr>
+
       </table>
     </td></tr>
   </table>
 </body>
 </html>`;
 
-    // Crear o actualizar contacto en Brevo antes de enviar
+    // 8. Crear/actualizar contacto en Brevo
     try {
       await fetch("https://api.brevo.com/v3/contacts", {
         method: "POST",
@@ -142,16 +166,13 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
           email: reg.correo,
-          attributes: {
-            FIRSTNAME: reg.nombres,
-            LASTNAME: reg.apellidos,
-          },
+          attributes: { FIRSTNAME: reg.nombres, LASTNAME: reg.apellidos },
           updateEnabled: true,
         }),
       });
-    } catch (_) { /* continuar aunque falle */ }
+    } catch (_) {}
 
-    // Send via Brevo API
+    // 9. Enviar email
     const brevoResponse = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
@@ -160,10 +181,7 @@ Deno.serve(async (req) => {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        sender: {
-          name: eventName,
-          email: config?.correo_remitente || "cmgeventos0@gmail.com",
-        },
+        sender: { name: eventName, email: senderEmail },
         to: [{ email: reg.correo, name: `${reg.nombres} ${reg.apellidos}` }],
         subject: emailSubject,
         htmlContent,
@@ -173,23 +191,23 @@ Deno.serve(async (req) => {
     const brevoData = await brevoResponse.json();
 
     if (!brevoResponse.ok) {
-      console.error("Brevo API error:", brevoData);
+      console.error("Brevo error:", JSON.stringify(brevoData));
       return new Response(
-        JSON.stringify({ error: "Failed to send email", details: brevoData }),
+        JSON.stringify({ error: "Error al enviar email", details: brevoData }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Email sent successfully via Brevo:", brevoData);
-
+    console.log("Email enviado correctamente:", brevoData.messageId);
     return new Response(
       JSON.stringify({ success: true, messageId: brevoData.messageId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
-    console.error("Error sending email:", err);
+
+  } catch (err: any) {
+    console.error("Error:", err);
     return new Response(
-      JSON.stringify({ error: err.message || "Internal server error" }),
+      JSON.stringify({ error: err.message || "Error interno" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
