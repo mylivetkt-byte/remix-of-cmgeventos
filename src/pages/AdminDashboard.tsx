@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { LogOut, Users, Settings, List, Search, Download, QrCode } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
-import { AttendanceScanner } from "@/components/admin/AttendanceScanner";
+import { AttendanceReport } from "@/components/admin/AttendanceReport";
 import { useCatalog } from "@/hooks/useCatalogs";
 
 type Tab = "registros" | "asistencia" | "catalogos" | "config";
