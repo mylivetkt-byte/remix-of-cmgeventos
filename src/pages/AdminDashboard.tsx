@@ -296,6 +296,7 @@ const AdminDashboard = () => {
               <Table className="text-xs min-w-[1400px]">
                 <TableHeader>
                   <TableRow className="bg-white/5 border-b border-white/10">
+                    <TableHead className="whitespace-nowrap sticky left-0 bg-[#1a1a2e] z-10">Acciones</TableHead>
                     <TableHead className="whitespace-nowrap">Nombres</TableHead>
                     <TableHead className="whitespace-nowrap">Apellidos</TableHead>
                     <TableHead className="whitespace-nowrap">Fecha Nac.</TableHead>
@@ -312,12 +313,24 @@ const AdminDashboard = () => {
                     <TableHead className="whitespace-nowrap">RED</TableHead>
                     <TableHead className="whitespace-nowrap">Nombre Invitador</TableHead>
                     <TableHead className="whitespace-nowrap">Fecha Registro</TableHead>
-                    <TableHead className="whitespace-nowrap">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {data.map((r) => (
                     <TableRow key={r.id} className="hover:bg-muted/40">
+                      <TableCell className="whitespace-nowrap sticky left-0 bg-[#1a1a2e] z-10">
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-green-400 hover:text-green-300" onClick={() => handleRegenerate(r.id)} disabled={regeneratingId === r.id} title="Regenerar PDF">
+                            <RefreshCw className={`w-3.5 h-3.5 ${regeneratingId === r.id ? "animate-spin" : ""}`} />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-400 hover:text-blue-300" onClick={() => openEdit(r)} title="Editar">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:text-red-300" onClick={() => setDeleteId(r.id)} title="Eliminar">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
                       <TableCell className="font-medium whitespace-nowrap">{r.nombres}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.apellidos}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.fecha_nacimiento}</TableCell>
@@ -334,19 +347,6 @@ const AdminDashboard = () => {
                       <TableCell className="whitespace-nowrap">{(r as any).catalog_red?.nombre}</TableCell>
                       <TableCell className="whitespace-nowrap">{r.nombre_invitador ?? "-"}</TableCell>
                       <TableCell className="whitespace-nowrap">{new Date(r.created_at).toLocaleDateString()}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex gap-1">
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-green-400 hover:text-green-300" onClick={() => handleRegenerate(r.id)} disabled={regeneratingId === r.id} title="Regenerar PDF">
-                            <RefreshCw className={`w-3.5 h-3.5 ${regeneratingId === r.id ? "animate-spin" : ""}`} />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-400 hover:text-blue-300" onClick={() => openEdit(r)}>
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:text-red-300" onClick={() => setDeleteId(r.id)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
                     </TableRow>
                   ))}
                   {!data.length && (
