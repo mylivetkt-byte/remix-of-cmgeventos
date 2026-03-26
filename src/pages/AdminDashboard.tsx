@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Pencil, Trash } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Pencil, Trash, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -124,6 +124,27 @@ const AdminDashboard = () => {
     const map: Record<string, number> = {};
     data.forEach((r) => { const k = (r as any).catalog_red?.nombre ?? "Sin RED"; map[k] = (map[k] ?? 0) + 1; });
     downloadCSV(buildCSV(["RED", "Total"], Object.entries(map).sort((a, b) => b[1] - a[1])), "consolidado_red.csv");
+  };
+
+  // ── Regenerar PDF ────────────────────────────────────────────────────
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const handleRegenerate = async (id: string) => {
+    setRegeneratingId(id);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-invitation", {
+        body: { registrationId: id },
+      });
+      if (error || data?.error) {
+        toast.error("Error al regenerar: " + (error?.message || data?.error));
+      } else {
+        toast.success("PDF regenerado y correo reenviado ✓");
+        queryClient.invalidateQueries({ queryKey: ["admin_registrations"] });
+      }
+    } catch (err: any) {
+      toast.error("Error: " + err.message);
+    } finally {
+      setRegeneratingId(null);
+    }
   };
 
   // ── Eliminar uno ────────────────────────────────────────────────────
@@ -315,6 +336,9 @@ const AdminDashboard = () => {
                       <TableCell className="whitespace-nowrap">{new Date(r.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-green-400 hover:text-green-300" onClick={() => handleRegenerate(r.id)} disabled={regeneratingId === r.id} title="Regenerar PDF">
+                            <RefreshCw className={`w-3.5 h-3.5 ${regeneratingId === r.id ? "animate-spin" : ""}`} />
+                          </Button>
                           <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-400 hover:text-blue-300" onClick={() => openEdit(r)}>
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
