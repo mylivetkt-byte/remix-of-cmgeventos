@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { SmtpClient } from "https://deno.land/x/denomailer@1.6.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,10 +13,10 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+    const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase    = createClient(supabaseUrl, serviceKey);
 
-    // Obtener credenciales SMTP de Brevo desde app_secrets
+    // Obtener credencial desde app_secrets o variable de entorno
     const getSecret = async (key: string): Promise<string | null> => {
       const { data } = await supabase
         .from("app_secrets")
@@ -27,11 +26,13 @@ Deno.serve(async (req) => {
       return data?.value || Deno.env.get(key) || null;
     };
 
+    // Brevo acepta autenticación SMTP via su API usando el SMTP Password como api-key
+    // El SMTP Password de Brevo ES la misma Master Key que funciona en /v3/smtp/email
     const smtpLogin    = await getSecret("BREVO_SMTP_LOGIN");
     const smtpPassword = await getSecret("BREVO_SMTP_PASSWORD");
 
     if (!smtpLogin || !smtpPassword) {
-      throw new Error("Credenciales SMTP de Brevo no configuradas (BREVO_SMTP_LOGIN / BREVO_SMTP_PASSWORD)");
+      throw new Error("Credenciales SMTP no configuradas. Ve al panel admin y guarda BREVO_SMTP_LOGIN y BREVO_SMTP_PASSWORD.");
     }
 
     const { registrationId } = await req.json();
@@ -56,7 +57,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Obtener configuración del evento
+    // Configuración del evento
     const { data: config } = await supabase
       .from("event_config")
       .select("*")
@@ -79,7 +80,6 @@ Deno.serve(async (req) => {
       reg.pdf_url ||
       `https://id-preview--4d25c4e0-21df-421d-8790-b42f08873fdd.lovable.app/descargar/${registrationId}`;
 
-    // Construir HTML del correo
     const htmlContent = `
 <!DOCTYPE html>
 <html lang="es">
@@ -104,8 +104,7 @@ Deno.serve(async (req) => {
                 ${eventDate ? `<p style="color:#333;margin:0 0 5px;"><strong>📅 Fecha:</strong> ${eventDate}</p>` : ""}
                 ${eventPlace ? `<p style="color:#333;margin:0;"><strong>📍 Lugar:</strong> ${eventPlace}</p>` : ""}
               </td></tr>
-            </table>
-            ` : ""}
+            </table>` : ""}
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr><td align="center" style="padding:10px 0 25px;">
                 <a href="${downloadUrl}" target="_blank"
@@ -131,25 +130,70 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    // Enviar via SMTP de Brevo
-    const client = new SmtpClient();
-    await client.connectTLS({
-      hostname: "smtp-relay.brevo.com",
-      port: 587,
-      username: smtpLogin,
-      password: smtpPassword,
+    // ── Intentar con SMTP Password de Brevo como api-key ──────────────
+    // El SMTP Master Password de Brevo funciona como api-key en /v3/smtp/email
+    let sent = false;
+    let lastError = "";
+
+    // Intento 1: usar smtpPassword directamente como api-key
+    const res1 = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "api-key": smtpPassword,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { name: eventName, email: fromEmail },
+        to: [{ email: reg.correo, name: `${reg.nombres} ${reg.apellidos}` }],
+        subject: emailSubject,
+        htmlContent,
+      }),
     });
 
-    await client.send({
-      from: `${eventName} <${fromEmail}>`,
-      to: reg.correo,
-      subject: emailSubject,
-      html: htmlContent,
-    });
+    if (res1.ok) {
+      sent = true;
+      console.log("Email enviado con SMTP Password como api-key");
+    } else {
+      const err1 = await res1.json();
+      lastError = JSON.stringify(err1);
+      console.warn("Intento 1 fallido:", err1);
 
-    await client.close();
+      // Intento 2: buscar BREVO_API_KEY como fallback
+      const apiKey = await getSecret("BREVO_API_KEY");
+      if (apiKey) {
+        const res2 = await fetch("https://api.brevo.com/v3/smtp/email", {
+          method: "POST",
+          headers: {
+            "accept": "application/json",
+            "api-key": apiKey,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            sender: { name: eventName, email: fromEmail },
+            to: [{ email: reg.correo, name: `${reg.nombres} ${reg.apellidos}` }],
+            subject: emailSubject,
+            htmlContent,
+          }),
+        });
 
-    console.log("Email enviado via SMTP Brevo a:", reg.correo);
+        if (res2.ok) {
+          sent = true;
+          console.log("Email enviado con BREVO_API_KEY (fallback)");
+        } else {
+          const err2 = await res2.json();
+          lastError = JSON.stringify(err2);
+          console.error("Intento 2 fallido:", err2);
+        }
+      }
+    }
+
+    if (!sent) {
+      return new Response(
+        JSON.stringify({ error: "No se pudo enviar el correo", details: lastError }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
       JSON.stringify({ success: true }),

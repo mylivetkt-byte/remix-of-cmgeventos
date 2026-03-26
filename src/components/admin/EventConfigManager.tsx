@@ -229,6 +229,8 @@ function BrevoApiKeySection() {
   const [showPassword, setShowPassword] = useState(false);
   const [hasExisting, setHasExisting] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ok: boolean; message: string} | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -266,6 +268,39 @@ function BrevoApiKeySection() {
       toast.error("Error al guardar: " + err.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      // Obtener el último registro para hacer prueba real
+      const { data: lastReg } = await supabase
+        .from("registrations")
+        .select("id")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!lastReg) {
+        setTestResult({ ok: false, message: "No hay registros para probar. Registra una persona primero." });
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("send-brevo-email", {
+        body: { registrationId: lastReg.id },
+      });
+
+      if (error || data?.error) {
+        setTestResult({ ok: false, message: `Error: ${error?.message || data?.error} — ${data?.details || ""}` });
+      } else {
+        setTestResult({ ok: true, message: "✅ Correo enviado correctamente al último registro." });
+      }
+    } catch (err: any) {
+      setTestResult({ ok: false, message: `Error inesperado: ${err.message}` });
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -316,10 +351,21 @@ function BrevoApiKeySection() {
             </a>
           </p>
         </div>
-        <Button size="sm" onClick={handleSave} disabled={saving || loading}>
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          {hasExisting ? "Actualizar credenciales SMTP" : "Guardar credenciales SMTP"}
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={handleSave} disabled={saving || loading}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {hasExisting ? "Actualizar credenciales SMTP" : "Guardar credenciales SMTP"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleTest} disabled={testing || loading || !hasExisting}>
+            {testing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "📧"}
+            Probar envío
+          </Button>
+        </div>
+        {testResult && (
+          <div className={`text-xs p-2 rounded mt-1 ${testResult.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+            {testResult.message}
+          </div>
+        )}
       </div>
     </div>
   );
