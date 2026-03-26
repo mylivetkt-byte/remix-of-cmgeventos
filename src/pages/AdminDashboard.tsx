@@ -146,7 +146,7 @@ const AdminDashboard = () => {
 
         {tab === "asistencia" && (
           <div className="animate-fade-in pb-8">
-            <AttendanceScanner />
+            <AttendanceReport />
           </div>
         )}
 

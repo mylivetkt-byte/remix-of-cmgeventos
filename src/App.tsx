@@ -22,6 +22,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/descargar/:id" element={<DownloadInvitation />} />
+          <Route path="/checkin" element={<CheckIn />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
