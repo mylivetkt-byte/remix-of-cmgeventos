@@ -167,14 +167,40 @@ export function RegistrationForm({ onSuccess }: Props) {
                   .single();
 
                 const downloadUrl = reg?.pdf_url || `${window.location.origin}/descargar/${registrationId}`;
-                const message = `🎉 *¡Registro exitoso!*
 
-Hola *${form.nombres} ${form.apellidos}*,
+                // Obtener config del evento para el mensaje
+                const { data: evConfig } = await supabase
+                  .from("event_config")
+                  .select("nombre_evento, fecha_evento, lugar_evento, mensaje_whatsapp")
+                  .limit(1)
+                  .single();
 
-Tu invitación está lista 🎊
+                const eventName  = evConfig?.nombre_evento || "Evento";
+                const eventPlace = evConfig?.lugar_evento  || "";
+                const eventDate  = evConfig?.fecha_evento
+                  ? new Date(evConfig.fecha_evento).toLocaleDateString("es-CO", {
+                      weekday: "long", year: "numeric", month: "long", day: "numeric",
+                    })
+                  : "";
+                const eventTime = evConfig?.fecha_evento
+                  ? new Date(evConfig.fecha_evento).toLocaleTimeString("es-CO", {
+                      hour: "2-digit", minute: "2-digit",
+                    })
+                  : "";
 
-📄 Descárgala aquí:
-${downloadUrl}`;
+                const lines = [
+                  `🎉 *${eventName.toUpperCase()}*`,
+                  ``,
+                  `Hola *${form.nombres} ${form.apellidos}*,`,
+                  `¡Tu registro fue exitoso! 🎊`,
+                  ``,
+                ];
+                if (eventDate)  lines.push(`📅 *Fecha:* ${eventDate}${eventTime ? " · " + eventTime : ""}`);
+                if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
+                lines.push(``, `📄 *Descarga tu invitación:*`, downloadUrl);
+
+                const message = lines.join("
+");
 
                 await fetch(`${waUrl}/send`, {
                   method: "POST",

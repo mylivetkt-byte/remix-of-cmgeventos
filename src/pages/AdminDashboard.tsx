@@ -148,12 +148,39 @@ const AdminDashboard = () => {
       }
 
       const downloadUrl = r.pdf_url || `${window.location.origin}/descargar/${r.id}`;
-      const message = `🎉 Hola *${r.nombres} ${r.apellidos}*,
 
-¡Tu invitación está lista! 🎊
+      // Obtener config del evento
+      const { data: evConfig } = await supabase
+        .from("event_config")
+        .select("nombre_evento, fecha_evento, lugar_evento")
+        .limit(1)
+        .single();
 
-📄 Descárgala aquí:
-${downloadUrl}`;
+      const eventName  = evConfig?.nombre_evento || "Evento";
+      const eventPlace = evConfig?.lugar_evento  || "";
+      const eventDate  = evConfig?.fecha_evento
+        ? new Date(evConfig.fecha_evento).toLocaleDateString("es-CO", {
+            weekday: "long", year: "numeric", month: "long", day: "numeric",
+          })
+        : "";
+      const eventTime = evConfig?.fecha_evento
+        ? new Date(evConfig.fecha_evento).toLocaleTimeString("es-CO", {
+            hour: "2-digit", minute: "2-digit",
+          })
+        : "";
+
+      const lines = [
+        `🎉 *${eventName.toUpperCase()}*`,
+        ``,
+        `Hola *${r.nombres} ${r.apellidos}*,`,
+        `¡Tu invitación está lista! 🎊`,
+        ``,
+      ];
+      if (eventDate)  lines.push(`📅 *Fecha:* ${eventDate}${eventTime ? " · " + eventTime : ""}`);
+      if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
+      lines.push(``, `📄 *Descarga tu invitación:*`, downloadUrl);
+      const message = lines.join("
+");
 
       const res = await fetch(`${waUrl.value}/send`, {
         method: "POST",
