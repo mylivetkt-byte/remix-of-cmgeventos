@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
@@ -130,6 +130,21 @@ const AdminDashboard = () => {
     } catch (err: any) {
       toast.error("Error: " + err.message);
     }
+  };
+
+  // Check-in manual
+  const checkInManual = async (r: any) => {
+    const yaAsistio = r.asistio;
+    const { error } = await supabase
+      .from("registrations")
+      .update({
+        asistio: !yaAsistio,
+        fecha_asistencia: !yaAsistio ? new Date().toISOString() : null,
+      })
+      .eq("id", r.id);
+    if (error) { toast.error("Error: " + error.message); return; }
+    toast.success(!yaAsistio ? `✅ Check-in registrado para ${r.nombres}` : `↩️ Check-in revertido para ${r.nombres}`);
+    refresh();
   };
 
   // Reenviar WhatsApp
@@ -337,6 +352,7 @@ const AdminDashboard = () => {
                     <TableHead className="whitespace-nowrap">Sexo</TableHead>
                     <TableHead className="whitespace-nowrap">CDP</TableHead>
                     <TableHead className="whitespace-nowrap">RED</TableHead>
+                    <TableHead className="whitespace-nowrap">Asistencia</TableHead>
                     <TableHead className="whitespace-nowrap">Invitador</TableHead>
                     <TableHead className="whitespace-nowrap">Fecha Registro</TableHead>
                   </TableRow>
@@ -349,6 +365,11 @@ const AdminDashboard = () => {
                           {/* Editar */}
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)} title="Editar">
                             <Pencil className="w-3 h-3 text-blue-400" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => checkInManual(r)} title={r.asistio ? "Revertir check-in" : "Registrar asistencia"}>
+                            {r.asistio
+                              ? <UserCheck className="w-3 h-3 text-green-500" />
+                              : <UserX className="w-3 h-3 text-gray-400" />}
                           </Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => resendEmail(r)} title="Reenviar Email">
                             <Mail className="w-3 h-3 text-yellow-400" />
@@ -394,13 +415,18 @@ const AdminDashboard = () => {
                       <TableCell className="whitespace-nowrap">{(r as any).catalog_sexo?.nombre}</TableCell>
                       <TableCell className="whitespace-nowrap">{(r as any).catalog_cdp?.nombre}</TableCell>
                       <TableCell className="whitespace-nowrap">{(r as any).catalog_red?.nombre}</TableCell>
+                      <TableCell className="whitespace-nowrap text-center">
+                        {r.asistio
+                          ? <span className="inline-flex items-center gap-1 text-green-500 font-medium text-xs"><UserCheck className="w-3 h-3" /> Asistió</span>
+                          : <span className="text-gray-400 text-xs">Pendiente</span>}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap">{r.nombre_invitador ?? "-"}</TableCell>
                       <TableCell className="whitespace-nowrap">{new Date(r.created_at).toLocaleDateString()}</TableCell>
                     </TableRow>
                   ))}
                   {!data.length && (
                     <TableRow>
-                      <TableCell colSpan={17} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={18} className="text-center text-muted-foreground py-8">
                         No hay registros aún
                       </TableCell>
                     </TableRow>
