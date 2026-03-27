@@ -119,6 +119,46 @@ const AdminDashboard = () => {
     refresh();
   };
 
+  // Reenviar WhatsApp
+  const sendWhatsApp = async (r: any) => {
+    try {
+      const { data: waUrl }   = await supabase.from("app_secrets").select("value").eq("key", "WA_SERVER_URL").maybeSingle();
+      const { data: waToken } = await supabase.from("app_secrets").select("value").eq("key", "WA_API_TOKEN").maybeSingle();
+
+      if (!waUrl?.value || !waToken?.value) {
+        toast.error("Servidor WhatsApp no configurado. Ve a la pestaña WhatsApp.");
+        return;
+      }
+      if (!r.telefono) {
+        toast.error("Este registro no tiene teléfono");
+        return;
+      }
+
+      const downloadUrl = r.pdf_url || `${window.location.origin}/descargar/${r.id}`;
+      const message = `🎉 Hola *${r.nombres} ${r.apellidos}*,
+
+¡Tu invitación está lista! 🎊
+
+📄 Descárgala aquí:
+${downloadUrl}`;
+
+      const res = await fetch(`${waUrl.value}/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${waToken.value}`,
+        },
+        body: JSON.stringify({ phone: r.telefono, message }),
+      });
+
+      const data = await res.json();
+      if (res.ok) toast.success(`WhatsApp enviado a ${r.telefono}`);
+      else toast.error("Error: " + (data.error || "No se pudo enviar"));
+    } catch (err: any) {
+      toast.error("Error: " + err.message);
+    }
+  };
+
   const getRow = (r: typeof data[0]) => [
     r.nombres, r.apellidos, r.fecha_nacimiento, r.edad,
     (r as any).catalog_tipo_documento?.nombre ?? "",
@@ -270,6 +310,9 @@ const AdminDashboard = () => {
                           {/* Editar */}
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)} title="Editar">
                             <Pencil className="w-3 h-3 text-blue-400" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => sendWhatsApp(r)} title="Reenviar WhatsApp">
+                            <MessageCircle className="w-3 h-3 text-green-400" />
                           </Button>
                           {/* Eliminar */}
                           <AlertDialog>
