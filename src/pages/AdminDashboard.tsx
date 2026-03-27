@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
@@ -117,6 +117,19 @@ const AdminDashboard = () => {
     toast.success("Registro actualizado");
     setEditReg(null);
     refresh();
+  };
+
+  // Reenviar Email
+  const resendEmail = async (r: any) => {
+    try {
+      const { error } = await supabase.functions.invoke("send-brevo-email", {
+        body: { registrationId: r.id },
+      });
+      if (error) toast.error("Error al reenviar: " + error.message);
+      else toast.success(`Email reenviado a ${r.correo}`);
+    } catch (err: any) {
+      toast.error("Error: " + err.message);
+    }
   };
 
   // Reenviar WhatsApp
@@ -310,6 +323,9 @@ ${downloadUrl}`;
                           {/* Editar */}
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)} title="Editar">
                             <Pencil className="w-3 h-3 text-blue-400" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => resendEmail(r)} title="Reenviar Email">
+                            <Mail className="w-3 h-3 text-yellow-400" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => sendWhatsApp(r)} title="Reenviar WhatsApp">
                             <MessageCircle className="w-3 h-3 text-green-400" />
