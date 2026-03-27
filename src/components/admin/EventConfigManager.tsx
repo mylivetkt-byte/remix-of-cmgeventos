@@ -19,25 +19,8 @@ export function EventConfigManager() {
         .from("event_config")
         .select("*")
         .limit(1)
-        .maybeSingle();
+        .single();
       if (error) throw error;
-      if (!data) {
-        const { data: newData, error: insertError } = await supabase
-          .from("event_config")
-          .insert({
-            nombre_evento: "Mi Evento",
-            asunto_correo: "Tu invitacion al evento",
-            mensaje_correo: "Te invitamos a nuestro evento especial.",
-            mensaje_whatsapp: "Hola, aqui esta mi invitacion al evento.",
-            correo_remitente: "noreply@tudominio.com",
-            invitado_obligatorio: false,
-            barrio_como_combo: false,
-          })
-          .select()
-          .single();
-        if (insertError) throw insertError;
-        return newData;
-      }
       return data;
     },
   });
@@ -197,8 +180,7 @@ export function EventConfigManager() {
         <h2 className="text-lg font-semibold mb-4">WhatsApp</h2>
         <div>
           <Label>Mensaje de WhatsApp</Label>
-          <Textarea value={currentForm.mensaje_whatsapp || ""} onChange={(e) => set("mensaje_whatsapp", e.target.value)} rows={3} />
-          <p className="text-xs text-muted-foreground mt-1">Este mensaje se enviará automáticamente al registrar una persona.</p>
+          <Textarea value={currentForm.mensaje_whatsapp || ""} onChange={(e) => set("mensaje_whatsapp", e.target.value)} rows={2} />
         </div>
       </div>
 
@@ -225,64 +207,41 @@ export function EventConfigManager() {
 }
 
 function BrevoApiKeySection() {
-  const [smtpLogin, setSmtpLogin] = useState("");
-  const [smtpPassword, setSmtpPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+  const [showKey, setShowKey] = useState(false);
   const [hasExisting, setHasExisting] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
-<<<<<<< HEAD
-  const [testEmail, setTestEmail] = useState("");
-=======
->>>>>>> 9e44c28f54f700f576af8d1ff7e9613c6b4f0f02
-  const [testResult, setTestResult] = useState<{ok: boolean; message: string} | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
-<<<<<<< HEAD
       const { data } = await supabase
         .from("app_secrets")
         .select("value")
         .eq("key", "BREVO_API_KEY")
         .maybeSingle();
-      if (data?.value) { setApiKey(data.value); setHasExisting(true); }
-=======
-      const [{ data: loginData }, { data: passData }] = await Promise.all([
-        supabase.from("app_secrets").select("value").eq("key", "BREVO_SMTP_LOGIN").maybeSingle(),
-        supabase.from("app_secrets").select("value").eq("key", "BREVO_SMTP_PASSWORD").maybeSingle(),
-      ]);
-      if (loginData?.value) setSmtpLogin(loginData.value);
-      if (passData?.value) setSmtpPassword(passData.value);
-      if (loginData?.value && passData?.value) setHasExisting(true);
->>>>>>> 9e44c28f54f700f576af8d1ff7e9613c6b4f0f02
+      if (data?.value) {
+        setHasExisting(true);
+        setApiKey(data.value);
+      }
       setLoading(false);
     };
     load();
   }, []);
 
   const handleSave = async () => {
-<<<<<<< HEAD
     if (!apiKey.trim()) {
-      toast.error("Ingresa la API Key de Brevo");
-=======
-    if (!smtpLogin.trim() || !smtpPassword.trim()) {
-      toast.error("Ingresa el login y la contraseña SMTP");
->>>>>>> 9e44c28f54f700f576af8d1ff7e9613c6b4f0f02
+      toast.error("Ingresa una API Key válida");
       return;
     }
     setSaving(true);
     try {
-      const now = new Date().toISOString();
-      const { error: e1 } = await supabase
+      const { error } = await supabase
         .from("app_secrets")
-        .upsert({ key: "BREVO_SMTP_LOGIN", value: smtpLogin.trim(), updated_at: now }, { onConflict: "key" });
-      const { error: e2 } = await supabase
-        .from("app_secrets")
-        .upsert({ key: "BREVO_SMTP_PASSWORD", value: smtpPassword.trim(), updated_at: now }, { onConflict: "key" });
-      if (e1 || e2) throw e1 || e2;
+        .upsert({ key: "BREVO_API_KEY", value: apiKey.trim(), updated_at: new Date().toISOString() }, { onConflict: "key" });
+      if (error) throw error;
       setHasExisting(true);
-      toast.success("Credenciales SMTP de Brevo guardadas correctamente");
+      toast.success("API Key de Brevo guardada correctamente");
     } catch (err: any) {
       toast.error("Error al guardar: " + err.message);
     } finally {
@@ -290,284 +249,36 @@ function BrevoApiKeySection() {
     }
   };
 
-  const handleTest = async () => {
-<<<<<<< HEAD
-    if (!testEmail.trim()) {
-      toast.error("Ingresa un correo de prueba");
-      return;
-    }
-    setTesting(true);
-    setTestResult(null);
-    try {
-=======
-    setTesting(true);
-    setTestResult(null);
-    try {
-      // Obtener el último registro para hacer prueba real
->>>>>>> 9e44c28f54f700f576af8d1ff7e9613c6b4f0f02
-      const { data: lastReg } = await supabase
-        .from("registrations")
-        .select("id")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!lastReg) {
-<<<<<<< HEAD
-        setTestResult({ ok: false, message: "No hay registros aún. Registra una persona primero." });
-=======
-        setTestResult({ ok: false, message: "No hay registros para probar. Registra una persona primero." });
->>>>>>> 9e44c28f54f700f576af8d1ff7e9613c6b4f0f02
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke("send-brevo-email", {
-        body: { registrationId: lastReg.id },
-      });
-
-      if (error || data?.error) {
-<<<<<<< HEAD
-        setTestResult({ ok: false, message: `Error: ${error?.message || data?.error}` });
-      } else {
-        setTestResult({ ok: true, message: `✅ Correo enviado correctamente. Revisa ${testEmail}` });
-      }
-    } catch (err: any) {
-      setTestResult({ ok: false, message: `Error: ${err.message}` });
-=======
-        setTestResult({ ok: false, message: `Error: ${error?.message || data?.error} — ${data?.details || ""}` });
-      } else {
-        setTestResult({ ok: true, message: "✅ Correo enviado correctamente al último registro." });
-      }
-    } catch (err: any) {
-      setTestResult({ ok: false, message: `Error inesperado: ${err.message}` });
->>>>>>> 9e44c28f54f700f576af8d1ff7e9613c6b4f0f02
-    } finally {
-      setTesting(false);
-    }
-  };
-
   return (
     <div>
       <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-<<<<<<< HEAD
         <Key className="w-5 h-5" /> API Key de Brevo
-        {hasExisting && <span className="text-xs text-green-500 font-normal">✓ Configurada</span>}
-=======
-        <Key className="w-5 h-5" /> Configuración SMTP Brevo
-        {hasExisting && <span className="text-xs text-green-500 font-normal">✓ Configurado</span>}
->>>>>>> 9e44c28f54f700f576af8d1ff7e9613c6b4f0f02
       </h2>
       <div className="space-y-3">
-        <p className="text-xs text-muted-foreground">
-          Servidor: <strong>smtp-relay.brevo.com</strong> · Puerto: <strong>587</strong> (TLS)
-        </p>
         <div>
-<<<<<<< HEAD
-          <Label>Brevo API Key (xkeysib-...)</Label>
+          <Label>Brevo API Key {hasExisting && <span className="text-xs text-success ml-1">✓ Configurada</span>}</Label>
           <div className="flex gap-2 mt-1">
             <div className="relative flex-1">
               <Input
                 type={showKey ? "text" : "password"}
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder={loading ? "Cargando..." : hasExisting ? "••••••••••••••••" : "xkeysib-..."}
-=======
-          <Label>Login SMTP (tu correo de Brevo)</Label>
-          <Input
-            type="email"
-            value={smtpLogin}
-            onChange={(e) => setSmtpLogin(e.target.value)}
-            placeholder={loading ? "Cargando..." : "tucorreo@ejemplo.com"}
-            disabled={loading}
-            className="mt-1"
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Es el correo con el que te registraste en Brevo
-          </p>
-        </div>
-        <div>
-          <Label>Contraseña SMTP (Master password de Brevo)</Label>
-          <div className="flex gap-2 mt-1">
-            <div className="relative flex-1">
-              <Input
-                type={showPassword ? "text" : "password"}
-                value={smtpPassword}
-                onChange={(e) => setSmtpPassword(e.target.value)}
-                placeholder={loading ? "Cargando..." : hasExisting ? "••••••••••••••••" : "Ingresa tu master password..."}
->>>>>>> 9e44c28f54f700f576af8d1ff7e9613c6b4f0f02
+                placeholder={loading ? "Cargando..." : hasExisting ? "••••••••••••••••" : "xkeysib-xxxxxxxx..."}
                 disabled={loading}
               />
             </div>
-            <Button type="button" variant="ghost" size="icon" onClick={() => setShowPassword(!showPassword)}>
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <Button type="button" variant="ghost" size="icon" onClick={() => setShowKey(!showKey)}>
+              {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-<<<<<<< HEAD
-            Obtén tu API Key en{" "}
-            <a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener noreferrer" className="underline text-primary">
-              Brevo → Settings → API Keys
-            </a>
+            Obtén tu API Key en <a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener noreferrer" className="underline text-primary">Brevo → Configuración → API Keys</a>
           </p>
         </div>
-        <div>
-          <Label>Correo de prueba</Label>
-          <Input
-            type="email"
-            value={testEmail}
-            onChange={(e) => setTestEmail(e.target.value)}
-            placeholder="tucorreo@gmail.com"
-            className="mt-1"
-          />
-          <p className="text-xs text-muted-foreground mt-1">Correo donde quieres recibir la prueba</p>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={handleSave} disabled={saving || loading}>
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {hasExisting ? "Actualizar API Key" : "Guardar API Key"}
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleTest} disabled={testing || !hasExisting || !testEmail.trim()}>
-=======
-            Encuéntrala en{" "}
-            <a href="https://app.brevo.com/settings/keys/smtp" target="_blank" rel="noopener noreferrer" className="underline text-primary">
-              Brevo → Configuración → SMTP & API
-            </a>
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={handleSave} disabled={saving || loading}>
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {hasExisting ? "Actualizar credenciales SMTP" : "Guardar credenciales SMTP"}
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleTest} disabled={testing || loading || !hasExisting}>
->>>>>>> 9e44c28f54f700f576af8d1ff7e9613c6b4f0f02
-            {testing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "📧"}
-            Probar envío
-          </Button>
-        </div>
-        {testResult && (
-          <div className={`text-xs p-2 rounded mt-1 ${testResult.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-            {testResult.message}
-          </div>
-        )}
-<<<<<<< HEAD
-=======
-      </div>
-    </div>
-  );
-}
-
-function WhatsAppStatusSection() {
-  const [serverUrl, setServerUrl] = useState("https://cmg-whatsapp.onrender.com");
-  const [token, setToken] = useState("cmg-token-2024");
-  const [status, setStatus] = useState<"unknown" | "connected" | "qr" | "disconnected">("unknown");
-  const [qrImage, setQrImage] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  // Cargar config guardada
-  useEffect(() => {
-    const load = async () => {
-      const [{ data: urlData }, { data: tokenData }] = await Promise.all([
-        supabase.from("app_secrets").select("value").eq("key", "WA_SERVER_URL").maybeSingle(),
-        supabase.from("app_secrets").select("value").eq("key", "WA_API_TOKEN").maybeSingle(),
-      ]);
-      if (urlData?.value) setServerUrl(urlData.value);
-      if (tokenData?.value) setToken(tokenData.value);
-    };
-    load();
-  }, []);
-
-  const checkStatus = async () => {
-    setLoading(true);
-    setQrImage(null);
-    try {
-      const res = await fetch(`${serverUrl}/qr-base64`);
-      const data = await res.json();
-      if (data.connected) {
-        setStatus("connected");
-      } else if (data.qr) {
-        setStatus("qr");
-        setQrImage(data.qr);
-      } else {
-        setStatus("disconnected");
-      }
-    } catch {
-      setStatus("disconnected");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    const now = new Date().toISOString();
-    await Promise.all([
-      supabase.from("app_secrets").upsert({ key: "WA_SERVER_URL", value: serverUrl.trim(), updated_at: now }, { onConflict: "key" }),
-      supabase.from("app_secrets").upsert({ key: "WA_API_TOKEN", value: token.trim(), updated_at: now }, { onConflict: "key" }),
-    ]);
-    setSaving(false);
-    toast.success("Configuración WhatsApp guardada");
-  };
-
-  const statusColors: Record<string, string> = {
-    connected:    "text-green-500",
-    qr:           "text-yellow-500",
-    disconnected: "text-red-500",
-    unknown:      "text-gray-400",
-  };
-  const statusLabels: Record<string, string> = {
-    connected:    "✅ Conectado",
-    qr:           "📱 Esperando escaneo de QR",
-    disconnected: "❌ Desconectado",
-    unknown:      "— Sin verificar",
-  };
-
-  return (
-    <div>
-      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-        💬 Servidor WhatsApp
-      </h2>
-      <div className="space-y-3">
-        <div>
-          <Label>URL del servidor (Render)</Label>
-          <Input value={serverUrl} onChange={(e) => setServerUrl(e.target.value)} className="mt-1" placeholder="https://cmg-whatsapp.onrender.com" />
-        </div>
-        <div>
-          <Label>Token de seguridad (API_TOKEN)</Label>
-          <Input value={token} onChange={(e) => setToken(e.target.value)} className="mt-1" placeholder="cmg-token-2024" />
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Guardar
-          </Button>
-          <Button size="sm" variant="outline" onClick={checkStatus} disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "🔄"}
-            Verificar estado
-          </Button>
-        </div>
-
-        {/* Estado */}
-        <div className={`text-sm font-medium ${statusColors[status]}`}>
-          Estado: {statusLabels[status]}
-        </div>
-
-        {/* QR para escanear */}
-        {status === "qr" && qrImage && (
-          <div className="flex flex-col items-center gap-2 p-4 bg-white rounded-lg border">
-            <p className="text-sm text-gray-700 font-medium">Escanea con WhatsApp → Dispositivos vinculados</p>
-            <img src={qrImage} alt="QR WhatsApp" className="w-52 h-52 rounded" />
-            <Button size="sm" variant="outline" onClick={checkStatus}>🔄 Actualizar QR</Button>
-          </div>
-        )}
-
-        {status === "connected" && (
-          <div className="text-xs text-green-600 bg-green-50 p-3 rounded-lg">
-            WhatsApp conectado. Los mensajes se enviarán automáticamente al registrar una persona.
-          </div>
-        )}
->>>>>>> 9e44c28f54f700f576af8d1ff7e9613c6b4f0f02
+        <Button size="sm" onClick={handleSave} disabled={saving || loading}>
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          {hasExisting ? "Actualizar API Key" : "Guardar API Key"}
+        </Button>
       </div>
     </div>
   );
