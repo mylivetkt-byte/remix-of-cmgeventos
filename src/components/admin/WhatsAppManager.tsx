@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 export function WhatsAppManager() {
   const [serverUrl, setServerUrl] = useState("");
   const [apiToken, setApiToken] = useState("");
-  const [status, setStatus] = useState<"connected" | "qr" | "disconnected" | "loading">("loading");
+  const [status, setStatus] = useState<"connected" | "qr" | "disconnected" | "loading">("disconnected");
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -21,16 +21,12 @@ export function WhatsAppManager() {
         .from("app_secrets")
         .select("key, value")
         .in("key", ["WA_SERVER_URL", "WA_API_TOKEN"]);
-      if (data) {
-        const url   = data.find((d) => d.key === "WA_SERVER_URL")?.value || "";
-        const token = data.find((d) => d.key === "WA_API_TOKEN")?.value  || "";
-        setServerUrl(url);
-        setApiToken(token);
-        if (url && token) checkStatus(url, token);
-        else setStatus("disconnected");
-      } else {
-        setStatus("disconnected");
-      }
+      const url   = data?.find((d) => d.key === "WA_SERVER_URL")?.value || "";
+      const token = data?.find((d) => d.key === "WA_API_TOKEN")?.value  || "";
+      setServerUrl(url);
+      setApiToken(token);
+      if (url && token) checkStatus(url, token);
+      else setStatus("disconnected");
     };
     load();
   }, []);
