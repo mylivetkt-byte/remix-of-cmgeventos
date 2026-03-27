@@ -179,8 +179,7 @@ const AdminDashboard = () => {
       if (eventDate)  lines.push(`📅 *Fecha:* ${eventDate}${eventTime ? " · " + eventTime : ""}`);
       if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
       lines.push(``, `📄 *Descarga tu invitación:*`, downloadUrl);
-      const message = lines.join("
-");
+      const message = lines.join("\n");
 
       const res = await fetch(`${waUrl.value}/send`, {
         method: "POST",
