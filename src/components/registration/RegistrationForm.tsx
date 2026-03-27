@@ -146,6 +146,13 @@ export function RegistrationForm({ onSuccess }: Props) {
           }
         });
 
+      // Enviar WhatsApp via Edge Function (evita problemas de CORS)
+      if (form.telefono) {
+        supabase.functions
+          .invoke("send-whatsapp", { body: { registrationId } })
+          .catch(() => {});
+      }
+
       onSuccess({
         nombres: `${form.nombres} ${form.apellidos}`,
         pdfUrl: null, // Will be available via download link
