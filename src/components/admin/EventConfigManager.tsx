@@ -195,9 +195,15 @@ export function EventConfigManager() {
 
       <div>
         <h2 className="text-lg font-semibold mb-4">WhatsApp</h2>
-        <div>
-          <Label>Mensaje de WhatsApp</Label>
-          <Textarea value={currentForm.mensaje_whatsapp || ""} onChange={(e) => set("mensaje_whatsapp", e.target.value)} rows={2} />
+        <div className="space-y-4">
+          <div>
+            <Label>Mensaje de WhatsApp</Label>
+            <Textarea value={currentForm.mensaje_whatsapp || ""} onChange={(e) => set("mensaje_whatsapp", e.target.value)} rows={3} />
+            <p className="text-xs text-muted-foreground mt-1">
+              Variables disponibles: <code className="bg-white/10 px-1 rounded">{"{nombre}"}</code> <code className="bg-white/10 px-1 rounded">{"{evento}"}</code> <code className="bg-white/10 px-1 rounded">{"{link}"}</code>
+            </p>
+          </div>
+          <WhatsAppStatusSection />
         </div>
       </div>
 
@@ -364,6 +370,121 @@ function BrevoApiKeySection() {
         {testResult && (
           <div className={`text-xs p-2 rounded mt-1 ${testResult.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
             {testResult.message}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WhatsAppStatusSection() {
+  const [serverUrl, setServerUrl] = useState("https://cmg-whatsapp.onrender.com");
+  const [token, setToken] = useState("cmg-token-2024");
+  const [status, setStatus] = useState<"unknown" | "connected" | "qr" | "disconnected">("unknown");
+  const [qrImage, setQrImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Cargar config guardada
+  useEffect(() => {
+    const load = async () => {
+      const [{ data: urlData }, { data: tokenData }] = await Promise.all([
+        supabase.from("app_secrets").select("value").eq("key", "WA_SERVER_URL").maybeSingle(),
+        supabase.from("app_secrets").select("value").eq("key", "WA_API_TOKEN").maybeSingle(),
+      ]);
+      if (urlData?.value) setServerUrl(urlData.value);
+      if (tokenData?.value) setToken(tokenData.value);
+    };
+    load();
+  }, []);
+
+  const checkStatus = async () => {
+    setLoading(true);
+    setQrImage(null);
+    try {
+      const res = await fetch(`${serverUrl}/qr-base64`);
+      const data = await res.json();
+      if (data.connected) {
+        setStatus("connected");
+      } else if (data.qr) {
+        setStatus("qr");
+        setQrImage(data.qr);
+      } else {
+        setStatus("disconnected");
+      }
+    } catch {
+      setStatus("disconnected");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const now = new Date().toISOString();
+    await Promise.all([
+      supabase.from("app_secrets").upsert({ key: "WA_SERVER_URL", value: serverUrl.trim(), updated_at: now }, { onConflict: "key" }),
+      supabase.from("app_secrets").upsert({ key: "WA_API_TOKEN", value: token.trim(), updated_at: now }, { onConflict: "key" }),
+    ]);
+    setSaving(false);
+    toast.success("Configuración WhatsApp guardada");
+  };
+
+  const statusColors: Record<string, string> = {
+    connected:    "text-green-500",
+    qr:           "text-yellow-500",
+    disconnected: "text-red-500",
+    unknown:      "text-gray-400",
+  };
+  const statusLabels: Record<string, string> = {
+    connected:    "✅ Conectado",
+    qr:           "📱 Esperando escaneo de QR",
+    disconnected: "❌ Desconectado",
+    unknown:      "— Sin verificar",
+  };
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+        💬 Servidor WhatsApp
+      </h2>
+      <div className="space-y-3">
+        <div>
+          <Label>URL del servidor (Render)</Label>
+          <Input value={serverUrl} onChange={(e) => setServerUrl(e.target.value)} className="mt-1" placeholder="https://cmg-whatsapp.onrender.com" />
+        </div>
+        <div>
+          <Label>Token de seguridad (API_TOKEN)</Label>
+          <Input value={token} onChange={(e) => setToken(e.target.value)} className="mt-1" placeholder="cmg-token-2024" />
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Guardar
+          </Button>
+          <Button size="sm" variant="outline" onClick={checkStatus} disabled={loading}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "🔄"}
+            Verificar estado
+          </Button>
+        </div>
+
+        {/* Estado */}
+        <div className={`text-sm font-medium ${statusColors[status]}`}>
+          Estado: {statusLabels[status]}
+        </div>
+
+        {/* QR para escanear */}
+        {status === "qr" && qrImage && (
+          <div className="flex flex-col items-center gap-2 p-4 bg-white rounded-lg border">
+            <p className="text-sm text-gray-700 font-medium">Escanea con WhatsApp → Dispositivos vinculados</p>
+            <img src={qrImage} alt="QR WhatsApp" className="w-52 h-52 rounded" />
+            <Button size="sm" variant="outline" onClick={checkStatus}>🔄 Actualizar QR</Button>
+          </div>
+        )}
+
+        {status === "connected" && (
+          <div className="text-xs text-green-600 bg-green-50 p-3 rounded-lg">
+            WhatsApp conectado. Los mensajes se enviarán automáticamente al registrar una persona.
           </div>
         )}
       </div>

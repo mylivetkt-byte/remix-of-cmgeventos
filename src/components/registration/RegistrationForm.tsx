@@ -146,6 +146,29 @@ export function RegistrationForm({ onSuccess }: Props) {
           }
         });
 
+      // Enviar WhatsApp si hay teléfono y servidor configurado
+      if (form.telefono) {
+        try {
+          const [{ data: urlData }, { data: tokenData }, { data: msgData }] = await Promise.all([
+            supabase.from("app_secrets").select("value").eq("key", "WA_SERVER_URL").maybeSingle(),
+            supabase.from("app_secrets").select("value").eq("key", "WA_API_TOKEN").maybeSingle(),
+            supabase.from("event_config").select("mensaje_whatsapp").limit(1).maybeSingle(),
+          ]);
+          const waUrl   = urlData?.value;
+          const waToken = tokenData?.value;
+          const waMsg   = msgData?.mensaje_whatsapp;
+          if (waUrl && waToken && waMsg) {
+            const downloadUrl = `${window.location.origin}/descargar/${registrationId}`;
+            const message = `${waMsg}\n\n📄 Descarga tu invitación aquí:\n${downloadUrl}`;
+            fetch(`${waUrl}/send`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${waToken}` },
+              body: JSON.stringify({ phone: form.telefono, message }),
+            }).catch(() => {});
+          }
+        } catch (_) {}
+      }
+
       onSuccess({
         nombres: `${form.nombres} ${form.apellidos}`,
         pdfUrl: null, // Will be available via download link
