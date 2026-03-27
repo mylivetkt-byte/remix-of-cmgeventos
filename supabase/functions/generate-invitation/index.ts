@@ -235,10 +235,13 @@ Deno.serve(async (req) => {
     doc.setLineWidth(1.5);
     doc.line(splitX + 18, nameEndY, W - 18, nameEndY);
 
-    // ── QR GRANDE Y CENTRADO ─────────────────────────────────────────
-    const qrSize = 80;
-    const qrX = rightCX - qrSize / 2;
-    const qrY = nameEndY + 6;
+    // ── QR CENTRADO — tamaño dinámico según espacio disponible ─────────
+    const footerH   = 14; // altura del footer
+    const textBelowH = 10; // espacio para texto bajo el QR
+    const available = H - nameEndY - 10 - footerH - textBelowH;
+    const qrSize    = Math.min(70, Math.max(45, available - 8));
+    const qrX       = rightCX - qrSize / 2;
+    const qrY       = nameEndY + 8;
 
     // Marco verde elegante alrededor del QR
     doc.setFillColor(...GREEN_DARK as [number,number,number]);
@@ -256,7 +259,7 @@ Deno.serve(async (req) => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
     doc.setTextColor(130, 130, 130);
-    doc.text("Presenta este código en la entrada", rightCX, qrY + qrSize + 8, { align: "center" });
+    doc.text("Presenta este código en la entrada", rightCX, qrY + qrSize + 6, { align: "center" });
 
     // ── FOOTER PANEL DERECHO ──────────────────────────────────────────
     doc.setFillColor(...GREEN_DARK as [number,number,number]);
