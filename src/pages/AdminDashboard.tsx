@@ -9,14 +9,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
+import { WhatsAppManager } from "@/components/admin/WhatsAppManager";
 import { useCatalog } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 
-type Tab = "registros" | "asistencia" | "catalogos" | "config";
+type Tab = "registros" | "asistencia" | "catalogos" | "config" | "whatsapp";
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
@@ -135,6 +136,7 @@ const AdminDashboard = () => {
     { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-4 h-4" /> },
     { id: "catalogos", label: "Catálogos", icon: <List className="w-4 h-4" /> },
     { id: "config", label: "Configuración", icon: <Settings className="w-4 h-4" /> },
+    { id: "whatsapp", label: "WhatsApp", icon: <MessageCircle className="w-4 h-4" /> },
   ];
 
   return (
@@ -325,6 +327,7 @@ const AdminDashboard = () => {
         )}
 
         {tab === "catalogos" && <CatalogManager />}
+        {tab === "whatsapp" && <div className="animate-fade-in pb-8"><WhatsAppManager /></div>}
         {tab === "config" && <EventConfigManager />}
       </div>
 
