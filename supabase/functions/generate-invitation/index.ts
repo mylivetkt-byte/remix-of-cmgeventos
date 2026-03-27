@@ -305,46 +305,7 @@ Deno.serve(async (req) => {
       await supabase.functions.invoke("send-brevo-email", { body: { registrationId } });
     } catch (_) {}
 
-    // Enviar WhatsApp (si hay servidor configurado)
-    try {
-      const { data: waUrl }   = await supabase.from("app_secrets").select("value").eq("key", "WA_SERVER_URL").maybeSingle();
-      const { data: waToken } = await supabase.from("app_secrets").select("value").eq("key", "WA_API_TOKEN").maybeSingle();
-
-      if (waUrl?.value && waToken?.value && reg.telefono) {
-        const eventName  = config?.nombre_evento || "Evento";
-        const eventDate  = config?.fecha_evento
-          ? new Date(config.fecha_evento).toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
-          : "";
-        const eventPlace = config?.lugar_evento || "";
-        const appUrl     = Deno.env.get("APP_URL") || "https://cmgeventos.lovable.app";
-        const downloadUrl = pdfUrl || `${appUrl}/descargar/${registrationId}`;
-
-        const lines = [
-          `🎉 *${eventName}*`,
-          ``,
-          `Hola *${reg.nombres} ${reg.apellidos}*,`,
-          `¡Tu registro fue exitoso! 🎊`,
-          ``,
-        ];
-        if (eventDate)  lines.push(`📅 *Fecha:* ${eventDate}`);
-        if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
-        lines.push(``, `📄 Descarga tu invitación:`, downloadUrl);
-
-        const message = lines.join("\n");
-
-        await fetch(`${waUrl.value}/send`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${waToken.value}`,
-          },
-          body: JSON.stringify({ phone: reg.telefono, message }),
-        });
-        console.log("WhatsApp enviado a:", reg.telefono);
-      }
-    } catch (waErr) {
-      console.error("Error WhatsApp (no critico):", waErr);
-    }
+    // WhatsApp se envía desde el frontend para evitar restricciones de red
 
     return new Response(
       JSON.stringify({ success: true, pdfUrl, qrCode: registrationId }),

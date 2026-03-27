@@ -146,11 +146,47 @@ export function RegistrationForm({ onSuccess }: Props) {
           }
         });
 
-      // Enviar WhatsApp via Edge Function (evita problemas de CORS)
+      // Enviar WhatsApp directo desde frontend al servidor de Render
       if (form.telefono) {
-        supabase.functions
-          .invoke("send-whatsapp", { body: { registrationId } })
-          .catch(() => {});
+        supabase.from("app_secrets")
+          .select("key, value")
+          .in("key", ["WA_SERVER_URL", "WA_API_TOKEN"])
+          .then(({ data: secrets }) => {
+            if (!secrets) return;
+            const waUrl   = secrets.find((s: any) => s.key === "WA_SERVER_URL")?.value;
+            const waToken = secrets.find((s: any) => s.key === "WA_API_TOKEN")?.value;
+            if (!waUrl || !waToken) return;
+
+            // Esperar 10 seg para que el PDF esté listo
+            setTimeout(async () => {
+              try {
+                const { data: reg } = await supabase
+                  .from("registrations")
+                  .select("pdf_url")
+                  .eq("id", registrationId)
+                  .single();
+
+                const downloadUrl = reg?.pdf_url || `${window.location.origin}/descargar/${registrationId}`;
+                const message = `🎉 *¡Registro exitoso!*
+
+Hola *${form.nombres} ${form.apellidos}*,
+
+Tu invitación está lista 🎊
+
+📄 Descárgala aquí:
+${downloadUrl}`;
+
+                await fetch(`${waUrl}/send`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${waToken}`,
+                  },
+                  body: JSON.stringify({ phone: form.telefono, message }),
+                });
+              } catch (_) {}
+            }, 10000);
+          });
       }
 
       onSuccess({
