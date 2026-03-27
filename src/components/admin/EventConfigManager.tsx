@@ -195,15 +195,10 @@ export function EventConfigManager() {
 
       <div>
         <h2 className="text-lg font-semibold mb-4">WhatsApp</h2>
-        <div className="space-y-4">
-          <div>
-            <Label>Mensaje de WhatsApp</Label>
-            <Textarea value={currentForm.mensaje_whatsapp || ""} onChange={(e) => set("mensaje_whatsapp", e.target.value)} rows={3} />
-            <p className="text-xs text-muted-foreground mt-1">
-              Variables disponibles: <code className="bg-white/10 px-1 rounded">{"{nombre}"}</code> <code className="bg-white/10 px-1 rounded">{"{evento}"}</code> <code className="bg-white/10 px-1 rounded">{"{link}"}</code>
-            </p>
-          </div>
-          <WhatsAppStatusSection />
+        <div>
+          <Label>Mensaje de WhatsApp</Label>
+          <Textarea value={currentForm.mensaje_whatsapp || ""} onChange={(e) => set("mensaje_whatsapp", e.target.value)} rows={3} />
+          <p className="text-xs text-muted-foreground mt-1">Este mensaje se enviará automáticamente al registrar una persona.</p>
         </div>
       </div>
 

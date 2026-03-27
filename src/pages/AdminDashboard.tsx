@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Pencil, Trash, RefreshCw } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Pencil, Trash, RefreshCw, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -16,7 +16,7 @@ import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
 import { useCatalog } from "@/hooks/useCatalogs";
 
-type Tab = "registros" | "asistencia" | "catalogos" | "config";
+type Tab = "registros" | "asistencia" | "catalogos" | "config" | "whatsapp";
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
@@ -201,10 +201,11 @@ const AdminDashboard = () => {
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "registros", label: "Registros", icon: <Users className="w-4 h-4" /> },
-    { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-4 h-4" /> },
-    { id: "catalogos", label: "Catálogos", icon: <List className="w-4 h-4" /> },
-    { id: "config", label: "Configuración", icon: <Settings className="w-4 h-4" /> },
+    { id: "registros",  label: "Registros",     icon: <Users className="w-4 h-4" /> },
+    { id: "asistencia", label: "Asistencia",    icon: <QrCode className="w-4 h-4" /> },
+    { id: "catalogos",  label: "Catálogos",     icon: <List className="w-4 h-4" /> },
+    { id: "whatsapp",   label: "WhatsApp",      icon: <MessageCircle className="w-4 h-4" /> },
+    { id: "config",     label: "Configuración", icon: <Settings className="w-4 h-4" /> },
   ];
 
   return (
@@ -363,6 +364,11 @@ const AdminDashboard = () => {
         )}
 
         {tab === "catalogos" && <CatalogManager />}
+        {tab === "whatsapp" && (
+          <div className="animate-fade-in pb-8">
+            <WhatsAppPanel />
+          </div>
+        )}
         {tab === "config" && <EventConfigManager />}
       </div>
 
@@ -438,3 +444,154 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
+// ── Panel WhatsApp independiente ───────────────────────────────────────
+function WhatsAppPanel() {
+  const [serverUrl, setServerUrl] = useState("https://cmg-whatsapp.onrender.com");
+  const [token, setToken]         = useState("cmg-token-2024");
+  const [status, setStatus]       = useState<"unknown" | "connected" | "qr" | "disconnected">("unknown");
+  const [qrImage, setQrImage]     = useState<string | null>(null);
+  const [loading, setLoading]     = useState(false);
+  const [saving, setSaving]       = useState(false);
+  const [testPhone, setTestPhone] = useState("");
+  const [testMsg, setTestMsg]     = useState("Hola, esta es una prueba del servidor de CMG Eventos 🎉");
+  const [sending, setSending]     = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const [{ data: urlData }, { data: tokenData }] = await Promise.all([
+        supabase.from("app_secrets").select("value").eq("key", "WA_SERVER_URL").maybeSingle(),
+        supabase.from("app_secrets").select("value").eq("key", "WA_API_TOKEN").maybeSingle(),
+      ]);
+      if (urlData?.value)   setServerUrl(urlData.value);
+      if (tokenData?.value) setToken(tokenData.value);
+    };
+    load();
+  }, []);
+
+  const checkStatus = async () => {
+    setLoading(true);
+    setQrImage(null);
+    try {
+      const res  = await fetch(`${serverUrl}/qr-base64`);
+      const data = await res.json();
+      if (data.connected) {
+        setStatus("connected");
+      } else if (data.qr) {
+        setStatus("qr");
+        setQrImage(data.qr);
+      } else {
+        setStatus("disconnected");
+      }
+    } catch {
+      setStatus("disconnected");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    const now = new Date().toISOString();
+    await Promise.all([
+      supabase.from("app_secrets").upsert({ key: "WA_SERVER_URL",  value: serverUrl.trim(), updated_at: now }, { onConflict: "key" }),
+      supabase.from("app_secrets").upsert({ key: "WA_API_TOKEN",   value: token.trim(),     updated_at: now }, { onConflict: "key" }),
+    ]);
+    setSaving(false);
+    toast.success("Configuración guardada");
+    checkStatus();
+  };
+
+  const handleTest = async () => {
+    if (!testPhone) { toast.error("Ingresa un número de prueba"); return; }
+    setSending(true);
+    try {
+      const res = await fetch(`${serverUrl}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ phone: testPhone, message: testMsg }),
+      });
+      const data = await res.json();
+      if (data.success) toast.success(`✅ Mensaje enviado a ${data.to}`);
+      else toast.error("Error: " + (data.error || "desconocido"));
+    } catch (err: any) {
+      toast.error("No se pudo conectar al servidor: " + err.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const statusInfo: Record<string, { color: string; label: string }> = {
+    connected:    { color: "text-green-400",  label: "✅ Conectado" },
+    qr:           { color: "text-yellow-400", label: "📱 Esperando escaneo de QR" },
+    disconnected: { color: "text-red-400",    label: "❌ Desconectado" },
+    unknown:      { color: "text-gray-400",   label: "— Sin verificar" },
+  };
+
+  return (
+    <div className="space-y-6 max-w-lg">
+      <h2 className="text-xl font-bold flex items-center gap-2">
+        <MessageCircle className="w-5 h-5 text-green-400" /> WhatsApp
+      </h2>
+
+      {/* Configuración del servidor */}
+      <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+        <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Servidor</h3>
+        <div>
+          <Label className="text-xs mb-1 block">URL del servidor (Render)</Label>
+          <Input value={serverUrl} onChange={(e) => setServerUrl(e.target.value)} placeholder="https://cmg-whatsapp.onrender.com" />
+        </div>
+        <div>
+          <Label className="text-xs mb-1 block">Token de seguridad</Label>
+          <Input value={token} onChange={(e) => setToken(e.target.value)} placeholder="cmg-token-2024" />
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Guardar
+          </Button>
+          <Button size="sm" variant="outline" onClick={checkStatus} disabled={loading}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Verificar estado
+          </Button>
+        </div>
+        <p className={`text-sm font-medium ${statusInfo[status].color}`}>{statusInfo[status].label}</p>
+      </div>
+
+      {/* QR */}
+      {status === "qr" && qrImage && (
+        <div className="bg-white rounded-lg p-4 flex flex-col items-center gap-3">
+          <p className="text-gray-700 font-medium text-sm">Escanea con WhatsApp → Dispositivos vinculados</p>
+          <img src={qrImage} alt="QR WhatsApp" className="w-56 h-56 rounded border-2 border-green-500" />
+          <Button size="sm" variant="outline" onClick={checkStatus}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Actualizar QR
+          </Button>
+        </div>
+      )}
+
+      {/* Prueba de envío */}
+      {status === "connected" && (
+        <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+          <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Probar envío</h3>
+          <div>
+            <Label className="text-xs mb-1 block">Número de teléfono</Label>
+            <Input value={testPhone} onChange={(e) => setTestPhone(e.target.value)} placeholder="3001234567" />
+          </div>
+          <div>
+            <Label className="text-xs mb-1 block">Mensaje</Label>
+            <textarea
+              value={testMsg}
+              onChange={(e) => setTestMsg(e.target.value)}
+              rows={3}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+          </div>
+          <Button size="sm" onClick={handleTest} disabled={sending}>
+            {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Enviar mensaje de prueba
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
