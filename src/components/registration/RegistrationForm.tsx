@@ -199,8 +199,7 @@ export function RegistrationForm({ onSuccess }: Props) {
                 if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
                 lines.push(``, `📄 *Descarga tu invitación:*`, downloadUrl);
 
-                const message = lines.join("
-");
+                const message = lines.join("\n");
 
                 await fetch(`${waUrl}/send`, {
                   method: "POST",
