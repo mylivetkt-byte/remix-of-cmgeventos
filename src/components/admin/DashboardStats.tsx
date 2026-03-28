@@ -121,19 +121,23 @@ export function DashboardStats() {
         .map(([name, v]) => ({ name, ...v }))
         .sort((a, b) => b.count - a.count);
 
-      // Quién invita más — clave: nombre + RED para evitar confusión con nombres similares
-      const invMap: Record<string, { count: number; red: string }> = {};
+      // Quién invita más — normalizar nombre (minúsculas, sin espacios dobles) + RED
+      const normalize = (s: string) => s.toLowerCase().trim().replace(/\s+/g, " ");
+
+      const invMap: Record<string, { count: number; red: string; displayName: string }> = {};
       regs.forEach((r) => {
         const nombre = r.nombre_invitador?.trim();
         if (!nombre) return;
-        const red = (r as any).catalog_red?.nombre ?? "Sin RED";
-        const k   = `${nombre}||${red}`;
-        if (!invMap[k]) invMap[k] = { count: 0, red };
+        const red     = (r as any).catalog_red?.nombre ?? "Sin RED";
+        const k       = `${normalize(nombre)}||${red}`;
+        if (!invMap[k]) invMap[k] = { count: 0, red, displayName: nombre };
         invMap[k].count++;
+        // Conservar la versión con más caracteres como nombre de display
+        if (nombre.length > invMap[k].displayName.length) invMap[k].displayName = nombre;
       });
       const topInvitadores = Object.entries(invMap)
-        .map(([key, v]) => ({
-          name:  `${key.split("||")[0]} (${v.red})`,
+        .map(([_, v]) => ({
+          name:  `${v.displayName} (${v.red})`,
           count: v.count,
         }))
         .sort((a, b) => b.count - a.count);
