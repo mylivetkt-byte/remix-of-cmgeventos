@@ -121,14 +121,21 @@ export function DashboardStats() {
         .map(([name, v]) => ({ name, ...v }))
         .sort((a, b) => b.count - a.count);
 
-      // Quién invita más
-      const invMap: Record<string, number> = {};
+      // Quién invita más — clave: nombre + RED para evitar confusión con nombres similares
+      const invMap: Record<string, { count: number; red: string }> = {};
       regs.forEach((r) => {
-        const k = r.nombre_invitador?.trim();
-        if (k) { invMap[k] = (invMap[k] ?? 0) + 1; }
+        const nombre = r.nombre_invitador?.trim();
+        if (!nombre) return;
+        const red = (r as any).catalog_red?.nombre ?? "Sin RED";
+        const k   = `${nombre}||${red}`;
+        if (!invMap[k]) invMap[k] = { count: 0, red };
+        invMap[k].count++;
       });
       const topInvitadores = Object.entries(invMap)
-        .map(([name, count]) => ({ name, count }))
+        .map(([key, v]) => ({
+          name:  `${key.split("||")[0]} (${v.red})`,
+          count: v.count,
+        }))
         .sort((a, b) => b.count - a.count);
 
       // CDPs sin registros
