@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
@@ -53,6 +53,7 @@ const AdminDashboard = () => {
   const [editReg, setEditReg] = useState<any>(null);
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   const reds = useCatalog("catalog_red");
   const cdps = useCatalog("catalog_cdp");
@@ -213,6 +214,28 @@ const AdminDashboard = () => {
     }
   };
 
+  // Regenerar todos los PDFs
+  const regenerateAllPDFs = async () => {
+    if (data.length === 0) return;
+    setRegenerating(true);
+    let success = 0;
+    let failed = 0;
+    for (const r of data) {
+      try {
+        const { error } = await supabase.functions.invoke("generate-invitation", {
+          body: { registrationId: r.id },
+        });
+        if (error) failed++;
+        else success++;
+      } catch {
+        failed++;
+      }
+    }
+    setRegenerating(false);
+    toast.success(`PDFs regenerados: ${success} exitosos, ${failed} fallidos`);
+    refresh();
+  };
+
   const getRow = (r: typeof data[0]) => [
     r.nombres, r.apellidos, r.fecha_nacimiento, r.edad,
     (r as any).catalog_tipo_documento?.nombre ?? "",
@@ -304,6 +327,13 @@ const AdminDashboard = () => {
                 }}>
                   <Download className="w-4 h-4 mr-1" /> Por RED
                 </Button>
+
+                {data.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={regenerateAllPDFs} disabled={regenerating}>
+                    <RefreshCw className={`w-4 h-4 mr-1 ${regenerating ? "animate-spin" : ""}`} />
+                    {regenerating ? "Regenerando..." : "Regenerar PDFs"}
+                  </Button>
+                )}
 
                 {/* Eliminar todos */}
                 {data.length > 0 && (
