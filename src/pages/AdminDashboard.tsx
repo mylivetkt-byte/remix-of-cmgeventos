@@ -53,6 +53,7 @@ const AdminDashboard = () => {
   const [editReg, setEditReg] = useState<any>(null);
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
 
   const reds = useCatalog("catalog_red");
   const cdps = useCatalog("catalog_cdp");
