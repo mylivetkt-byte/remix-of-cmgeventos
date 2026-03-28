@@ -236,7 +236,7 @@ export function DashboardStats() {
       </div>
 
       {/* Top invitadores */}
-      <BarChart title="🏆 Quien más invita" data={d.topInvitadores} maxItems={10} />
+      <BarChart title="🏆 Quien más invita" data={d.topInvitadores} maxItems={5} />
 
       {/* CDPs sin registros */}
       {d.cdpsSinRegs.length > 0 && (
