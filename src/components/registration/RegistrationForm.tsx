@@ -146,73 +146,7 @@ export function RegistrationForm({ onSuccess }: Props) {
           }
         });
 
-      // Enviar WhatsApp directo desde frontend al servidor de Render
-      if (form.telefono) {
-        supabase.from("app_secrets")
-          .select("key, value")
-          .in("key", ["WA_SERVER_URL", "WA_API_TOKEN"])
-          .then(({ data: secrets }) => {
-            if (!secrets) return;
-            const waUrl   = secrets.find((s: any) => s.key === "WA_SERVER_URL")?.value;
-            const waToken = secrets.find((s: any) => s.key === "WA_API_TOKEN")?.value;
-            if (!waUrl || !waToken) return;
-
-            // Esperar 10 seg para que el PDF esté listo
-            setTimeout(async () => {
-              try {
-                const { data: reg } = await supabase
-                  .from("registrations")
-                  .select("pdf_url")
-                  .eq("id", registrationId)
-                  .single();
-
-                const downloadUrl = reg?.pdf_url || `${window.location.origin}/descargar/${registrationId}`;
-
-                // Obtener config del evento para el mensaje
-                const { data: evConfig } = await supabase
-                  .from("event_config")
-                  .select("nombre_evento, fecha_evento, lugar_evento, mensaje_whatsapp")
-                  .limit(1)
-                  .single();
-
-                const eventName  = evConfig?.nombre_evento || "Evento";
-                const eventPlace = evConfig?.lugar_evento  || "";
-                const eventDate  = evConfig?.fecha_evento
-                  ? new Date(evConfig.fecha_evento).toLocaleDateString("es-CO", {
-                      weekday: "long", year: "numeric", month: "long", day: "numeric",
-                    })
-                  : "";
-                const eventTime = evConfig?.fecha_evento
-                  ? new Date(evConfig.fecha_evento).toLocaleTimeString("es-CO", {
-                      hour: "2-digit", minute: "2-digit",
-                    })
-                  : "";
-
-                const lines = [
-                  `🎉 *${eventName.toUpperCase()}*`,
-                  ``,
-                  `Hola *${form.nombres} ${form.apellidos}*,`,
-                  `¡Tu registro fue exitoso! 🎊`,
-                  ``,
-                ];
-                if (eventDate)  lines.push(`📅 *Fecha:* ${eventDate}${eventTime ? " · " + eventTime : ""}`);
-                if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
-                lines.push(``, `📄 *Descarga tu invitación:*`, downloadUrl);
-
-                const message = lines.join("\n");
-
-                await fetch(`${waUrl}/send`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${waToken}`,
-                  },
-                  body: JSON.stringify({ phone: form.telefono, message }),
-                });
-              } catch (_) {}
-            }, 10000);
-          });
-      }
+      // WhatsApp se envía automáticamente desde generate-invitation
 
       onSuccess({
         nombres: `${form.nombres} ${form.apellidos}`,

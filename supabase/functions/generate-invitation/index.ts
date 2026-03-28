@@ -307,7 +307,10 @@ Deno.serve(async (req) => {
       await supabase.functions.invoke("send-brevo-email", { body: { registrationId } });
     } catch (_) {}
 
-    // WhatsApp se envía desde el frontend para evitar restricciones de red
+    // Enviar WhatsApp con el PDF ya generado
+    try {
+      await supabase.functions.invoke("send-whatsapp", { body: { registrationId } });
+    } catch (_) {}
 
     return new Response(
       JSON.stringify({ success: true, pdfUrl, qrCode: registrationId }),
