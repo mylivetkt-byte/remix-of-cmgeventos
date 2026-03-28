@@ -13,11 +13,12 @@ import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash,
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
+import { DashboardStats } from "@/components/admin/DashboardStats";
 import { WhatsAppManager } from "@/components/admin/WhatsAppManager";
 import { useCatalog } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 
-type Tab = "registros" | "asistencia" | "catalogos" | "config" | "whatsapp";
+type Tab = "registros" | "asistencia" | "catalogos" | "config" | "whatsapp" | "dashboard";
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
@@ -249,6 +250,7 @@ const AdminDashboard = () => {
   ];
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
+    { id: "dashboard", label: "Dashboard", icon: <BarChart2 className="w-4 h-4" /> },
     { id: "registros", label: "Registros", icon: <Users className="w-4 h-4" /> },
     { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-4 h-4" /> },
     { id: "catalogos", label: "Catálogos", icon: <List className="w-4 h-4" /> },
@@ -467,6 +469,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {tab === "dashboard" && <DashboardStats />}
         {tab === "catalogos" && <CatalogManager />}
         {tab === "whatsapp" && <div className="animate-fade-in pb-8"><WhatsAppManager /></div>}
         {tab === "config" && <EventConfigManager />}
