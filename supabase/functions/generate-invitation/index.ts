@@ -235,13 +235,15 @@ Deno.serve(async (req) => {
     doc.setLineWidth(1.5);
     doc.line(splitX + 18, nameEndY, W - 18, nameEndY);
 
-    // ── QR CENTRADO — tamaño dinámico según espacio disponible ─────────
-    const footerH   = 14; // altura del footer
-    const textBelowH = 10; // espacio para texto bajo el QR
-    const available = H - nameEndY - 10 - footerH - textBelowH;
-    const qrSize    = Math.min(70, Math.max(45, available - 8));
+    // ── QR CENTRADO verticalmente entre nombre y footer ──────────────
+    const footerH   = 12;
+    const textBelowH = 8;
+    const spaceTop = nameEndY + 4;
+    const spaceBottom = H - footerH - textBelowH;
+    const available = spaceBottom - spaceTop;
+    const qrSize    = Math.min(60, Math.max(40, available - 10));
+    const qrY       = spaceTop + (available - qrSize) / 2;
     const qrX       = rightCX - qrSize / 2;
-    const qrY       = nameEndY + 8;
 
     // Marco verde elegante alrededor del QR
     doc.setFillColor(...GREEN_DARK as [number,number,number]);
