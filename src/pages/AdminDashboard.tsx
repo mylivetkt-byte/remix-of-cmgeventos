@@ -469,7 +469,11 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {tab === "dashboard" && <DashboardStats />}
+        {tab === "dashboard" && (
+          <div className="animate-fade-in pb-8">
+            <DashboardStats />
+          </div>
+        )}
         {tab === "catalogos" && <CatalogManager />}
         {tab === "whatsapp" && <div className="animate-fade-in pb-8"><WhatsAppManager /></div>}
         {tab === "config" && <EventConfigManager />}

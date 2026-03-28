@@ -30,8 +30,8 @@ function DonutChart({ value, total, label }: { value: number; total: number; lab
   );
 }
 
-function BarChart({ data, title, colorField = "count", maxItems = 10 }:
-  { data: { name: string; count: number; asistio?: number }[]; title: string; colorField?: string; maxItems?: number }) {
+function BarChart({ data, title, maxItems = 10 }:
+  { data: { name: string; count: number; asistio?: number }[]; title: string; maxItems?: number }) {
   const top   = data.slice(0, maxItems);
   const maxVal = Math.max(...top.map((d) => d.count), 1);
 
@@ -225,7 +225,7 @@ export function DashboardStats() {
       </div>
 
       {/* Top invitadores */}
-      <BarChart title="🏆 Quien más invita" data={d.topInvitadores.map((i) => ({ ...i, asistio: undefined }))} maxItems={10} />
+      <BarChart title="🏆 Quien más invita" data={d.topInvitadores} maxItems={10} />
 
       {/* CDPs sin registros */}
       {d.cdpsSinRegs.length > 0 && (
