@@ -39,9 +39,9 @@ function downloadCSV(content: string, filename: string) {
 }
 
 const HEADERS = [
-  "Nombres", "Apellidos", "Fecha Nac.", "Edad", "Tipo Doc.", "N° Documento",
-  "Teléfono", "Dirección", "Barrio", "Correo", "Estado Civil", "Sexo",
-  "CDP", "RED", "Nombre Invitador", "Fecha Registro",
+  "NOMBRES", "APELLIDOS", "EDAD", "DOC_ID", "NUM_DOC",
+  "TELEFONO", "CORREO", "DIRECCION", "BARRIO", "FECHA_NACIMIENTO",
+  "EST_CIVIL", "SEXO", "RED", "CDP", "INVITADO_POR", "ASISTIO", "FECHA_REGISTRO",
 ];
 
 const AdminDashboard = () => {
@@ -56,8 +56,11 @@ const AdminDashboard = () => {
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
 
-  const reds = useCatalog("catalog_red");
-  const cdps = useCatalog("catalog_cdp");
+  const reds      = useCatalog("catalog_red");
+  const cdps      = useCatalog("catalog_cdp");
+  const tiposDocs = useCatalog("catalog_tipo_documento");
+  const estadosCiviles = useCatalog("catalog_estado_civil");
+  const sexos     = useCatalog("catalog_sexo");
 
   const registrations = useQuery({
     queryKey: ["admin_registrations", search, filterRed, filterCdp],
@@ -99,13 +102,20 @@ const AdminDashboard = () => {
   const openEdit = (r: any) => {
     setEditReg(r);
     setEditForm({
-      nombres: r.nombres,
-      apellidos: r.apellidos,
-      telefono: r.telefono,
-      correo: r.correo,
-      direccion: r.direccion,
-      barrio: r.barrio,
-      nombre_invitador: r.nombre_invitador || "",
+      nombres:          r.nombres          ?? "",
+      apellidos:        r.apellidos        ?? "",
+      telefono:         r.telefono         ?? "",
+      correo:           r.correo           ?? "",
+      direccion:        r.direccion        ?? "",
+      barrio:           r.barrio           ?? "",
+      numero_documento: r.numero_documento ?? "",
+      fecha_nacimiento: r.fecha_nacimiento ?? "",
+      nombre_invitador: r.nombre_invitador ?? "",
+      red_id:           r.red_id           ?? "",
+      cdp_id:           r.cdp_id           ?? "",
+      tipo_documento_id: r.tipo_documento_id ?? "",
+      estado_civil_id:  r.estado_civil_id  ?? "",
+      sexo_id:          r.sexo_id          ?? "",
     });
   };
 
@@ -238,15 +248,23 @@ const AdminDashboard = () => {
   };
 
   const getRow = (r: typeof data[0]) => [
-    r.nombres, r.apellidos, r.fecha_nacimiento, r.edad,
+    r.nombres,
+    r.apellidos,
+    r.edad,
     (r as any).catalog_tipo_documento?.nombre ?? "",
-    r.numero_documento, r.telefono, r.direccion, r.barrio, r.correo,
+    r.numero_documento,
+    r.telefono,
+    r.correo,
+    r.direccion,
+    r.barrio,
+    r.fecha_nacimiento,
     (r as any).catalog_estado_civil?.nombre ?? "",
     (r as any).catalog_sexo?.nombre ?? "",
-    (r as any).catalog_cdp?.nombre ?? "",
     (r as any).catalog_red?.nombre ?? "",
+    (r as any).catalog_cdp?.nombre ?? "",
     r.nombre_invitador ?? "",
-    new Date(r.created_at).toLocaleString(),
+    r.asistio ? "SÍ" : "NO",
+    new Date(r.created_at).toLocaleString("es-CO"),
   ];
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
@@ -428,8 +446,8 @@ const AdminDashboard = () => {
                             {r.barrio && <span className="text-xs text-slate-400">📍 <span className="text-slate-200">{r.barrio}</span></span>}
                           </div>
 
-                          {/* Fila 4: CDP, RED, invitador */}
-                          <div className="flex flex-wrap items-center gap-2">
+                          {/* Fila 4: CDP, RED, invitador + botones a la derecha */}
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
                             {cdp && (
                               <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg"
                                 style={{ backgroundColor: "#1e3a5f", color: "#60a5fa", border: "1px solid #2563eb55" }}>
@@ -448,52 +466,50 @@ const AdminDashboard = () => {
                                 👤 {r.nombre_invitador}
                               </span>
                             )}
+                            {/* Botones al final de la fila */}
+                            <div className="ml-auto flex gap-1.5 flex-shrink-0">
+                              <button onClick={() => openEdit(r)} title="Editar"
+                                className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white shadow transition-colors">
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => checkInManual(r)} title={r.asistio ? "Revertir asistencia" : "Marcar asistencia"}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shadow transition-colors
+                                  ${r.asistio ? "bg-green-600 hover:bg-green-500" : "bg-slate-600 hover:bg-green-600"}`}>
+                                {r.asistio ? <UserCheck className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
+                              </button>
+                              <button onClick={() => resendEmail(r)} title="Reenviar correo"
+                                className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-600 hover:bg-amber-500 text-white shadow transition-colors">
+                                <Mail className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={() => sendWhatsApp(r)} title="Reenviar WhatsApp"
+                                className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white shadow transition-colors">
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <button title="Eliminar"
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-700 hover:bg-red-600 text-white shadow transition-colors">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>¿Eliminar registro?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Se eliminará el registro de <strong>{r.nombres} {r.apellidos}</strong>. No se puede deshacer.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteOne(r.id)} className="bg-destructive text-white hover:bg-destructive/90">
+                                      Eliminar
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </div>
                           </div>
                         </div>
-
-                        {/* Botones de acción — verticales, bien visibles */}
-                        <div className="flex flex-col gap-1.5 flex-shrink-0">
-                          <button onClick={() => openEdit(r)} title="Editar"
-                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white shadow transition-colors">
-                            <Pencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => checkInManual(r)} title={r.asistio ? "Revertir asistencia" : "Marcar asistencia"}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shadow transition-colors
-                              ${r.asistio ? "bg-green-600 hover:bg-green-500" : "bg-slate-600 hover:bg-green-600"}`}>
-                            {r.asistio ? <UserCheck className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
-                          </button>
-                          <button onClick={() => resendEmail(r)} title="Reenviar correo"
-                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-600 hover:bg-amber-500 text-white shadow transition-colors">
-                            <Mail className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => sendWhatsApp(r)} title="Reenviar WhatsApp"
-                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white shadow transition-colors">
-                            <MessageCircle className="w-3.5 h-3.5" />
-                          </button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <button title="Eliminar"
-                                className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-700 hover:bg-red-600 text-white shadow transition-colors">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar registro?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Se eliminará el registro de <strong>{r.nombres} {r.apellidos}</strong>. No se puede deshacer.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteOne(r.id)} className="bg-destructive text-white hover:bg-destructive/90">
-                                  Eliminar
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-
                       </div>
                     </div>
                   </div>
@@ -521,29 +537,81 @@ const AdminDashboard = () => {
 
       {/* Modal de edición */}
       <Dialog open={!!editReg} onOpenChange={(o) => !o && setEditReg(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Editar Registro</DialogTitle>
+            <DialogTitle>✏️ Editar Registro — {editReg?.nombres} {editReg?.apellidos}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-2">
+          <div className="grid grid-cols-2 gap-3 py-2">
+
+            {/* Texto simples */}
             {[
-              { field: "nombres", label: "Nombres" },
-              { field: "apellidos", label: "Apellidos" },
-              { field: "telefono", label: "Teléfono" },
-              { field: "correo", label: "Correo" },
-              { field: "direccion", label: "Dirección" },
-              { field: "barrio", label: "Barrio" },
-              { field: "nombre_invitador", label: "Nombre Invitador" },
-            ].map(({ field, label }) => (
-              <div key={field} className={field === "direccion" || field === "correo" ? "col-span-2" : ""}>
-                <Label className="text-xs mb-1">{label}</Label>
-                <Input value={editForm[field] || ""} onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })} />
+              { field: "nombres",           label: "Nombres",          span: false },
+              { field: "apellidos",         label: "Apellidos",        span: false },
+              { field: "telefono",          label: "Teléfono",         span: false },
+              { field: "fecha_nacimiento",  label: "Fecha Nacimiento", span: false },
+              { field: "numero_documento",  label: "N° Documento",     span: false },
+              { field: "barrio",            label: "Barrio",           span: false },
+              { field: "correo",            label: "Correo",           span: true  },
+              { field: "direccion",         label: "Dirección",        span: true  },
+              { field: "nombre_invitador",  label: "Invitado por",     span: true  },
+            ].map(({ field, label, span }) => (
+              <div key={field} className={span ? "col-span-2" : ""}>
+                <Label className="text-xs mb-1 block">{label}</Label>
+                <Input
+                  value={editForm[field] || ""}
+                  onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })}
+                  className="h-8 text-sm"
+                />
               </div>
             ))}
+
+            {/* Selects de catálogos */}
+            <div>
+              <Label className="text-xs mb-1 block">Tipo Documento</Label>
+              <select value={editForm.tipo_documento_id || ""} onChange={(e) => setEditForm({ ...editForm, tipo_documento_id: e.target.value })}
+                className="w-full h-8 text-sm rounded-md border border-input bg-background px-2">
+                <option value="">— Seleccionar —</option>
+                {tiposDocs.data?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">Estado Civil</Label>
+              <select value={editForm.estado_civil_id || ""} onChange={(e) => setEditForm({ ...editForm, estado_civil_id: e.target.value })}
+                className="w-full h-8 text-sm rounded-md border border-input bg-background px-2">
+                <option value="">— Seleccionar —</option>
+                {estadosCiviles.data?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">Sexo</Label>
+              <select value={editForm.sexo_id || ""} onChange={(e) => setEditForm({ ...editForm, sexo_id: e.target.value })}
+                className="w-full h-8 text-sm rounded-md border border-input bg-background px-2">
+                <option value="">— Seleccionar —</option>
+                {sexos.data?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">RED</Label>
+              <select value={editForm.red_id || ""} onChange={(e) => setEditForm({ ...editForm, red_id: e.target.value })}
+                className="w-full h-8 text-sm rounded-md border border-input bg-background px-2">
+                <option value="">— Seleccionar —</option>
+                {reds.data?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs mb-1 block">Casa de Paz (CDP)</Label>
+              <select value={editForm.cdp_id || ""} onChange={(e) => setEditForm({ ...editForm, cdp_id: e.target.value })}
+                className="w-full h-8 text-sm rounded-md border border-input bg-background px-2">
+                <option value="">— Seleccionar —</option>
+                {cdps.data?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+              </select>
+            </div>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
             <Button variant="outline" onClick={() => setEditReg(null)}>Cancelar</Button>
-            <Button onClick={saveEdit} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</Button>
+            <Button onClick={saveEdit} disabled={saving}>
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
