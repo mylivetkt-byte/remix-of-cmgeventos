@@ -328,6 +328,13 @@ const AdminDashboard = () => {
                   <Download className="w-4 h-4 mr-1" /> Por RED
                 </Button>
 
+                {data.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={regenerateAllPDFs} disabled={regenerating}>
+                    <RefreshCw className={`w-4 h-4 mr-1 ${regenerating ? "animate-spin" : ""}`} />
+                    {regenerating ? "Regenerando..." : "Regenerar PDFs"}
+                  </Button>
+                )}
+
                 {/* Eliminar todos */}
                 {data.length > 0 && (
                   <AlertDialog>
