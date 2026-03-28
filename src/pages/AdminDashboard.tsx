@@ -365,102 +365,144 @@ const AdminDashboard = () => {
             </div>
 
             {/* Tarjetas de registros */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               {data.map((r) => {
                 const initials = `${r.nombres?.[0] ?? ""}${r.apellidos?.[0] ?? ""}`.toUpperCase();
-                const cdp = (r as any).catalog_cdp?.nombre;
-                const red = (r as any).catalog_red?.nombre;
-                const colors = ["#00a878","#00704a","#ffd200","#f4a100","#2ec4b6","#e76f51","#457b9d","#9b5de5"];
-                const avatarColor = colors[(r.nombres?.charCodeAt(0) ?? 0) % colors.length];
+                const cdp      = (r as any).catalog_cdp?.nombre;
+                const red      = (r as any).catalog_red?.nombre;
+                const sexo     = (r as any).catalog_sexo?.nombre;
+                const ecivil   = (r as any).catalog_estado_civil?.nombre;
+                const tdoc     = (r as any).catalog_tipo_documento?.nombre;
+                const avatarColors = ["#16a34a","#0d9488","#2563eb","#7c3aed","#dc2626","#ea580c","#ca8a04","#0891b2"];
+                const avatarColor  = avatarColors[(r.nombres?.charCodeAt(0) ?? 0) % avatarColors.length];
+
                 return (
-                  <div key={r.id} className={`rounded-xl border transition-all duration-200 overflow-hidden
-                    ${r.asistio ? "border-green-500/30 bg-green-950/20" : "border-white/10 bg-white/5 hover:bg-white/8"}`}>
-                    <div className="flex items-center gap-3 p-3">
+                  <div key={r.id}
+                    className={`rounded-2xl overflow-hidden shadow-md transition-all duration-200
+                      ${r.asistio
+                        ? "bg-gradient-to-r from-green-900/40 to-green-800/20 border border-green-500/40"
+                        : "bg-gradient-to-r from-slate-800/80 to-slate-700/40 border border-slate-600/40 hover:border-slate-500/60 hover:shadow-lg"
+                      }`}>
 
-                      {/* Avatar */}
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                        style={{ backgroundColor: avatarColor }}>
-                        {initials}
-                      </div>
+                    {/* Franja superior de color */}
+                    <div className="h-1 w-full" style={{ backgroundColor: avatarColor }} />
 
-                      {/* Info principal */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm text-foreground">{r.nombres} {r.apellidos}</span>
-                          {r.asistio && (
-                            <span className="inline-flex items-center gap-1 bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">
-                              <UserCheck className="w-3 h-3" /> Asistió
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 flex-wrap">
-                          <span className="text-xs text-muted-foreground">📱 {r.telefono}</span>
-                          <span className="text-xs text-muted-foreground">🪪 {r.numero_documento}</span>
-                          <span className="text-xs text-muted-foreground truncate max-w-[180px]">✉️ {r.correo}</span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                          {cdp && (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                              🏠 {cdp}
-                            </span>
-                          )}
-                          {red && (
-                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                              🌐 {red}
-                            </span>
-                          )}
-                          {r.nombre_invitador && (
-                            <span className="text-xs text-muted-foreground">👤 {r.nombre_invitador}</span>
-                          )}
-                          <span className="text-xs text-muted-foreground ml-auto">
-                            {new Date(r.created_at).toLocaleDateString("es-CO")}
-                          </span>
-                        </div>
-                      </div>
+                    <div className="p-4">
+                      <div className="flex items-start gap-4">
 
-                      {/* Acciones */}
-                      <div className="flex gap-1 flex-shrink-0">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-blue-500/20" onClick={() => openEdit(r)} title="Editar">
-                          <Pencil className="w-3.5 h-3.5 text-blue-400" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-green-500/20" onClick={() => checkInManual(r)} title={r.asistio ? "Revertir asistencia" : "Marcar asistencia"}>
-                          {r.asistio ? <UserCheck className="w-3.5 h-3.5 text-green-400" /> : <UserX className="w-3.5 h-3.5 text-gray-400" />}
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-yellow-500/20" onClick={() => resendEmail(r)} title="Reenviar correo">
-                          <Mail className="w-3.5 h-3.5 text-yellow-400" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-green-500/20" onClick={() => sendWhatsApp(r)} title="Reenviar WhatsApp">
-                          <MessageCircle className="w-3.5 h-3.5 text-green-400" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-500/20" title="Eliminar">
-                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>¿Eliminar registro?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Se eliminará el registro de <strong>{r.nombres} {r.apellidos}</strong>. No se puede deshacer.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteOne(r.id)} className="bg-destructive text-white hover:bg-destructive/90">
-                                Eliminar
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        {/* Avatar grande */}
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-base font-bold text-white flex-shrink-0 shadow-lg"
+                          style={{ backgroundColor: avatarColor }}>
+                          {initials}
+                        </div>
+
+                        {/* Contenido */}
+                        <div className="flex-1 min-w-0">
+
+                          {/* Fila 1: nombre + asistencia */}
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <span className="font-bold text-base text-white">{r.nombres} {r.apellidos}</span>
+                            {r.asistio
+                              ? <span className="inline-flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow">
+                                  <UserCheck className="w-3 h-3" /> Asistió
+                                </span>
+                              : <span className="inline-flex items-center gap-1 bg-slate-600 text-slate-300 text-xs px-2 py-0.5 rounded-full">
+                                  Pendiente
+                                </span>
+                            }
+                            <span className="text-xs text-slate-400 ml-auto">{new Date(r.created_at).toLocaleDateString("es-CO")}</span>
+                          </div>
+
+                          {/* Fila 2: contacto */}
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2">
+                            <span className="text-xs text-slate-300 flex items-center gap-1">📱 <span className="font-medium">{r.telefono}</span></span>
+                            <span className="text-xs text-slate-300 flex items-center gap-1">🪪 {tdoc} <span className="font-medium">{r.numero_documento}</span></span>
+                            <span className="text-xs text-slate-300 flex items-center gap-1 max-w-[220px] truncate">✉️ {r.correo}</span>
+                          </div>
+
+                          {/* Fila 3: datos personales */}
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2">
+                            {r.edad && <span className="text-xs text-slate-400">🎂 <span className="text-slate-200">{r.edad} años</span></span>}
+                            {sexo   && <span className="text-xs text-slate-400">⚧ <span className="text-slate-200">{sexo}</span></span>}
+                            {ecivil && <span className="text-xs text-slate-400">💍 <span className="text-slate-200">{ecivil}</span></span>}
+                            {r.barrio && <span className="text-xs text-slate-400">📍 <span className="text-slate-200">{r.barrio}</span></span>}
+                          </div>
+
+                          {/* Fila 4: CDP, RED, invitador */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            {cdp && (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg"
+                                style={{ backgroundColor: "#1e3a5f", color: "#60a5fa", border: "1px solid #2563eb55" }}>
+                                🏠 {cdp}
+                              </span>
+                            )}
+                            {red && (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg"
+                                style={{ backgroundColor: "#3b1f5e", color: "#c084fc", border: "1px solid #7c3aed55" }}>
+                                🌐 {red}
+                              </span>
+                            )}
+                            {r.nombre_invitador && (
+                              <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg"
+                                style={{ backgroundColor: "#1c3a2e", color: "#6ee7b7", border: "1px solid #16a34a44" }}>
+                                👤 {r.nombre_invitador}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Botones de acción — verticales, bien visibles */}
+                        <div className="flex flex-col gap-1.5 flex-shrink-0">
+                          <button onClick={() => openEdit(r)} title="Editar"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white shadow transition-colors">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => checkInManual(r)} title={r.asistio ? "Revertir asistencia" : "Marcar asistencia"}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center text-white shadow transition-colors
+                              ${r.asistio ? "bg-green-600 hover:bg-green-500" : "bg-slate-600 hover:bg-green-600"}`}>
+                            {r.asistio ? <UserCheck className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
+                          </button>
+                          <button onClick={() => resendEmail(r)} title="Reenviar correo"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-amber-600 hover:bg-amber-500 text-white shadow transition-colors">
+                            <Mail className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => sendWhatsApp(r)} title="Reenviar WhatsApp"
+                            className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white shadow transition-colors">
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <button title="Eliminar"
+                                className="w-8 h-8 rounded-lg flex items-center justify-center bg-red-700 hover:bg-red-600 text-white shadow transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>¿Eliminar registro?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Se eliminará el registro de <strong>{r.nombres} {r.apellidos}</strong>. No se puede deshacer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteOne(r.id)} className="bg-destructive text-white hover:bg-destructive/90">
+                                  Eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+
                       </div>
                     </div>
                   </div>
                 );
               })}
               {!data.length && (
-                <div className="text-center text-muted-foreground py-12 rounded-xl border border-white/10 bg-white/5">
-                  No hay registros aún
+                <div className="text-center text-slate-400 py-16 rounded-2xl border border-slate-700 bg-slate-800/30">
+                  <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">No hay registros aún</p>
                 </div>
               )}
             </div>
