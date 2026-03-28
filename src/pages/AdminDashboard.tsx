@@ -364,107 +364,105 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            {/* Tabla */}
-            <div className="rounded-lg border border-white/10 overflow-x-auto bg-white/5">
-              <Table className="text-xs min-w-[1500px]">
-                <TableHeader>
-                  <TableRow className="bg-white/5 border-b border-white/10">
-                    <TableHead className="whitespace-nowrap w-20">Acciones</TableHead>
-                    <TableHead className="whitespace-nowrap">Nombres</TableHead>
-                    <TableHead className="whitespace-nowrap">Apellidos</TableHead>
-                    <TableHead className="whitespace-nowrap">Fecha Nac.</TableHead>
-                    <TableHead className="whitespace-nowrap">Edad</TableHead>
-                    <TableHead className="whitespace-nowrap">Tipo Doc.</TableHead>
-                    <TableHead className="whitespace-nowrap">N° Documento</TableHead>
-                    <TableHead className="whitespace-nowrap">Teléfono</TableHead>
-                    <TableHead className="whitespace-nowrap">Dirección</TableHead>
-                    <TableHead className="whitespace-nowrap">Barrio</TableHead>
-                    <TableHead className="whitespace-nowrap">Correo</TableHead>
-                    <TableHead className="whitespace-nowrap">Estado Civil</TableHead>
-                    <TableHead className="whitespace-nowrap">Sexo</TableHead>
-                    <TableHead className="whitespace-nowrap">CDP</TableHead>
-                    <TableHead className="whitespace-nowrap">RED</TableHead>
-                    <TableHead className="whitespace-nowrap">Asistencia</TableHead>
-                    <TableHead className="whitespace-nowrap">Invitador</TableHead>
-                    <TableHead className="whitespace-nowrap">Fecha Registro</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {data.map((r) => (
-                    <TableRow key={r.id} className="hover:bg-muted/40">
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {/* Editar */}
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)} title="Editar">
-                            <Pencil className="w-3 h-3 text-blue-400" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => checkInManual(r)} title={r.asistio ? "Revertir check-in" : "Registrar asistencia"}>
-                            {r.asistio
-                              ? <UserCheck className="w-3 h-3 text-green-500" />
-                              : <UserX className="w-3 h-3 text-gray-400" />}
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => resendEmail(r)} title="Reenviar Email">
-                            <Mail className="w-3 h-3 text-yellow-400" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => sendWhatsApp(r)} title="Reenviar WhatsApp">
-                            <MessageCircle className="w-3 h-3 text-green-400" />
-                          </Button>
-                          {/* Eliminar */}
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Eliminar">
-                                <Trash2 className="w-3 h-3 text-red-400" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar registro?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Se eliminará el registro de <strong>{r.nombres} {r.apellidos}</strong>. Esta acción no se puede deshacer.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteOne(r.id)} className="bg-destructive text-white hover:bg-destructive/90">
-                                  Eliminar
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+            {/* Tarjetas de registros */}
+            <div className="space-y-2">
+              {data.map((r) => {
+                const initials = `${r.nombres?.[0] ?? ""}${r.apellidos?.[0] ?? ""}`.toUpperCase();
+                const cdp = (r as any).catalog_cdp?.nombre;
+                const red = (r as any).catalog_red?.nombre;
+                const colors = ["#00a878","#00704a","#ffd200","#f4a100","#2ec4b6","#e76f51","#457b9d","#9b5de5"];
+                const avatarColor = colors[(r.nombres?.charCodeAt(0) ?? 0) % colors.length];
+                return (
+                  <div key={r.id} className={`rounded-xl border transition-all duration-200 overflow-hidden
+                    ${r.asistio ? "border-green-500/30 bg-green-950/20" : "border-white/10 bg-white/5 hover:bg-white/8"}`}>
+                    <div className="flex items-center gap-3 p-3">
+
+                      {/* Avatar */}
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                        style={{ backgroundColor: avatarColor }}>
+                        {initials}
+                      </div>
+
+                      {/* Info principal */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm text-foreground">{r.nombres} {r.apellidos}</span>
+                          {r.asistio && (
+                            <span className="inline-flex items-center gap-1 bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded-full font-medium">
+                              <UserCheck className="w-3 h-3" /> Asistió
+                            </span>
+                          )}
                         </div>
-                      </TableCell>
-                      <TableCell className="font-medium whitespace-nowrap">{r.nombres}</TableCell>
-                      <TableCell className="whitespace-nowrap">{r.apellidos}</TableCell>
-                      <TableCell className="whitespace-nowrap">{r.fecha_nacimiento}</TableCell>
-                      <TableCell>{r.edad}</TableCell>
-                      <TableCell className="whitespace-nowrap">{(r as any).catalog_tipo_documento?.nombre}</TableCell>
-                      <TableCell className="whitespace-nowrap">{r.numero_documento}</TableCell>
-                      <TableCell className="whitespace-nowrap">{r.telefono}</TableCell>
-                      <TableCell className="max-w-[160px] truncate" title={r.direccion}>{r.direccion}</TableCell>
-                      <TableCell className="whitespace-nowrap">{r.barrio}</TableCell>
-                      <TableCell className="max-w-[160px] truncate" title={r.correo}>{r.correo}</TableCell>
-                      <TableCell className="whitespace-nowrap">{(r as any).catalog_estado_civil?.nombre}</TableCell>
-                      <TableCell className="whitespace-nowrap">{(r as any).catalog_sexo?.nombre}</TableCell>
-                      <TableCell className="whitespace-nowrap">{(r as any).catalog_cdp?.nombre}</TableCell>
-                      <TableCell className="whitespace-nowrap">{(r as any).catalog_red?.nombre}</TableCell>
-                      <TableCell className="whitespace-nowrap text-center">
-                        {r.asistio
-                          ? <span className="inline-flex items-center gap-1 text-green-500 font-medium text-xs"><UserCheck className="w-3 h-3" /> Asistió</span>
-                          : <span className="text-gray-400 text-xs">Pendiente</span>}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">{r.nombre_invitador ?? "-"}</TableCell>
-                      <TableCell className="whitespace-nowrap">{new Date(r.created_at).toLocaleDateString()}</TableCell>
-                    </TableRow>
-                  ))}
-                  {!data.length && (
-                    <TableRow>
-                      <TableCell colSpan={18} className="text-center text-muted-foreground py-8">
-                        No hay registros aún
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                        <div className="flex items-center gap-3 mt-1 flex-wrap">
+                          <span className="text-xs text-muted-foreground">📱 {r.telefono}</span>
+                          <span className="text-xs text-muted-foreground">🪪 {r.numero_documento}</span>
+                          <span className="text-xs text-muted-foreground truncate max-w-[180px]">✉️ {r.correo}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {cdp && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                              🏠 {cdp}
+                            </span>
+                          )}
+                          {red && (
+                            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                              🌐 {red}
+                            </span>
+                          )}
+                          {r.nombre_invitador && (
+                            <span className="text-xs text-muted-foreground">👤 {r.nombre_invitador}</span>
+                          )}
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            {new Date(r.created_at).toLocaleDateString("es-CO")}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Acciones */}
+                      <div className="flex gap-1 flex-shrink-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-blue-500/20" onClick={() => openEdit(r)} title="Editar">
+                          <Pencil className="w-3.5 h-3.5 text-blue-400" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-green-500/20" onClick={() => checkInManual(r)} title={r.asistio ? "Revertir asistencia" : "Marcar asistencia"}>
+                          {r.asistio ? <UserCheck className="w-3.5 h-3.5 text-green-400" /> : <UserX className="w-3.5 h-3.5 text-gray-400" />}
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-yellow-500/20" onClick={() => resendEmail(r)} title="Reenviar correo">
+                          <Mail className="w-3.5 h-3.5 text-yellow-400" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-green-500/20" onClick={() => sendWhatsApp(r)} title="Reenviar WhatsApp">
+                          <MessageCircle className="w-3.5 h-3.5 text-green-400" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-red-500/20" title="Eliminar">
+                              <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>¿Eliminar registro?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Se eliminará el registro de <strong>{r.nombres} {r.apellidos}</strong>. No se puede deshacer.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteOne(r.id)} className="bg-destructive text-white hover:bg-destructive/90">
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {!data.length && (
+                <div className="text-center text-muted-foreground py-12 rounded-xl border border-white/10 bg-white/5">
+                  No hay registros aún
+                </div>
+              )}
             </div>
           </div>
         )}
