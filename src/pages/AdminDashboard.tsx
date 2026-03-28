@@ -214,6 +214,28 @@ const AdminDashboard = () => {
     }
   };
 
+  // Regenerar todos los PDFs
+  const regenerateAllPDFs = async () => {
+    if (data.length === 0) return;
+    setRegenerating(true);
+    let success = 0;
+    let failed = 0;
+    for (const r of data) {
+      try {
+        const { error } = await supabase.functions.invoke("generate-invitation", {
+          body: { registrationId: r.id },
+        });
+        if (error) failed++;
+        else success++;
+      } catch {
+        failed++;
+      }
+    }
+    setRegenerating(false);
+    toast.success(`PDFs regenerados: ${success} exitosos, ${failed} fallidos`);
+    refresh();
+  };
+
   const getRow = (r: typeof data[0]) => [
     r.nombres, r.apellidos, r.fecha_nacimiento, r.edad,
     (r as any).catalog_tipo_documento?.nombre ?? "",
