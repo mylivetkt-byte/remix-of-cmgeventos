@@ -250,7 +250,7 @@ const AdminDashboard = () => {
   ];
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "dashboard", label: "Dashboard", icon: <BarChart2 className="w-4 h-4" /> },
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: "registros", label: "Registros", icon: <Users className="w-4 h-4" /> },
     { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-4 h-4" /> },
     { id: "catalogos", label: "Catálogos", icon: <List className="w-4 h-4" /> },
