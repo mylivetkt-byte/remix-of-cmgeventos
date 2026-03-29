@@ -56,7 +56,7 @@ export function RegistrationForm({ onSuccess }: Props) {
   const tipoDoc = useCatalog("catalog_tipo_documento");
   const estadoCivil = useCatalog("catalog_estado_civil");
   const sexo = useCatalog("catalog_sexo");
-  const cdp = useCatalog("catalog_cdp");
+  const cdp = useCdpWithRed();
   const red = useCatalog("catalog_red");
   const eventConfig = useEventConfig();
 
