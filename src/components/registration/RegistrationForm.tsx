@@ -63,10 +63,21 @@ export function RegistrationForm({ onSuccess }: Props) {
   const age = calcAge(form.birthDay, form.birthMonth, form.birthYear);
 
   const set = (field: keyof FormData) => (value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      // Auto-set RED when CDP is selected
+      if (field === "cdp_id" && cdp.data) {
+        const selectedCdp = cdp.data.find((c) => c.id === value);
+        if (selectedCdp?.red_id) {
+          next.red_id = selectedCdp.red_id;
+        }
+      }
+      return next;
+    });
     setErrors((prev) => {
       const next = { ...prev };
       delete next[field];
+      if (field === "cdp_id") delete next.red_id;
       return next;
     });
   };
