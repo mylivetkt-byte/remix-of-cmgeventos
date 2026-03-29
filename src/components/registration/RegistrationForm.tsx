@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "./FormField";
 import { CatalogSelect } from "./CatalogSelect";
 import { DateOfBirthPicker } from "./DateOfBirthPicker";
-import { useCatalog, useEventConfig } from "@/hooks/useCatalogs";
+import { useCatalog, useEventConfig, useCdpWithRed } from "@/hooks/useCatalogs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, UserPlus } from "lucide-react";
