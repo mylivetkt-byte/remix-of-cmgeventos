@@ -1,0 +1,1 @@
+ALTER TABLE public.catalog_cdp ADD COLUMN red_id uuid REFERENCES public.catalog_red(id) ON DELETE SET NULL;

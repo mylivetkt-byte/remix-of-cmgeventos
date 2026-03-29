@@ -66,6 +66,7 @@ export type Database = {
           id: string
           nombre: string
           orden: number
+          red_id: string | null
           updated_at: string
         }
         Insert: {
@@ -74,6 +75,7 @@ export type Database = {
           id?: string
           nombre: string
           orden?: number
+          red_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -82,9 +84,18 @@ export type Database = {
           id?: string
           nombre?: string
           orden?: number
+          red_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "catalog_cdp_red_id_fkey"
+            columns: ["red_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_red"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       catalog_estado_civil: {
         Row: {

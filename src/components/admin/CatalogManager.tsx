@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 
 type CatalogTable = "catalog_tipo_documento" | "catalog_estado_civil" | "catalog_sexo" | "catalog_cdp" | "catalog_red" | "catalog_barrio";
@@ -26,6 +27,7 @@ interface CatalogItem {
   nombre: string;
   activo: boolean;
   orden: number;
+  red_id?: string | null;
 }
 
 export function CatalogManager() {
@@ -35,6 +37,7 @@ export function CatalogManager() {
   const [formName, setFormName] = useState("");
   const [formOrden, setFormOrden] = useState(0);
   const [formActivo, setFormActivo] = useState(true);
+  const [formRedId, setFormRedId] = useState<string>("");
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -46,13 +49,26 @@ export function CatalogManager() {
     },
   });
 
+  const redQuery = useQuery({
+    queryKey: ["catalog_red", "admin"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("catalog_red").select("*").order("orden");
+      if (error) throw error;
+      return data as CatalogItem[];
+    },
+  });
+
   const upsert = useMutation({
     mutationFn: async () => {
+      const payload: any = { nombre: formName, orden: formOrden, activo: formActivo };
+      if (selected === "catalog_cdp") {
+        payload.red_id = formRedId || null;
+      }
       if (editing) {
-        const { error } = await supabase.from(selected).update({ nombre: formName, orden: formOrden, activo: formActivo }).eq("id", editing.id);
+        const { error } = await supabase.from(selected).update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from(selected).insert({ nombre: formName, orden: formOrden, activo: formActivo });
+        const { error } = await supabase.from(selected).insert(payload);
         if (error) throw error;
       }
     },
@@ -60,6 +76,9 @@ export function CatalogManager() {
       toast.success(editing ? "Actualizado" : "Creado");
       queryClient.invalidateQueries({ queryKey: [selected, "admin"] });
       queryClient.invalidateQueries({ queryKey: [selected] });
+      if (selected === "catalog_cdp") {
+        queryClient.invalidateQueries({ queryKey: ["catalog_cdp_with_red"] });
+      }
       setDialogOpen(false);
     },
     onError: (e: any) => toast.error(e.message),
@@ -83,6 +102,7 @@ export function CatalogManager() {
     setFormName("");
     setFormOrden((query.data?.length || 0) + 1);
     setFormActivo(true);
+    setFormRedId("");
     setDialogOpen(true);
   };
 
@@ -91,6 +111,7 @@ export function CatalogManager() {
     setFormName(item.nombre);
     setFormOrden(item.orden);
     setFormActivo(item.activo);
+    setFormRedId(item.red_id || "");
     setDialogOpen(true);
   };
 
@@ -127,6 +148,7 @@ export function CatalogManager() {
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
+              {selected === "catalog_cdp" && <TableHead>RED</TableHead>}
               <TableHead>Orden</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="w-24">Acciones</TableHead>
@@ -136,6 +158,11 @@ export function CatalogManager() {
             {query.data?.map((item) => (
               <TableRow key={item.id}>
                 <TableCell className="font-medium">{item.nombre}</TableCell>
+                {selected === "catalog_cdp" && (
+                  <TableCell className="text-muted-foreground text-sm">
+                    {redQuery.data?.find((r) => r.id === item.red_id)?.nombre || "—"}
+                  </TableCell>
+                )}
                 <TableCell>{item.orden}</TableCell>
                 <TableCell>
                   <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -178,6 +205,21 @@ export function CatalogManager() {
               <Switch checked={formActivo} onCheckedChange={setFormActivo} />
               <Label>Activo</Label>
             </div>
+            {selected === "catalog_cdp" && (
+              <div className="space-y-2">
+                <Label>RED asociada</Label>
+                <Select value={formRedId} onValueChange={setFormRedId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar RED" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {redQuery.data?.filter((r) => r.activo).map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
