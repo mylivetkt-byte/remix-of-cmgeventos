@@ -18,6 +18,29 @@ export function useCatalog(table: CatalogTable) {
   });
 }
 
+export interface CdpWithRed {
+  id: string;
+  nombre: string;
+  activo: boolean;
+  orden: number;
+  red_id: string | null;
+}
+
+export function useCdpWithRed() {
+  return useQuery({
+    queryKey: ["catalog_cdp_with_red"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("catalog_cdp")
+        .select("id, nombre, activo, orden, red_id")
+        .eq("activo", true)
+        .order("orden");
+      if (error) throw error;
+      return data as CdpWithRed[];
+    },
+  });
+}
+
 export function useEventConfig() {
   return useQuery({
     queryKey: ["event_config"],
