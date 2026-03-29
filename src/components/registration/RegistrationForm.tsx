@@ -204,8 +204,26 @@ export function RegistrationForm({ onSuccess }: Props) {
       <FormField label="Correo Electrónico" required type="email" value={form.correo} onChange={set("correo")} error={errors.correo} placeholder="tu@correo.com" />
       <CatalogSelect label="Estado Civil" required value={form.estado_civil_id} onChange={set("estado_civil_id")} items={estadoCivil.data} isLoading={estadoCivil.isLoading} error={errors.estado_civil_id} />
       <CatalogSelect label="Sexo" required value={form.sexo_id} onChange={set("sexo_id")} items={sexo.data} isLoading={sexo.isLoading} error={errors.sexo_id} />
-      <CatalogSelect label="CDP" required value={form.cdp_id} onChange={set("cdp_id")} items={cdp.data} isLoading={cdp.isLoading} error={errors.cdp_id} />
-      <CatalogSelect label="RED" required value={form.red_id} onChange={set("red_id")} items={red.data} isLoading={red.isLoading} error={errors.red_id} />
+      <CatalogSelect label="CDP" required value={form.cdp_id} onChange={set("cdp_id")} items={cdp.data?.map(c => ({ id: c.id, nombre: c.nombre }))} isLoading={cdp.isLoading} error={errors.cdp_id} />
+      
+      {/* RED auto-filled from CDP, but allow manual override if CDP has no red_id */}
+      {(() => {
+        const selectedCdp = cdp.data?.find(c => c.id === form.cdp_id);
+        const isAutoSet = !!selectedCdp?.red_id;
+        const redName = red.data?.find(r => r.id === form.red_id)?.nombre;
+        
+        if (isAutoSet && redName) {
+          return (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">RED *</label>
+              <div className="form-field-mobile bg-muted/50 flex items-center text-foreground">
+                {redName}
+              </div>
+            </div>
+          );
+        }
+        return <CatalogSelect label="RED" required value={form.red_id} onChange={set("red_id")} items={red.data} isLoading={red.isLoading} error={errors.red_id} />;
+      })()}
       <FormField
         label={`Nombre de quien te invitó${eventConfig.data?.invitado_obligatorio ? " *" : ""}`}
         value={form.nombre_invitador} onChange={set("nombre_invitador")}
