@@ -99,6 +99,7 @@ export function CatalogManager() {
     setFormName("");
     setFormOrden((query.data?.length || 0) + 1);
     setFormActivo(true);
+    setFormRedId("");
     setDialogOpen(true);
   };
 
@@ -107,6 +108,7 @@ export function CatalogManager() {
     setFormName(item.nombre);
     setFormOrden(item.orden);
     setFormActivo(item.activo);
+    setFormRedId(item.red_id || "");
     setDialogOpen(true);
   };
 
