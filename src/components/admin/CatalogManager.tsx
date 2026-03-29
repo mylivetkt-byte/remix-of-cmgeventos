@@ -37,12 +37,22 @@ export function CatalogManager() {
   const [formName, setFormName] = useState("");
   const [formOrden, setFormOrden] = useState(0);
   const [formActivo, setFormActivo] = useState(true);
+  const [formRedId, setFormRedId] = useState<string>("");
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: [selected, "admin"],
     queryFn: async () => {
       const { data, error } = await supabase.from(selected).select("*").order("orden");
+      if (error) throw error;
+      return data as CatalogItem[];
+    },
+  });
+
+  const redQuery = useQuery({
+    queryKey: ["catalog_red", "admin"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("catalog_red").select("*").order("orden");
       if (error) throw error;
       return data as CatalogItem[];
     },
