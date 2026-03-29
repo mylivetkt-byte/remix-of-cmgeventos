@@ -202,6 +202,21 @@ export function CatalogManager() {
               <Switch checked={formActivo} onCheckedChange={setFormActivo} />
               <Label>Activo</Label>
             </div>
+            {selected === "catalog_cdp" && (
+              <div className="space-y-2">
+                <Label>RED asociada</Label>
+                <Select value={formRedId} onValueChange={setFormRedId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar RED" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {redQuery.data?.filter((r) => r.activo).map((r) => (
+                      <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
