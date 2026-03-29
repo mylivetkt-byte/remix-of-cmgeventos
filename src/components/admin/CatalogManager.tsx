@@ -76,6 +76,9 @@ export function CatalogManager() {
       toast.success(editing ? "Actualizado" : "Creado");
       queryClient.invalidateQueries({ queryKey: [selected, "admin"] });
       queryClient.invalidateQueries({ queryKey: [selected] });
+      if (selected === "catalog_cdp") {
+        queryClient.invalidateQueries({ queryKey: ["catalog_cdp_with_red"] });
+      }
       setDialogOpen(false);
     },
     onError: (e: any) => toast.error(e.message),
