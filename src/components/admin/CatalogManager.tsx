@@ -145,6 +145,7 @@ export function CatalogManager() {
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
+              {selected === "catalog_cdp" && <TableHead>RED</TableHead>}
               <TableHead>Orden</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="w-24">Acciones</TableHead>
