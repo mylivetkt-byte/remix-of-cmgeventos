@@ -155,6 +155,11 @@ export function CatalogManager() {
             {query.data?.map((item) => (
               <TableRow key={item.id}>
                 <TableCell className="font-medium">{item.nombre}</TableCell>
+                {selected === "catalog_cdp" && (
+                  <TableCell className="text-muted-foreground text-sm">
+                    {redQuery.data?.find((r) => r.id === item.red_id)?.nombre || "—"}
+                  </TableCell>
+                )}
                 <TableCell>{item.orden}</TableCell>
                 <TableCell>
                   <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
