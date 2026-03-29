@@ -27,6 +27,7 @@ interface CatalogItem {
   nombre: string;
   activo: boolean;
   orden: number;
+  red_id?: string | null;
 }
 
 export function CatalogManager() {
