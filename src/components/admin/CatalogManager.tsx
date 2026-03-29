@@ -60,11 +60,15 @@ export function CatalogManager() {
 
   const upsert = useMutation({
     mutationFn: async () => {
+      const payload: any = { nombre: formName, orden: formOrden, activo: formActivo };
+      if (selected === "catalog_cdp") {
+        payload.red_id = formRedId || null;
+      }
       if (editing) {
-        const { error } = await supabase.from(selected).update({ nombre: formName, orden: formOrden, activo: formActivo }).eq("id", editing.id);
+        const { error } = await supabase.from(selected).update(payload).eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from(selected).insert({ nombre: formName, orden: formOrden, activo: formActivo });
+        const { error } = await supabase.from(selected).insert(payload);
         if (error) throw error;
       }
     },
