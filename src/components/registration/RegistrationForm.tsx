@@ -230,7 +230,7 @@ export function RegistrationForm({ onSuccess }: Props) {
         error={errors.nombre_invitador} placeholder="Opcional"
       />
 
-      <Button size="xl" className="w-full mt-6" onClick={handleSubmit} disabled={submitting}>
+      <Button size="xl" className="w-full mt-6" onClick={handleSubmit} disabled={submitting || (age !== null && age < 12)}>
         {submitting ? (
           <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Registrando...</>
         ) : (
