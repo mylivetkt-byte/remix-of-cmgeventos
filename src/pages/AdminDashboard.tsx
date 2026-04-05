@@ -22,13 +22,13 @@ type Tab = "registros" | "asistencia" | "catalogos" | "config" | "whatsapp" | "d
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+  if (str.includes(";") || str.includes('"') || str.includes("\n")) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return str;
 }
 function buildCSV(headers: string[], rows: unknown[][]): string {
-  return [headers.map(csvCell).join(","), ...rows.map((r) => r.map(csvCell).join(","))].join("\n");
+  return [headers.map(csvCell).join(";"), ...rows.map((r) => r.map(csvCell).join(";"))].join("\n");
 }
 function downloadCSV(content: string, filename: string) {
   const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" });
