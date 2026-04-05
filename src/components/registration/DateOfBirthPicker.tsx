@@ -77,6 +77,13 @@ export function DateOfBirthPicker({ day, month, year, age, onDayChange, onMonthC
           className="form-field-mobile bg-muted cursor-not-allowed"
         />
       </div>
+      {age !== null && age < 12 && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+          Este evento está diseñado principalmente para personas desde los 12 años en adelante.
+          <br /><br />
+          Sin embargo, los más pequeños también son bienvenidos a acompañarnos y disfrutar del evento, sin necesidad de realizar registro.
+        </div>
+      )}
       {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
