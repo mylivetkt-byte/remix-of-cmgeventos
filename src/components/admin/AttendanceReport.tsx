@@ -54,7 +54,7 @@ export function AttendanceReport() {
       (r as any).catalog_cdp?.nombre ?? "", (r as any).catalog_red?.nombre ?? "",
       r.fecha_asistencia ? new Date(r.fecha_asistencia).toLocaleString() : "",
     ]);
-    const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const csv = [headers.join(";"), ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";"))].join("\n");
     downloadCSV(csv, "asistencia.csv");
   };
 
