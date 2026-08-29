@@ -187,7 +187,7 @@ export const EventRegistrationPage = () => {
           ) : isRetiroSanidad ? (
             <RetiroSanidadForm eventId={event.id} onSuccess={setSuccessData} />
           ) : isDefaultEvent ? (
-            <RegistrationForm onSuccess={setSuccessData} />
+            <RegistrationForm eventId={event.id} onSuccess={setSuccessData} />
           ) : (
             <DynamicRegistrationForm eventId={event.id} onSuccess={setSuccessData} />
           )}

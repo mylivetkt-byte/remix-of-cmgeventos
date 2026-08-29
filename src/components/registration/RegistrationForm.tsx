@@ -45,10 +45,11 @@ function calcAge(day: string, month: string, year: string): number | null {
 }
 
 interface Props {
+  eventId: string;
   onSuccess: (data: { nombres: string; pdfUrl: string | null; registrationId: string }) => void;
 }
 
-export function RegistrationForm({ onSuccess }: Props) {
+export function RegistrationForm({ eventId, onSuccess }: Props) {
   const [form, setForm] = useState<FormData>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -116,6 +117,7 @@ export function RegistrationForm({ onSuccess }: Props) {
       const fechaNacimiento = `${form.birthYear}-${form.birthMonth.padStart(2, "0")}-${form.birthDay.padStart(2, "0")}`;
       
       const { data, error } = await supabase.from("registrations").insert({
+        event_id: eventId,
         nombres: form.nombres.trim(),
         apellidos: form.apellidos.trim(),
         fecha_nacimiento: fechaNacimiento,
