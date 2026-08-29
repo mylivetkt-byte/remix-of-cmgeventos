@@ -101,7 +101,7 @@ export const EventRegistrationPage = () => {
       <div className="w-full max-w-3xl mx-auto space-y-6">
         {/* Banner Ilustrado del Evento (Ajuste Perfecto Completo) */}
         <div className="rounded-3xl overflow-hidden shadow-xs border border-slate-200/80 bg-white relative">
-          <div className="h-72 md:h-96 w-full relative flex items-end p-6 md:p-8 overflow-hidden bg-slate-900">
+          <div className="h-80 md:h-[440px] w-full relative flex items-end p-6 md:p-8 overflow-hidden bg-slate-900">
             {/* Fondo difuminado para bordes */}
             <img
               src={event.banner_url || event.logo_url || '/images/default_event_banner.jpg'}

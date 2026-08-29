@@ -158,8 +158,8 @@ export const EventCatalogPage = () => {
                 key={evt.id}
                 className="bg-white border border-slate-200/90 hover:border-teal-300 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 rounded-3xl flex flex-col justify-between overflow-hidden group shadow-xs"
               >
-                {/* Portada / Banner del Evento (Ajuste Perfecto Uncropped) */}
-                <div className="h-72 sm:h-80 w-full relative overflow-hidden flex items-end p-4 bg-slate-900 group rounded-t-3xl">
+                {/* Portada / Banner del Evento (Altura Ampliada h-80 sm:h-[400px] para mayor visibilidad) */}
+                <div className="h-80 sm:h-[400px] w-full relative overflow-hidden flex items-end p-4 bg-slate-900 group rounded-t-3xl">
                   {/* Fondo difuminado de relleno */}
                   <img
                     src={evt.banner_url || evt.logo_url || '/images/default_event_banner.jpg'}
