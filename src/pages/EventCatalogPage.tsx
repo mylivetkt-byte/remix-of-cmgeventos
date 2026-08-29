@@ -159,40 +159,40 @@ export const EventCatalogPage = () => {
                 key={evt.id}
                 className="glass-card border-white/90 hover:border-amber-400 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1.5 rounded-3xl flex flex-col justify-between overflow-hidden group"
               >
-                {/* Portada / Banner del Evento (Gran Formato) */}
+                {/* Portada / Banner del Evento (Gran Marco Gigante) */}
                 <div
-                  className="h-64 sm:h-72 w-full bg-cover bg-center relative overflow-hidden flex items-end p-5 transition-transform duration-500 group-hover:scale-105"
+                  className="h-80 sm:h-[340px] w-full bg-cover bg-center relative overflow-hidden flex items-end p-5 transition-transform duration-500 group-hover:scale-105"
                   style={{
-                    backgroundImage: `url(${evt.banner_url || '/images/default_event_banner.jpg'})`,
+                    backgroundImage: `url(${evt.banner_url || evt.logo_url || '/images/default_event_banner.jpg'})`,
                   }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/95 via-emerald-950/30 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/95 via-emerald-950/20 to-transparent" />
                   
                   {/* Badge de Inscripción y Precio */}
-                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                  <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
                     {evt.es_de_pago ? (
-                      <Badge className="bg-amber-400 text-emerald-950 font-black border-amber-300 px-3.5 py-1.5 text-xs sm:text-sm shadow-lg">
+                      <Badge className="bg-amber-400 text-emerald-950 font-black border-amber-300 px-4 py-1.5 text-xs sm:text-sm shadow-xl">
                         {new Intl.NumberFormat("es-CO", { style: "currency", currency: evt.moneda || "COP", maximumFractionDigits: 0 }).format(evt.precio || 0)}
                       </Badge>
                     ) : (
-                      <Badge className="bg-emerald-600 text-white font-extrabold border-emerald-500 px-3.5 py-1.5 text-xs sm:text-sm shadow-lg">
+                      <Badge className="bg-emerald-600 text-white font-extrabold border-emerald-500 px-4 py-1.5 text-xs sm:text-sm shadow-xl">
                         Gratis
                       </Badge>
                     )}
                   </div>
 
-                  {/* Logo Avatar Principal */}
+                  {/* Logo / Emblema Principal */}
                   <div className="relative z-10 flex items-center gap-3">
                     {evt.logo_url ? (
                       <img
                         src={evt.logo_url}
                         alt={evt.nombre}
-                        className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-contain bg-white p-2 border-2 border-amber-400 shadow-xl"
+                        className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-contain bg-white/95 p-2 border-3 border-amber-400 shadow-2xl"
                       />
                     ) : (
-                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-emerald-800 to-amber-500 p-0.5 shadow-xl flex items-center justify-center">
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-tr from-emerald-800 to-amber-500 p-0.5 shadow-2xl flex items-center justify-center">
                         <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
-                          <Ticket className="w-8 h-8 text-emerald-800" />
+                          <Ticket className="w-10 h-10 text-emerald-800" />
                         </div>
                       </div>
                     )}

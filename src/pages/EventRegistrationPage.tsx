@@ -99,12 +99,12 @@ export const EventRegistrationPage = () => {
 
       {/* Contenedor principal de Evento */}
       <div className="w-full max-w-2xl mx-auto space-y-5">
-        {/* Banner Ilustrado del Evento (Gran Formato) */}
+        {/* Banner Ilustrado del Evento (Gran Marco Gigante) */}
         <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/80 glass-card">
           <div
-            className="h-64 md:h-80 w-full bg-cover bg-center relative flex items-end p-6 md:p-8"
+            className="h-80 md:h-[450px] w-full bg-cover bg-center relative flex items-end p-6 md:p-8"
             style={{
-              backgroundImage: `url(${event.banner_url || '/images/default_event_banner.jpg'})`,
+              backgroundImage: `url(${event.banner_url || event.logo_url || '/images/default_event_banner.jpg'})`,
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/95 via-emerald-950/40 to-transparent" />
