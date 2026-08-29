@@ -7,7 +7,7 @@ import { RetiroSanidadForm } from "@/components/registration/RetiroSanidadForm";
 import { SuccessScreen } from "@/components/registration/SuccessScreen";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, MapPin, Ticket, AlertCircle } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Ticket, AlertCircle, Sparkles } from "lucide-react";
 
 interface SuccessData {
   nombres: string;
@@ -75,45 +75,73 @@ export const EventRegistrationPage = () => {
   const isRetiroSanidad = event.slug ? event.slug.includes("retiro-sanidad") : false;
 
   return (
-    <div className="min-h-screen py-8 px-4 flex flex-col items-center justify-between font-sans">
+    <div className="min-h-screen py-6 px-4 flex flex-col items-center justify-between font-sans selection:bg-amber-300">
       {/* Botón superior de volver */}
-      <div className="w-full max-w-xl mx-auto flex items-center justify-between mb-4">
+      <div className="w-full max-w-2xl mx-auto flex items-center justify-between mb-4">
         <Link to="/">
-          <Button variant="outline" size="sm" className="bg-white/80 border-emerald-300 text-emerald-900 hover:bg-emerald-50">
+          <Button variant="outline" size="sm" className="bg-white/90 border-emerald-300 text-emerald-900 hover:bg-emerald-50 shadow-sm font-semibold">
             <ArrowLeft className="w-4 h-4 mr-1.5" />
-            Ver eventos
+            Ver catálogo de eventos
           </Button>
         </Link>
 
-        <Badge className="bg-emerald-100 text-emerald-900 border-emerald-300 px-3 py-1 font-medium">
-          <Ticket className="w-3.5 h-3.5 mr-1 text-amber-600" />
-          Inscripciones abiertas
+        <Badge className="bg-amber-400 text-emerald-950 border-amber-300 font-extrabold px-3 py-1 text-xs shadow-sm">
+          <Sparkles className="w-3.5 h-3.5 mr-1" />
+          Registro Gratuito
         </Badge>
       </div>
 
-      {/* Tarjeta principal glass */}
-      <div className="w-full max-w-xl mx-auto">
-        {/* Cabecera del evento */}
-        <div className="glass-card rounded-2xl p-6 mb-4 shadow-lg border border-white/80">
-          <div className="flex flex-col items-center text-center space-y-2">
-            {event.logo_url && (
-              <img src={event.logo_url} alt={event.nombre} className="h-16 w-auto object-contain mb-2" />
-            )}
-            <h1 className="text-2xl font-bold font-heading text-emerald-950">{event.nombre}</h1>
+      {/* Contenedor principal de Evento */}
+      <div className="w-full max-w-2xl mx-auto space-y-5">
+        {/* Banner Ilustrado del Evento */}
+        <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/80 glass-card">
+          <div
+            className="h-44 md:h-52 w-full bg-cover bg-center relative flex items-end p-6"
+            style={{
+              backgroundImage: `url(${event.banner_url || '/images/default_event_banner.jpg'})`,
+            }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/95 via-emerald-950/40 to-transparent" />
+
+            <div className="relative z-10 flex items-center gap-4 text-white">
+              {event.logo_url ? (
+                <img
+                  src={event.logo_url}
+                  alt={event.nombre}
+                  className="h-16 w-16 rounded-2xl object-contain bg-white/95 p-1.5 border-2 border-amber-400 shadow-lg"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-800 to-amber-500 p-0.5 shadow-lg flex items-center justify-center">
+                  <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
+                    <Ticket className="w-7 h-7 text-emerald-800" />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h1 className="text-2xl md:text-3xl font-black font-heading drop-shadow-sm leading-tight text-white">
+                  {event.nombre}
+                </h1>
+                <p className="text-xs text-amber-200 font-medium">Centro Mundial de Gloria</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-5 md:p-6 bg-white/90 space-y-3">
             {event.descripcion && (
-              <p className="text-xs text-emerald-800/80 leading-relaxed max-w-md">{event.descripcion}</p>
+              <p className="text-xs md:text-sm text-emerald-900 leading-relaxed font-normal">{event.descripcion}</p>
             )}
 
-            <div className="flex flex-wrap justify-center items-center gap-3 text-xs text-emerald-900 font-medium pt-2">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-emerald-950 font-semibold pt-1">
               {event.fecha_evento && (
-                <div className="flex items-center gap-1.5 bg-emerald-100/60 px-3 py-1 rounded-full border border-emerald-200">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-700" />
+                <div className="flex items-center gap-1.5 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+                  <Calendar className="w-4 h-4 text-emerald-700" />
                   <span className="capitalize">{formatDate(event.fecha_evento)}</span>
                 </div>
               )}
               {event.lugar_evento && (
-                <div className="flex items-center gap-1.5 bg-emerald-100/60 px-3 py-1 rounded-full border border-emerald-200">
-                  <MapPin className="w-3.5 h-3.5 text-amber-600" />
+                <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200">
+                  <MapPin className="w-4 h-4 text-amber-600" />
                   <span>{event.lugar_evento}</span>
                 </div>
               )}
@@ -121,8 +149,8 @@ export const EventRegistrationPage = () => {
           </div>
         </div>
 
-        {/* Contenido del Formulario */}
-        <div className="glass-card rounded-2xl p-6 md:p-8 shadow-xl border border-white/80">
+        {/* Tarjeta del Formulario */}
+        <div className="glass-card rounded-3xl p-6 md:p-8 shadow-2xl border border-white/90">
           {successData ? (
             <SuccessScreen
               nombres={successData.nombres}
@@ -141,7 +169,7 @@ export const EventRegistrationPage = () => {
         </div>
       </div>
 
-      <footer className="mt-6 text-center text-xs text-emerald-800/60">
+      <footer className="mt-8 text-center text-xs text-emerald-800 font-medium">
         CMG Eventos • Centro Mundial de Gloria
       </footer>
     </div>
