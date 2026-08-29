@@ -17,6 +17,11 @@ export interface EventItem {
   correo_remitente?: string | null;
   barrio_como_combo?: boolean | null;
   invitado_obligatorio?: boolean | null;
+  es_de_pago?: boolean | null;
+  precio?: number | null;
+  moneda?: string | null;
+  instrucciones_pago?: string | null;
+  requiere_comprobante?: boolean | null;
   created_at?: string;
   updated_at?: string;
 }

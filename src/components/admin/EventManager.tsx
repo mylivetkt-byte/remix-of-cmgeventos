@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare, ListChecks } from "lucide-react";
+import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare, ListChecks, DollarSign, CreditCard } from "lucide-react";
 
 interface CustomField {
   key: string;
@@ -49,7 +49,7 @@ export const EventManager = () => {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"general" | "campos" | "sistema">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "campos" | "pago" | "sistema">("general");
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -68,6 +68,11 @@ export const EventManager = () => {
     mensaje_correo: "Te invitamos a nuestro evento especial.",
     mensaje_whatsapp: "Hola, aquí está mi invitación al evento. Puedes descargarla desde este enlace:",
     correo_remitente: "cmgeventos0@gmail.com",
+    es_de_pago: false,
+    precio: 0,
+    moneda: "COP",
+    instrucciones_pago: "",
+    requiere_comprobante: false,
   });
 
   const [selectedFields, setSelectedFields] = useState<string[]>([
@@ -120,6 +125,11 @@ export const EventManager = () => {
       mensaje_correo: "Te invitamos a nuestro evento especial.",
       mensaje_whatsapp: "Hola, aquí está mi invitación al evento. Puedes descargarla desde este enlace:",
       correo_remitente: "cmgeventos0@gmail.com",
+      es_de_pago: false,
+      precio: 0,
+      moneda: "COP",
+      instrucciones_pago: "",
+      requiere_comprobante: false,
     });
   };
 
@@ -133,7 +143,6 @@ export const EventManager = () => {
       .replace(/-+/g, "-");
   };
 
-  // Recrea la URL/slug automáticamente cuando cambia el nombre
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     const autoSlug = generateSlug(val);
@@ -174,9 +183,13 @@ export const EventManager = () => {
       mensaje_correo: evt.mensaje_correo || "Te invitamos a nuestro evento especial.",
       mensaje_whatsapp: evt.mensaje_whatsapp || "Hola, aquí está mi invitación al evento. Puedes descargarla desde este enlace:",
       correo_remitente: evt.correo_remitente || "cmgeventos0@gmail.com",
+      es_de_pago: evt.es_de_pago ?? false,
+      precio: evt.precio ?? 0,
+      moneda: evt.moneda || "COP",
+      instrucciones_pago: evt.instrucciones_pago || "",
+      requiere_comprobante: evt.requiere_comprobante ?? false,
     });
 
-    // Cargar campos guardados de event_field_configs
     const { data: savedFields } = await supabase
       .from("event_field_configs")
       .select("*")
@@ -255,6 +268,11 @@ export const EventManager = () => {
         mensaje_correo: data.mensaje_correo,
         mensaje_whatsapp: data.mensaje_whatsapp,
         correo_remitente: data.correo_remitente,
+        es_de_pago: data.es_de_pago,
+        precio: data.es_de_pago ? Number(data.precio) : 0,
+        moneda: data.moneda,
+        instrucciones_pago: data.es_de_pago ? data.instrucciones_pago : null,
+        requiere_comprobante: data.es_de_pago ? data.requiere_comprobante : false,
       };
 
       let targetEventId = editingEventId;
@@ -268,7 +286,6 @@ export const EventManager = () => {
         targetEventId = newEvt.id;
       }
 
-      // Guardar la configuración de campos en event_field_configs
       if (targetEventId) {
         await supabase.from("event_field_configs").delete().eq("event_id", targetEventId);
 
@@ -291,15 +308,14 @@ export const EventManager = () => {
         }
       }
 
-      // Crear la tabla dedicada para este evento en Supabase
       try {
         await supabase.rpc("create_event_registration_table", { event_slug: slugClean });
       } catch (e) {
-        console.warn("RPC create_event_registration_table not available, fallback to default table:", e);
+        console.warn("RPC create_event_registration_table fallback:", e);
       }
     },
     onSuccess: () => {
-      toast.success(editingEventId ? "¡Evento y campos actualizados!" : "¡Evento, campos y tabla creados!");
+      toast.success(editingEventId ? "¡Evento y configuración actualizados!" : "¡Evento, precio y tabla creados!");
       queryClient.invalidateQueries({ queryKey: ["admin_events"] });
       queryClient.invalidateQueries({ queryKey: ["events"] });
       setIsDialogOpen(false);
@@ -340,6 +356,11 @@ export const EventManager = () => {
     },
   });
 
+  const formatMoney = (amount?: number | null, curr = "COP") => {
+    if (!amount) return "Gratis";
+    return new Intl.NumberFormat("es-CO", { style: "currency", currency: curr, maximumFractionDigits: 0 }).format(amount);
+  };
+
   return (
     <div className="space-y-6 text-emerald-950 font-sans">
       {/* Banner Superior Admin */}
@@ -347,10 +368,10 @@ export const EventManager = () => {
         <div>
           <h2 className="text-2xl font-bold font-heading text-emerald-900 flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-amber-600" />
-            Gestión de Eventos y Constructor de Formularios
+            Gestión de Eventos (Gratuitos & de Pago)
           </h2>
           <p className="text-xs text-emerald-800 mt-1 font-medium">
-            Selecciona qué campos tendrá el formulario de cada evento y crea automáticamente su tabla de registros.
+            Crea y edita eventos gratuitos o de pago, configura precios, cuentas bancarias y campos de formulario.
           </p>
         </div>
 
@@ -370,18 +391,26 @@ export const EventManager = () => {
           <DialogContent className="max-w-2xl bg-white border border-emerald-200 text-emerald-950 max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold font-heading text-emerald-900">
-                {editingEventId ? "Editar Evento y Formulario" : "Nuevo Evento y Selector de Campos"}
+                {editingEventId ? "Editar Evento" : "Nuevo Evento"}
               </DialogTitle>
             </DialogHeader>
 
             {/* Pestañas dentro del Modal */}
-            <div className="flex gap-2 border-b border-emerald-100 pb-2 pt-1 text-xs font-semibold">
+            <div className="flex flex-wrap gap-2 border-b border-emerald-100 pb-2 pt-1 text-xs font-semibold">
               <button
                 type="button"
                 onClick={() => setActiveTab("general")}
                 className={`px-3 py-1.5 rounded-lg transition-colors ${activeTab === "general" ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
               >
-                1. Información General & Imágenes
+                1. Info & Imágenes
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("pago")}
+                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${activeTab === "pago" ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
+              >
+                <DollarSign className="w-3.5 h-3.5" />
+                2. Configuración de Pago
               </button>
               <button
                 type="button"
@@ -389,7 +418,7 @@ export const EventManager = () => {
                 className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${activeTab === "campos" ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
               >
                 <ListChecks className="w-3.5 h-3.5" />
-                2. Campos del Formulario ({selectedFields.length})
+                3. Campos Formulario ({selectedFields.length})
               </button>
               <button
                 type="button"
@@ -397,7 +426,7 @@ export const EventManager = () => {
                 className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${activeTab === "sistema" ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
               >
                 <Settings2 className="w-3.5 h-3.5" />
-                3. Configuración del Sistema
+                4. Mensajes & Sistema
               </button>
             </div>
 
@@ -415,15 +444,15 @@ export const EventManager = () => {
                     <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Nombre del Evento *</Label>
                     <Input
                       required
-                      placeholder="Ej: Conferencia de Parejas 2026"
+                      placeholder="Ej: Retiro de Jóvenes / Conferencia de Parejas"
                       value={formData.nombre}
                       onChange={handleNameChange}
-                      className="bg-white border-emerald-300 text-emerald-950 focus:ring-emerald-500/20 font-semibold"
+                      className="bg-white border-emerald-300 text-emerald-950 font-semibold"
                     />
                   </div>
 
                   <div>
-                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block">URL de Registro (Recreada del Nombre) *</Label>
+                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block">URL de Registro (Auto-generada) *</Label>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200 font-mono">/eventos/</span>
                       <Input
@@ -503,16 +532,92 @@ export const EventManager = () => {
                 </div>
               )}
 
-              {/* TAB 2: SELECCIÓN DE CAMPOS DEL FORMULARIO */}
+              {/* TAB 2: CONFIGURACIÓN DE PAGO (GRATIS VS DE PAGO) */}
+              {activeTab === "pago" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between bg-amber-50 p-4 rounded-xl border border-amber-200">
+                    <div>
+                      <Label className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                        <CreditCard className="w-4 h-4 text-amber-700" />
+                        ¿Este evento es de PAGO?
+                      </Label>
+                      <p className="text-[11px] text-amber-800">
+                        Si está activo, se mostrará el valor de la boleta y las instrucciones de transferencia/pago.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={formData.es_de_pago}
+                      onCheckedChange={(val) => setFormData((prev) => ({ ...prev, es_de_pago: val }))}
+                    />
+                  </div>
+
+                  {formData.es_de_pago && (
+                    <div className="space-y-3 bg-white p-4 rounded-xl border border-emerald-200 shadow-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Precio de la Entrada / Inscripción *</Label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-700">$</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="Ej: 50000"
+                              value={formData.precio}
+                              onChange={(e) => setFormData((prev) => ({ ...prev, precio: Number(e.target.value) }))}
+                              className="pl-7 bg-white border-emerald-300 text-emerald-950 font-bold"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Moneda</Label>
+                          <Input
+                            placeholder="COP"
+                            value={formData.moneda}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, moneda: e.target.value }))}
+                            className="bg-white border-emerald-300 text-emerald-950 font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-semibold text-emerald-900 mb-1 block">
+                          Instrucciones de Pago / Cuentas Bancarias
+                        </Label>
+                        <Textarea
+                          rows={3}
+                          placeholder="Ej: Transferir Nequi/Daviplata al 3001234567 o Bancolombia Ahorros #1234567..."
+                          value={formData.instrucciones_pago}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, instrucciones_pago: e.target.value }))}
+                          className="bg-white border-emerald-300 text-emerald-950 text-xs"
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between bg-emerald-50 p-3 rounded-lg border border-emerald-200">
+                        <div>
+                          <Label className="text-xs font-semibold text-emerald-950">Solicitar Comprobante de Pago en el Registro</Label>
+                          <p className="text-[11px] text-emerald-700">El usuario deberá adjuntar la foto/comprobante de su transferencia.</p>
+                        </div>
+                        <Switch
+                          checked={formData.requiere_comprobante}
+                          onCheckedChange={(val) => setFormData((prev) => ({ ...prev, requiere_comprobante: val }))}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 3: CAMPOS DEL FORMULARIO */}
               {activeTab === "campos" && (
                 <div className="space-y-4">
                   <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
                     <h4 className="font-bold text-emerald-900 mb-1 flex items-center gap-1.5 text-xs">
                       <ListChecks className="w-4 h-4 text-amber-600" />
-                      Campos Estándar del Sistema
+                      Seleccionar Campos del Formulario
                     </h4>
                     <p className="text-[11px] text-emerald-800">
-                      Marca los campos que el usuario deberá diligenciar para este evento:
+                      Marca los campos que se solicitarán en el formulario de este evento:
                     </p>
                   </div>
 
@@ -575,7 +680,7 @@ export const EventManager = () => {
                 </div>
               )}
 
-              {/* TAB 3: CONFIGURACIÓN DEL SISTEMA */}
+              {/* TAB 4: CONFIGURACIÓN DEL SISTEMA */}
               {activeTab === "sistema" && (
                 <div className="space-y-3">
                   <div>
@@ -653,18 +758,30 @@ export const EventManager = () => {
             <Card key={evt.id} className="glass-card border-white/90 text-emerald-950 flex flex-col justify-between shadow-md">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between mb-2">
-                  <Badge variant={evt.activo ? "default" : "secondary"} className={evt.activo ? "bg-emerald-700 text-white" : "bg-emerald-100 text-emerald-700"}>
-                    {evt.activo ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
-                    {evt.activo ? "Activo" : "Inactivo"}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={evt.activo ? "default" : "secondary"} className={evt.activo ? "bg-emerald-700 text-white" : "bg-emerald-100 text-emerald-700"}>
+                      {evt.activo ? <CheckCircle2 className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+                      {evt.activo ? "Activo" : "Inactivo"}
+                    </Badge>
 
-                  <div className="flex items-center gap-3">
+                    {evt.es_de_pago ? (
+                      <Badge className="bg-amber-400 text-emerald-950 font-bold border-amber-300">
+                        {formatMoney(evt.precio, evt.moneda || "COP")}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-emerald-300 text-emerald-900 bg-white">
+                        Gratis
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleEditClick(evt)}
                       className="h-8 w-8 text-emerald-800 hover:bg-emerald-100"
-                      title="Editar evento y campos"
+                      title="Editar evento, precio y campos"
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -712,10 +829,6 @@ export const EventManager = () => {
                   <span className="bg-emerald-100 px-2 py-0.5 rounded font-semibold">URL:</span>
                   <span className="line-clamp-1">/eventos/{evt.slug}</span>
                 </div>
-                <div className="flex items-center gap-2 font-mono text-[11px] text-emerald-700">
-                  <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-semibold">Tabla:</span>
-                  <span className="line-clamp-1">evento_{evt.slug.replace(/-/g, "_")}_registrations</span>
-                </div>
                 {evt.fecha_evento && (
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
@@ -742,7 +855,7 @@ export const EventManager = () => {
                 </a>
 
                 <Button variant="outline" size="sm" onClick={() => handleEditClick(evt)} className="text-xs h-7 border-emerald-300 text-emerald-900">
-                  <Pencil className="w-3 h-3 mr-1" /> Configurar Campos
+                  <Pencil className="w-3 h-3 mr-1" /> Configurar
                 </Button>
               </div>
             </Card>

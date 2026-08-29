@@ -85,10 +85,16 @@ export const EventRegistrationPage = () => {
           </Button>
         </Link>
 
-        <Badge className="bg-amber-400 text-emerald-950 border-amber-300 font-extrabold px-3 py-1 text-xs shadow-sm">
-          <Sparkles className="w-3.5 h-3.5 mr-1" />
-          Registro Gratuito
-        </Badge>
+        {event.es_de_pago ? (
+          <Badge className="bg-amber-400 text-emerald-950 border-amber-300 font-black px-3.5 py-1 text-xs shadow-sm">
+            Entrada: {new Intl.NumberFormat("es-CO", { style: "currency", currency: event.moneda || "COP", maximumFractionDigits: 0 }).format(event.precio || 0)}
+          </Badge>
+        ) : (
+          <Badge className="bg-emerald-600 text-white border-emerald-500 font-extrabold px-3 py-1 text-xs shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 mr-1" />
+            Registro Gratuito
+          </Badge>
+        )}
       </div>
 
       {/* Contenedor principal de Evento */}
@@ -130,6 +136,21 @@ export const EventRegistrationPage = () => {
           <div className="p-5 md:p-6 bg-white/90 space-y-3">
             {event.descripcion && (
               <p className="text-xs md:text-sm text-emerald-900 leading-relaxed font-normal">{event.descripcion}</p>
+            )}
+
+            {/* Instrucciones de Pago */}
+            {event.es_de_pago && (
+              <div className="bg-amber-50/80 p-4 rounded-2xl border border-amber-200 space-y-1.5 text-xs text-amber-950 shadow-sm">
+                <div className="font-bold flex items-center gap-2 text-amber-900">
+                  <Ticket className="w-4 h-4 text-amber-600" />
+                  Instrucciones de Pago ({new Intl.NumberFormat("es-CO", { style: "currency", currency: event.moneda || "COP", maximumFractionDigits: 0 }).format(event.precio || 0)})
+                </div>
+                {event.instrucciones_pago ? (
+                  <p className="whitespace-pre-line text-emerald-950 leading-relaxed">{event.instrucciones_pago}</p>
+                ) : (
+                  <p className="text-slate-600">Realiza tu transferencia a las cuentas oficiales de la iglesia para confirmar tu boleta.</p>
+                )}
+              </div>
             )}
 
             <div className="flex flex-wrap items-center gap-3 text-xs text-emerald-950 font-semibold pt-1">

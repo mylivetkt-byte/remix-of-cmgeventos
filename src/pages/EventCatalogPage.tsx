@@ -168,10 +168,18 @@ export const EventCatalogPage = () => {
                 >
                   <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/90 via-emerald-950/40 to-transparent" />
                   
-                  {/* Badge de Inscripción Abierta */}
-                  <Badge className="absolute top-4 right-4 bg-amber-400 text-emerald-950 font-extrabold border-amber-300 px-3 py-1 text-xs shadow-md">
-                    Inscripciones Abiertas
-                  </Badge>
+                  {/* Badge de Inscripción y Precio */}
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    {evt.es_de_pago ? (
+                      <Badge className="bg-amber-400 text-emerald-950 font-black border-amber-300 px-3 py-1 text-xs shadow-md">
+                        {new Intl.NumberFormat("es-CO", { style: "currency", currency: evt.moneda || "COP", maximumFractionDigits: 0 }).format(evt.precio || 0)}
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-emerald-600 text-white font-extrabold border-emerald-500 px-3 py-1 text-xs shadow-md">
+                        Gratis
+                      </Badge>
+                    )}
+                  </div>
 
                   {/* Logo Avatar */}
                   <div className="relative z-10 flex items-center gap-3">

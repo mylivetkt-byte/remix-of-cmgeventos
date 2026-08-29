@@ -129,6 +129,8 @@ export function DynamicRegistrationForm({ eventId, onSuccess }: Props) {
         cdp_id: values["cdp_id"] || (cdp.data?.[0]?.id ?? null),
         red_id: values["red_id"] || (red.data?.[0]?.id ?? null),
         nombre_invitador: values["nombre_invitador"] || null,
+        comprobante_pago_url: values["comprobante_pago_url"] || null,
+        estado_pago: values["comprobante_pago_url"] ? "pendiente_verificacion" : "registrado",
       };
 
       const { data, error } = await supabase.from("registrations").insert(payload).select().single();
