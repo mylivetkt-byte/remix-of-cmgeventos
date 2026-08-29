@@ -50,7 +50,7 @@ const HEADERS = [
 ];
 
 const AdminDashboard = () => {
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("dashboard");
   const [currentRole, setCurrentRole] = useState<UserRole>("super_admin");
@@ -69,11 +69,6 @@ const AdminDashboard = () => {
   const estadosCiviles = useCatalog("catalog_estado_civil");
   const sexos     = useCatalog("catalog_sexo");
 
-  const permissions = ROLE_PERMISSIONS_MAP[currentRole];
-
-  const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
-
   const allTabs: { id: Tab; label: string; icon: React.ReactNode; roles: UserRole[] }[] = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" />, roles: ["super_admin", "coordinador", "validador", "lider_red"] },
     { id: "eventos", label: "Eventos", icon: <Sparkles className="w-5 h-5" />, roles: ["super_admin", "coordinador"] },
@@ -83,6 +78,61 @@ const AdminDashboard = () => {
     { id: "usuarios", label: "Usuarios & Roles", icon: <ShieldCheck className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "whatsapp", label: "WhatsApp & Brevo", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
   ];
+
+  // Sincronizar rol según usuario logueado
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const saved = localStorage.getItem("cmg_admin_users");
+      const list = saved ? JSON.parse(saved) : [];
+      const matched = list.find((u: any) => u.email.toLowerCase() === user.email?.toLowerCase());
+      if (matched) {
+        setCurrentRole(matched.rol);
+        const allowed = allTabs.filter((t) => t.roles.includes(matched.rol)).map((t) => t.id);
+        if (!allowed.includes(tab)) {
+          setTab(allowed[0] || "dashboard");
+        }
+      } else {
+        const emailLower = user.email?.toLowerCase() || "";
+        let resolvedRole: UserRole = "super_admin";
+        if (emailLower.includes("coordinacion")) resolvedRole = "coordinador";
+        else if (emailLower.includes("logistica")) resolvedRole = "validador";
+        else if (emailLower.includes("lider")) resolvedRole = "lider_red";
+        
+        setCurrentRole(resolvedRole);
+        const allowed = allTabs.filter((t) => t.roles.includes(resolvedRole)).map((t) => t.id);
+        if (!allowed.includes(tab)) {
+          setTab(allowed[0] || "dashboard");
+        }
+      }
+    } catch (e) {}
+  }, [user]);
+
+  const currentUserObj = (() => {
+    try {
+      const saved = localStorage.getItem("cmg_admin_users");
+      const list = saved ? JSON.parse(saved) : [];
+      const found = list.find((u: any) => u.email.toLowerCase() === user?.email?.toLowerCase());
+      if (found) return found;
+    } catch (e) {}
+    
+    // Fallback con formato amigable
+    let name = "Administrador";
+    if (user?.email) {
+      const prefix = user.email.split("@")[0] || "";
+      name = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    }
+    return {
+      nombre_completo: name,
+      rol: currentRole,
+      email: user?.email || "admin@cmgeventos.org",
+    };
+  })();
+
+  const permissions = ROLE_PERMISSIONS_MAP[currentRole];
+
+  const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
 
   const tabs = allTabs.filter((t) => t.roles.includes(currentRole));
   const activeTabObj = allTabs.find((t) => t.id === tab);
@@ -428,30 +478,19 @@ const AdminDashboard = () => {
           </div>
 
           <div className="flex items-center gap-2.5">
-            {/* Selector de Rol para Demostración RBAC */}
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
-              <span className="text-[11px] font-extrabold text-slate-500 uppercase px-2">Rol Activo:</span>
-              <Select
-                value={currentRole}
-                onValueChange={(val: UserRole) => {
-                  setCurrentRole(val);
-                  const allowed = allTabs.filter((t) => t.roles.includes(val)).map((t) => t.id);
-                  if (!allowed.includes(tab)) {
-                    setTab(allowed[0] || "dashboard");
-                  }
-                  toast.info(`Cambiado a vista de rol: ${ROLE_LABELS[val].label}`);
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs font-bold bg-white border-slate-300 rounded-lg w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="super_admin">👑 Super Admin</SelectItem>
-                  <SelectItem value="coordinador">📋 Coordinador</SelectItem>
-                  <SelectItem value="validador">📱 Validador QR</SelectItem>
-                  <SelectItem value="lider_red">✝️ Líder de Red</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Distintivo de Usuario Logueado (Estilo DOXA) */}
+            <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-2xl shadow-xs">
+              <div className="w-8 h-8 rounded-full bg-teal-600 text-white font-extrabold text-xs flex items-center justify-center shadow-xs shrink-0 select-none">
+                {currentUserObj.nombre_completo.substring(0, 2).toUpperCase()}
+              </div>
+              <div className="hidden sm:block text-left">
+                <p className="text-xs font-black text-slate-900 leading-none">
+                  {currentUserObj.nombre_completo}
+                </p>
+                <p className="text-[10px] text-slate-500 font-bold mt-0.5 leading-none">
+                  {ROLE_LABELS[currentRole]?.label || "Super Admin"}
+                </p>
+              </div>
             </div>
 
             <Button
