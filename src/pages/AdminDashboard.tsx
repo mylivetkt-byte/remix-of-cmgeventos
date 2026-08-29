@@ -11,17 +11,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, Menu } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, Menu, UserPlus } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
 import { DashboardStats } from "@/components/admin/DashboardStats";
 import { WhatsAppManager } from "@/components/admin/WhatsAppManager";
 import { EventManager } from "@/components/admin/EventManager";
+import { UserManager } from "@/components/admin/UserManager";
+import { UserRole, ROLE_LABELS, ROLE_PERMISSIONS_MAP } from "@/integrations/supabase/user-role-types";
 import { useCatalog } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 
-type Tab = "eventos" | "registros" | "asistencia" | "catalogos" | "config" | "whatsapp" | "dashboard";
+type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "whatsapp" | "usuarios";
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
@@ -50,7 +52,8 @@ const HEADERS = [
 const AdminDashboard = () => {
   const { signOut } = useAuth();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<Tab>("registros");
+  const [tab, setTab] = useState<Tab>("dashboard");
+  const [currentRole, setCurrentRole] = useState<UserRole>("super_admin");
   const [search, setSearch] = useState("");
   const [filterEvent, setFilterEvent] = useState<string>("all");
   const [filterRed, setFilterRed] = useState<string>("all");
@@ -65,6 +68,24 @@ const AdminDashboard = () => {
   const tiposDocs = useCatalog("catalog_tipo_documento");
   const estadosCiviles = useCatalog("catalog_estado_civil");
   const sexos     = useCatalog("catalog_sexo");
+
+  const permissions = ROLE_PERMISSIONS_MAP[currentRole];
+
+  const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
+
+  const allTabs: { id: Tab; label: string; icon: React.ReactNode; roles: UserRole[] }[] = [
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" />, roles: ["super_admin", "coordinador", "validador", "lider_red"] },
+    { id: "eventos", label: "Eventos", icon: <Sparkles className="w-5 h-5" />, roles: ["super_admin", "coordinador"] },
+    { id: "registros", label: "Registros", icon: <Users className="w-5 h-5" />, roles: ["super_admin", "coordinador", "lider_red"] },
+    { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-5 h-5" />, roles: ["super_admin", "coordinador"] },
+    { id: "catalogos", label: "Catálogos", icon: <List className="w-5 h-5" />, roles: ["super_admin"] },
+    { id: "usuarios", label: "Usuarios & Roles", icon: <ShieldCheck className="w-5 h-5" />, roles: ["super_admin"] },
+    { id: "whatsapp", label: "WhatsApp & Brevo", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
+  ];
+
+  const tabs = allTabs.filter((t) => t.roles.includes(currentRole));
+  const activeTabObj = allTabs.find((t) => t.id === tab);
 
   const eventsList = useQuery({
     queryKey: ["admin_events_filter_list"],
@@ -420,7 +441,33 @@ const AdminDashboard = () => {
             </Badge>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
+            {/* Selector de Rol para Demostración RBAC */}
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <span className="text-[11px] font-extrabold text-slate-500 uppercase px-2">Rol Activo:</span>
+              <Select
+                value={currentRole}
+                onValueChange={(val: UserRole) => {
+                  setCurrentRole(val);
+                  const allowed = allTabs.filter((t) => t.roles.includes(val)).map((t) => t.id);
+                  if (!allowed.includes(tab)) {
+                    setTab(allowed[0] || "dashboard");
+                  }
+                  toast.info(`Cambiado a vista de rol: ${ROLE_LABELS[val].label}`);
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs font-bold bg-white border-slate-300 rounded-lg w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="super_admin">👑 Super Admin</SelectItem>
+                  <SelectItem value="coordinador">📋 Coordinador</SelectItem>
+                  <SelectItem value="validador">📱 Validador QR</SelectItem>
+                  <SelectItem value="lider_red">✝️ Líder de Red</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button
               variant="outline"
               size="sm"
@@ -690,6 +737,7 @@ const AdminDashboard = () => {
           </div>
         )}
         {tab === "catalogos" && <CatalogManager />}
+        {tab === "usuarios" && <div className="animate-fade-in pb-8"><UserManager /></div>}
         {tab === "whatsapp" && <div className="animate-fade-in pb-8"><WhatsAppManager /></div>}
         </main>
       </div>
