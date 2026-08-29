@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, UserCheck, Home, Network, AlertCircle, Filter, Sparkles } from "lucide-react";
 import { EventItem } from "@/integrations/supabase/event-types";
+import { BannerCarousel } from "@/components/BannerCarousel";
 
 // ── Helpers ───────────────────────────────────────────────────────────
 const COLORS = [
@@ -39,22 +40,26 @@ function BarChart({ data, title, maxItems = 10 }:
   const maxVal = Math.max(...top.map((d) => d.count), 1);
 
   return (
-    <div className="glass-card rounded-2xl border border-white/90 shadow-md p-5 text-emerald-950 font-sans">
-      <h3 className="font-bold text-emerald-900 mb-4 text-sm font-heading">{title}</h3>
-      <div className="space-y-3">
-        {top.map((item, i) => (
-          <div key={item.name}>
-            <div className="flex justify-between text-xs text-emerald-950 font-medium mb-1">
-              <span className="truncate max-w-[60%]">{item.name}</span>
-              <span className="font-bold">{item.count} {item.asistio !== undefined ? `(✅ ${item.asistio})` : ""}</span>
+    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
+      <h3 className="font-heading font-black text-sm text-slate-900">{title}</h3>
+      <div className="space-y-2">
+        {top.map((item, idx) => {
+          const pct = (item.count / maxVal) * 100;
+          return (
+            <div key={item.name} className="space-y-1">
+              <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                <span className="truncate max-w-[200px]">{item.name}</span>
+                <span className="font-bold text-slate-900">{item.count}</span>
+              </div>
+              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${pct}%`, backgroundColor: COLORS[idx % COLORS.length] }}
+                />
+              </div>
             </div>
-            <div className="h-2.5 bg-emerald-100/60 rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${(item.count / maxVal) * 100}%`, backgroundColor: COLORS[i % COLORS.length] }} />
-            </div>
-          </div>
-        ))}
-        {top.length === 0 && <p className="text-xs text-emerald-700 text-center py-4">Sin datos para el evento seleccionado</p>}
+          );
+        })}
       </div>
     </div>
   );
@@ -125,7 +130,7 @@ export function DashboardStats() {
         if (r.asistio) cdpMap[k].asistio++;
       });
       const byCDP = Object.entries(cdpMap)
-        .map(([name, v]) => ({ name, ...v }))
+        .map(([name, val]) => ({ name, ...val }))
         .sort((a, b) => b.count - a.count);
 
       // Por RED
@@ -137,15 +142,15 @@ export function DashboardStats() {
         if (r.asistio) redMap[k].asistio++;
       });
       const byRED = Object.entries(redMap)
-        .map(([name, v]) => ({ name, ...v }))
+        .map(([name, val]) => ({ name, ...val }))
         .sort((a, b) => b.count - a.count);
 
-      // Quién invita más
-      const normalize = (s: string) => s.toLowerCase().trim().replace(/\s+/g, " ");
-
+      // Top Invitadores
       const invMap: Record<string, { count: number; red: string; displayName: string }> = {};
+      const normalize = (str: string) => str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
       regs.forEach((r) => {
-        const nombre = r.nombre_invitador?.trim();
+        const nombre  = r.nombre_invitador?.trim();
         if (!nombre) return;
         const red     = (r as any).catalog_red?.nombre ?? "Sin RED";
         const k       = `${normalize(nombre)}||${red}`;
@@ -174,7 +179,7 @@ export function DashboardStats() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-700" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-700" />
       </div>
     );
   }
@@ -182,15 +187,18 @@ export function DashboardStats() {
   const d = data!;
 
   return (
-    <div className="space-y-6 pb-10 animate-fade-in text-emerald-950 font-sans">
+    <div className="space-y-6 pb-10 animate-fade-in text-slate-900 font-sans">
+      {/* Carrusel de Banners (Pastor Carlos Delgado & Pastora Tania Grimaldos) */}
+      <BannerCarousel />
+
       {/* Encabezado y Filtro de Eventos */}
-      <div className="glass-card p-5 rounded-2xl border border-white/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
         <div>
-          <h2 className="text-xl font-bold font-heading text-emerald-900 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-600" />
+          <h2 className="text-xl font-black font-heading text-slate-900 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-teal-600" />
             Métricas y Consolidados del Dashboard
           </h2>
-          <p className="text-xs text-emerald-800 mt-0.5">Estadísticas en tiempo real actualizadas cada 30 segundos</p>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">Estadísticas en tiempo real actualizadas cada 30 segundos</p>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">

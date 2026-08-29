@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { BannerCarousel } from "@/components/BannerCarousel";
 
 export const EventCatalogPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,9 +70,11 @@ export const EventCatalogPage = () => {
         </div>
       </header>
 
-      {/* Hero Section Moderno en Tema Claro con Efecto Glow */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-4 w-full">
-        <div className="relative rounded-3xl overflow-hidden shadow-xs border border-slate-200/80 bg-white p-8 md:p-14">
+      {/* Hero Section con Carrusel de Banners (Pastor Carlos Delgado & Pastora Tania Grimaldos) */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-8 pb-4 w-full space-y-6">
+        <BannerCarousel />
+
+        <div className="relative rounded-3xl overflow-hidden shadow-xs border border-slate-200/80 bg-white p-8 md:p-12">
           {/* Luz ambiental difuminada */}
           <div className="absolute top-0 right-0 w-96 h-96 bg-teal-400/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-400/10 rounded-full blur-3xl pointer-events-none" />
