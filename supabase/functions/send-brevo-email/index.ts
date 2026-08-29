@@ -117,58 +117,91 @@ Deno.serve(async (req) => {
     const appUrl      = Deno.env.get("APP_URL") || "https://cmgeventos.lovable.app";
     const downloadUrl = reg.pdf_url || `${appUrl}/descargar/${registrationId}`;
 
+    // ── HTML Premium Oscuro con Configuración por Evento ─────────────
     const htmlContent = `<!DOCTYPE html>
 <html lang="es">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background-color:#f0faf5;font-family:Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0faf5;padding:30px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
-        <tr>
-          <td style="background-color:#005537;padding:30px 40px;text-align:center;">
-            ${logoUrl ? `<img src="${logoUrl}" alt="${eventName}" style="max-height:80px;max-width:200px;margin-bottom:15px;display:block;margin-left:auto;margin-right:auto;">` : ""}
-            <h1 style="color:#ffffff;margin:0;font-size:26px;letter-spacing:2px;">${eventName.toUpperCase()}</h1>
-            <div style="width:60px;height:3px;background-color:#ffd200;margin:12px auto 0;"></div>
-          </td>
-        </tr>
-        <tr>
-          <td style="background-color:#ffd200;padding:10px 40px;text-align:center;">
-            <p style="margin:0;font-size:12px;font-weight:bold;color:#005537;letter-spacing:3px;">INVITACIÓN PERSONAL</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="background-color:#ffffff;padding:35px 40px;">
-            <h2 style="color:#005537;margin:0 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:1px;">¡Hola!</h2>
-            <h3 style="color:#1a1a1a;margin:0 0 20px;font-size:22px;">${reg.nombres} ${reg.apellidos}</h3>
-            <p style="color:#555;line-height:1.7;margin:0 0 25px;font-size:15px;">${emailMessage}</p>
-            ${eventDate || eventPlace ? `
-            <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0faf5;border-left:4px solid #005537;border-radius:4px;margin-bottom:25px;">
-              <tr><td style="padding:15px 20px;">
-                ${eventDate ? `<p style="color:#333;margin:0 0 6px;font-size:14px;"><strong style="color:#005537;">📅 Fecha:</strong> ${eventDate}${eventTime ? " · " + eventTime : ""}</p>` : ""}
-                ${eventPlace ? `<p style="color:#333;margin:0;font-size:14px;"><strong style="color:#005537;">📍 Lugar:</strong> ${eventPlace}</p>` : ""}
-              </td></tr>
-            </table>` : ""}
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td align="center" style="padding:10px 0 25px;">
-                <a href="${downloadUrl}" style="display:inline-block;background-color:#005537;color:#ffffff;text-decoration:none;padding:15px 40px;border-radius:6px;font-size:16px;font-weight:bold;">
-                  📄 Descargar mi Invitación
-                </a>
-              </td></tr>
-            </table>
-            <p style="color:#999;font-size:12px;text-align:center;margin:0;">
-              Si el botón no funciona copia este enlace:<br>
-              <a href="${downloadUrl}" style="color:#005537;">${downloadUrl}</a>
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td style="background-color:#005537;padding:20px 40px;text-align:center;">
-            <p style="color:#a0d4bc;margin:0;font-size:12px;">Correo enviado automáticamente · No responder</p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${emailSubject}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0a1628;font-family:'Segoe UI',Arial,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#0a1628 0%,#0d2940 50%,#0a1628 100%);padding:40px 16px;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+      <!-- HEADER HERO -->
+      <tr>
+        <td style="background:linear-gradient(135deg,#083E30 0%,#0D5E45 50%,#083E30 100%);border-radius:24px 24px 0 0;padding:48px 40px 36px;text-align:center;">
+          ${logoUrl ? `<img src="${logoUrl}" alt="${eventName}" style="max-height:90px;max-width:220px;margin-bottom:20px;display:block;margin-left:auto;margin-right:auto;border-radius:10px;">` : ""}
+          <div style="display:inline-block;background:rgba(207,170,55,0.18);border:1px solid rgba(207,170,55,0.5);border-radius:100px;padding:6px 22px;margin-bottom:18px;">
+            <span style="color:#CFAA37;font-size:10px;font-weight:800;letter-spacing:3px;text-transform:uppercase;">✦ INVITACIÓN OFICIAL ✦</span>
+          </div>
+          <h1 style="color:#ffffff;margin:0 0 10px;font-size:28px;font-weight:800;letter-spacing:1px;line-height:1.2;">${eventName.toUpperCase()}</h1>
+          <div style="width:80px;height:3px;background:linear-gradient(90deg,transparent,#CFAA37,transparent);margin:0 auto 12px;border-radius:2px;"></div>
+          <p style="color:rgba(255,255,255,0.55);margin:0;font-size:13px;letter-spacing:1px;">Centro Mundial de Gloria</p>
+        </td>
+      </tr>
+
+      <!-- FRANJA DORADA -->
+      <tr>
+        <td style="background:linear-gradient(90deg,#b8922e,#CFAA37,#e8c84a,#CFAA37,#b8922e);padding:11px 40px;text-align:center;">
+          <p style="margin:0;font-size:10px;font-weight:800;color:#083E30;letter-spacing:4px;">CONFIRMACIÓN PERSONAL DE ASISTENCIA</p>
+        </td>
+      </tr>
+
+      <!-- CUERPO PRINCIPAL -->
+      <tr>
+        <td style="background:linear-gradient(180deg,#0f2035 0%,#0d1c30 100%);padding:40px;border-left:1px solid rgba(207,170,55,0.12);border-right:1px solid rgba(207,170,55,0.12);">
+          <p style="color:rgba(255,255,255,0.45);margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:2px;">Estimado(a)</p>
+          <h2 style="color:#ffffff;margin:0 0 20px;font-size:26px;font-weight:800;line-height:1.15;">${reg.nombres} ${reg.apellidos}</h2>
+          <div style="height:1px;background:linear-gradient(90deg,#CFAA37,rgba(207,170,55,0.1),transparent);margin-bottom:24px;"></div>
+          <p style="color:rgba(255,255,255,0.78);line-height:1.85;margin:0 0 28px;font-size:15px;">${emailMessage}</p>
+
+          ${eventDate || eventPlace ? `
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:rgba(8,62,48,0.4);border:1px solid rgba(207,170,55,0.22);border-radius:16px;margin-bottom:28px;">
+            <tr><td style="padding:20px 24px;">
+              <p style="color:#CFAA37;font-weight:800;margin:0 0 14px;font-size:11px;letter-spacing:2px;text-transform:uppercase;">📋 DETALLES DEL EVENTO</p>
+              ${eventDate ? `<p style="color:#e8f4ef;margin:0 0 10px;font-size:14px;"><span style="color:#CFAA37;">📅</span>&nbsp;<strong>Fecha:</strong> ${eventDate}${eventTime ? " · " + eventTime : ""}</p>` : ""}
+              ${eventPlace ? `<p style="color:#e8f4ef;margin:0;font-size:14px;"><span style="color:#CFAA37;">📍</span>&nbsp;<strong>Lugar:</strong> ${eventPlace}</p>` : ""}
+            </td></tr>
+          </table>` : ""}
+
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td align="center" style="padding:4px 0 28px;">
+              <a href="${downloadUrl}" style="display:inline-block;background:linear-gradient(135deg,#CFAA37,#e8c84a);color:#083E30;text-decoration:none;padding:16px 52px;border-radius:100px;font-size:15px;font-weight:800;letter-spacing:0.5px;">
+                📄&nbsp; Descargar mi Invitación PDF
+              </a>
+            </td></tr>
+          </table>
+
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;">
+            <tr><td style="padding:14px 20px;text-align:center;">
+              <p style="color:rgba(255,255,255,0.28);margin:0;font-size:10px;letter-spacing:1px;">Código de registro</p>
+              <p style="color:rgba(207,170,55,0.75);margin:5px 0 0;font-size:13px;font-weight:700;letter-spacing:3px;font-family:monospace;">${registrationId.slice(0,8).toUpperCase()}</p>
+            </td></tr>
+          </table>
+
+          <p style="color:rgba(255,255,255,0.25);font-size:11px;text-align:center;margin:20px 0 0;line-height:1.65;">
+            Si el botón no funciona, copia este enlace:<br>
+            <a href="${downloadUrl}" style="color:#CFAA37;word-break:break-all;">${downloadUrl}</a>
+          </p>
+        </td>
+      </tr>
+
+      <!-- FOOTER -->
+      <tr>
+        <td style="background:#060f1c;border-radius:0 0 24px 24px;padding:24px 40px;text-align:center;border:1px solid rgba(207,170,55,0.1);border-top:none;">
+          <p style="color:rgba(207,170,55,0.5);margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Centro Mundial de Gloria</p>
+          <p style="color:rgba(255,255,255,0.18);margin:0;font-size:11px;">Correo enviado automáticamente · Por favor no responder directamente</p>
+          <div style="width:40px;height:2px;background:rgba(207,170,55,0.25);margin:16px auto 0;border-radius:2px;"></div>
+        </td>
+      </tr>
+
+    </table>
+  </td></tr>
+</table>
 </body>
 </html>`;
 

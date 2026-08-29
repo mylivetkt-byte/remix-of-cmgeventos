@@ -8,15 +8,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function roundedRect(doc: any, x: number, y: number, w: number, h: number, r: number, style: string) {
+function rr(doc: any, x: number, y: number, w: number, h: number, r: number, style: string) {
   doc.roundedRect(x, y, w, h, r, r, style);
-}
-
-function drawDiamondPattern(doc: any, cx: number, cy: number, size: number, color: number[]) {
-  doc.setFillColor(color[0], color[1], color[2]);
-  const half = size / 2;
-  // Simple diamond shape using a small rotated square
-  doc.circle(cx, cy, size * 0.4, "F");
 }
 
 Deno.serve(async (req) => {
@@ -50,26 +43,26 @@ Deno.serve(async (req) => {
       });
     }
 
-    let eventName  = "Evento";
+    // ── Datos del Evento (por event_id o fallback a event_config) ──────
+    let eventName  = "Evento CMG";
     let eventPlace = "";
     let eventDate  = "";
     let eventTime  = "";
     let logoUrl: string | null = null;
+    let emailMessage = "Te invitamos cordialmente a este evento especial.";
 
     if (reg.event_id) {
       const { data: evt } = await supabase.from("events").select("*").eq("id", reg.event_id).maybeSingle();
       if (evt) {
-        eventName  = evt.nombre || "Evento";
-        eventPlace = evt.lugar_evento || "";
-        logoUrl    = evt.logo_url || null;
+        eventName    = evt.nombre || "Evento CMG";
+        eventPlace   = evt.lugar_evento || "";
+        logoUrl      = evt.logo_url || null;
+        emailMessage = evt.mensaje_correo || emailMessage;
+
         if (evt.fecha_evento) {
           const d = new Date(evt.fecha_evento);
-          eventDate = d.toLocaleDateString("es-CO", {
-            weekday: "long", year: "numeric", month: "long", day: "numeric",
-          });
-          eventTime = d.toLocaleTimeString("es-CO", {
-            hour: "2-digit", minute: "2-digit",
-          });
+          eventDate = d.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+          eventTime = d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
         }
       }
     }
@@ -77,95 +70,69 @@ Deno.serve(async (req) => {
     if (!reg.event_id || !eventName) {
       const { data: config } = await supabase.from("event_config").select("*").limit(1).maybeSingle();
       if (config) {
-        eventName  = config.nombre_evento || "Evento";
-        eventPlace = config.lugar_evento  || "";
-        logoUrl    = config.logo_url || null;
+        eventName    = config.nombre_evento || "Evento CMG";
+        eventPlace   = config.lugar_evento  || "";
+        logoUrl      = config.logo_url || null;
+        emailMessage = config.mensaje_correo || emailMessage;
         if (config.fecha_evento) {
           const d = new Date(config.fecha_evento);
-          eventDate = d.toLocaleDateString("es-CO", {
-            weekday: "long", year: "numeric", month: "long", day: "numeric",
-          });
-          eventTime = d.toLocaleTimeString("es-CO", {
-            hour: "2-digit", minute: "2-digit",
-          });
+          eventDate = d.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+          eventTime = d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
         }
       }
     }
 
-    // ── QR ─────────────────────────────────────────────────────────────
+    // ── QR Code ─────────────────────────────────────────────────────────
     const qrDataUrl = await QRCode.toDataURL(registrationId, {
-      width: 400,
+      width: 500,
       margin: 1,
-      color: { dark: "#0D4F3C", light: "#ffffff" },
+      color: { dark: "#083E30", light: "#ffffff" },
     });
 
-    // ── PDF A4 horizontal ─────────────────────────────────────────────
-    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-    const W = doc.internal.pageSize.getWidth();   // 297
-    const H = doc.internal.pageSize.getHeight();  // 210
+    // ── PDF — A4 Vertical (Diseño tipo Ticket Premium) ──────────────────
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const W = doc.internal.pageSize.getWidth();   // 210
+    const H = doc.internal.pageSize.getHeight();  // 297
 
-    // ── Paleta refinada ───────────────────────────────────────────────
-    const EMERALD_DEEP  = [8,  62,  48];    // #083E30
-    const EMERALD       = [13, 79,  60];    // #0D4F3C
-    const EMERALD_MID   = [18, 105, 78];    // #12694E
-    const EMERALD_LIGHT = [34, 150, 110];   // #22966E
-    const GOLD          = [207, 170, 55];   // #CFAA37
-    const GOLD_SOFT     = [220, 190, 90];   // #DCBE5A
-    const CREAM         = [252, 250, 244];  // #FCFAF4
-    const WHITE         = [255, 255, 255];
-    const CHARCOAL      = [45,  45,  45];
+    // ── Paleta ──────────────────────────────────────────────────────────
+    const DARK        = [5,   18,  40];    // #05122A
+    const GREEN_DEEP  = [8,   62,  48];    // #083E30
+    const GREEN_MID   = [13,  79,  60];    // #0D4F3C
+    const GREEN_LIGHT = [24, 110,  82];    // #186E52
+    const GOLD        = [207, 170, 55];    // #CFAA37
+    const GOLD_LIGHT  = [232, 200, 90];    // #E8C85A
+    const WHITE       = [255, 255, 255];
+    const CREAM       = [252, 250, 244];   // #FCFAF4
+    const GRAY        = [170, 170, 170];
 
-    const splitX = W * 0.44;
+    const CX = W / 2; // Centro horizontal
 
-    // ── PANEL IZQUIERDO — fondo con gradiente simulado ────────────────
-    // Capa base oscura
-    doc.setFillColor(...EMERALD_DEEP as [number,number,number]);
-    doc.rect(0, 0, splitX, H, "F");
+    // ══════════════════════════════════════════════════════════════════
+    // FONDO OSCURO COMPLETO
+    // ══════════════════════════════════════════════════════════════════
+    doc.setFillColor(DARK[0], DARK[1], DARK[2]);
+    doc.rect(0, 0, W, H, "F");
 
-    // Triángulo sutil decorativo inferior
-    doc.setFillColor(EMERALD_MID[0], EMERALD_MID[1], EMERALD_MID[2]);
-    doc.triangle(0, H * 0.6, splitX * 0.65, H, 0, H, "F");
-
-    // Triángulo superior sutil
-    doc.setFillColor(EMERALD[0], EMERALD[1], EMERALD[2]);
-    doc.triangle(splitX, 0, splitX, H * 0.35, splitX * 0.4, 0, "F");
-
-    // ── Patrón de puntos decorativos (esquina inferior derecha) ───────
-    doc.setFillColor(EMERALD_LIGHT[0], EMERALD_LIGHT[1], EMERALD_LIGHT[2]);
-    for (let col = 0; col < 6; col++) {
-      for (let row = 0; row < 5; row++) {
-        const px = splitX - 35 + col * 5.5;
-        const py = H - 35 + row * 5.5;
-        if (px < splitX - 4) {
-          doc.circle(px, py, 0.7, "F");
-        }
+    // Cuadrícula de puntos decorativos (sutil)
+    doc.setFillColor(20, 50, 90);
+    for (let x = 8; x < W; x += 10) {
+      for (let y = 8; y < H; y += 10) {
+        doc.circle(x, y, 0.35, "F");
       }
     }
 
-    // Patrón de puntos superior izquierdo (simetría)
-    for (let col = 0; col < 4; col++) {
-      for (let row = 0; row < 3; row++) {
-        doc.circle(8 + col * 5.5, 8 + row * 5.5, 0.7, "F");
-      }
-    }
+    // ── CABECERA VERDE ESMERALDA ──────────────────────────────────────
+    const headerH = 85;
+    doc.setFillColor(GREEN_DEEP[0], GREEN_DEEP[1], GREEN_DEEP[2]);
+    rr(doc, 8, 8, W - 16, headerH, 8, "F");
 
-    // ── PANEL DERECHO — crema elegante ────────────────────────────────
-    doc.setFillColor(...CREAM as [number,number,number]);
-    doc.rect(splitX, 0, W - splitX, H, "F");
+    // Triángulo decorativo en header
+    doc.setFillColor(GREEN_LIGHT[0], GREEN_LIGHT[1], GREEN_LIGHT[2]);
+    doc.triangle(W - 16, 8, W - 8, 8, W - 8, 38, "F");
+    doc.triangle(8, 8, 40, 8, 8, 30, "F");
 
-    // ── Franja dorada separadora con efecto ───────────────────────────
-    doc.setFillColor(...GOLD as [number,number,number]);
-    doc.rect(splitX - 1.5, 0, 3, H, "F");
-    // Líneas finas doradas decorativas
-    doc.setDrawColor(GOLD_SOFT[0], GOLD_SOFT[1], GOLD_SOFT[2]);
-    doc.setLineWidth(0.3);
-    doc.line(splitX - 3.5, 0, splitX - 3.5, H);
-    doc.line(splitX + 3.5, 0, splitX + 3.5, H);
-
-    // ── LOGO ──────────────────────────────────────────────────────────
-    const leftCX = splitX / 2;
-    let logoBottomY = 16;
-
+    // ── LOGO ─────────────────────────────────────────────────────────
+    let logoBottomY = 28;
     if (logoUrl) {
       try {
         const logoRes = await fetch(logoUrl);
@@ -174,217 +141,190 @@ Deno.serve(async (req) => {
           const logoBytes  = new Uint8Array(logoBuffer);
           const ct  = logoRes.headers.get("content-type") || "image/png";
           const fmt = ct.includes("png") ? "PNG" : "JPEG";
-
-          const maxLogoW = splitX - 28;
-          const maxLogoH = 72;
-          const logoW = Math.min(maxLogoW, 95);
-          const logoH = Math.min(maxLogoH, logoW * 0.75);
-          const logoX = leftCX - logoW / 2;
-          const logoY = 14;
-
-          doc.addImage(logoBytes, fmt, logoX, logoY, logoW, logoH);
-          logoBottomY = logoY + logoH + 4;
+          const logoW = 50, logoH = 28;
+          doc.addImage(logoBytes, fmt, CX - logoW / 2, 16, logoW, logoH);
+          logoBottomY = 16 + logoH + 4;
         }
       } catch (_) {}
     }
 
-    // ── Línea dorada decorativa bajo el logo ──────────────────────────
-    doc.setDrawColor(...GOLD as [number,number,number]);
-    doc.setLineWidth(0.8);
-    const lineMargin = 20;
-    doc.line(lineMargin, logoBottomY, splitX - lineMargin, logoBottomY);
-    // Diamante central en la línea
-    const diamondCX = leftCX;
-    const diamondCY = logoBottomY;
-    doc.setFillColor(...GOLD as [number,number,number]);
-    const dSize = 2.5;
-    doc.triangle(diamondCX, diamondCY - dSize, diamondCX + dSize, diamondCY, diamondCX, diamondCY + dSize, "F");
-    doc.triangle(diamondCX, diamondCY - dSize, diamondCX - dSize, diamondCY, diamondCX, diamondCY + dSize, "F");
-
-    // ── NOMBRE DEL EVENTO ─────────────────────────────────────────────
-    const nameY = logoBottomY + 10;
+    // Badge INVITACIÓN OFICIAL
+    const badgeY = logoBottomY + 2;
+    const badgeW = 70, badgeH = 7;
+    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
+    rr(doc, CX - badgeW / 2, badgeY, badgeW, badgeH, 3.5, "F");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.setTextColor(...WHITE as [number,number,number]);
-    const eventLines = doc.splitTextToSize(eventName.toUpperCase(), splitX - 28);
-    doc.text(eventLines, leftCX, nameY, { align: "center" });
-
-    // ── Badge INVITACION OFICIAL ──────────────────────────────────────
-    const badgeY = nameY + (eventLines.length * 8) + 5;
-    const badgeW = 56, badgeH = 7.5;
-    doc.setFillColor(...GOLD as [number,number,number]);
-    roundedRect(doc, leftCX - badgeW / 2, badgeY, badgeW, badgeH, 3, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(6.5);
-    doc.setTextColor(...EMERALD_DEEP as [number,number,number]);
-    doc.text("INVITACION OFICIAL", leftCX, badgeY + 5.2, { align: "center" });
-
-    // ── FECHA Y HORA ──────────────────────────────────────────────────
-    let infoY = badgeY + badgeH + 12;
-    if (eventDate) {
-      // Contenedor con borde redondeado
-      const dateBoxW = splitX - 32;
-      const dateStr = eventDate.charAt(0).toUpperCase() + eventDate.slice(1);
-      const dateText = eventTime ? `${dateStr}  |  ${eventTime}` : dateStr;
-      const dateLines = doc.splitTextToSize(dateText, dateBoxW - 8);
-      const dateBoxH = dateLines.length * 5 + 6;
-
-      doc.setFillColor(EMERALD_MID[0], EMERALD_MID[1], EMERALD_MID[2]);
-      roundedRect(doc, leftCX - dateBoxW / 2, infoY - 4, dateBoxW, dateBoxH, 3, "F");
-
-      // Ícono de calendario: pequeño cuadrado
-      doc.setFillColor(...GOLD as [number,number,number]);
-      const calX = leftCX - dateBoxW / 2 + 5;
-      const calY = infoY - 1;
-      roundedRect(doc, calX, calY, 4, 4, 1, "F");
-      doc.setFillColor(EMERALD_DEEP[0], EMERALD_DEEP[1], EMERALD_DEEP[2]);
-      doc.rect(calX + 0.8, calY + 1.2, 2.4, 2, "F");
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(...WHITE as [number,number,number]);
-      doc.text(dateLines, leftCX + 2, infoY + 1, { align: "center" });
-      infoY += dateBoxH + 4;
-    }
-
-    // ── LUGAR ─────────────────────────────────────────────────────────
-    if (eventPlace) {
-      const placeBoxW = splitX - 32;
-      const placeText = "Lugar: " + eventPlace;
-      const placeLines = doc.splitTextToSize(placeText, placeBoxW - 8);
-      const placeBoxH = placeLines.length * 5 + 6;
-
-      doc.setFillColor(EMERALD_MID[0], EMERALD_MID[1], EMERALD_MID[2]);
-      roundedRect(doc, leftCX - placeBoxW / 2, infoY - 4, placeBoxW, placeBoxH, 3, "F");
-
-      // Ícono de ubicación: círculo + triángulo
-      doc.setFillColor(...GOLD as [number,number,number]);
-      const pinX = leftCX - placeBoxW / 2 + 7;
-      const pinY = infoY;
-      doc.circle(pinX, pinY, 2, "F");
-      doc.triangle(pinX - 1.2, pinY + 1, pinX + 1.2, pinY + 1, pinX, pinY + 3.5, "F");
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(...WHITE as [number,number,number]);
-      doc.text(placeLines, leftCX + 2, infoY + 1, { align: "center" });
-    }
-
-    // ── Footer panel izquierdo ────────────────────────────────────────
-    doc.setDrawColor(...GOLD as [number,number,number]);
-    doc.setLineWidth(0.4);
-    doc.line(lineMargin, H - 14, splitX - lineMargin, H - 14);
-    doc.setFont("helvetica", "normal");
     doc.setFontSize(6);
-    doc.setTextColor(EMERALD_LIGHT[0], EMERALD_LIGHT[1], EMERALD_LIGHT[2]);
-    doc.text("cmgeventos0@gmail.com", leftCX, H - 8, { align: "center" });
+    doc.setTextColor(GREEN_DEEP[0], GREEN_DEEP[1], GREEN_DEEP[2]);
+    doc.text("✦   INVITACIÓN OFICIAL   ✦", CX, badgeY + 5, { align: "center" });
 
-    // ══════════════════════════════════════════════════════════════════
-    // ── PANEL DERECHO ─────────────────────────────────────────────────
-    // ══════════════════════════════════════════════════════════════════
-
-    const rightCX = splitX + (W - splitX) / 2;
-    const rightW  = W - splitX;
-
-    // ── Header verde oscuro ───────────────────────────────────────────
-    doc.setFillColor(...EMERALD_DEEP as [number,number,number]);
-    doc.rect(splitX + 1.5, 0, rightW - 1.5, 16, "F");
-
-    // Línea dorada bajo el header
-    doc.setFillColor(...GOLD as [number,number,number]);
-    doc.rect(splitX + 1.5, 16, rightW - 1.5, 1.2, "F");
-
+    // Nombre del Evento
+    const evNameY = badgeY + badgeH + 8;
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(...GOLD as [number,number,number]);
-    doc.text("CONFIRMACION DE ASISTENCIA", rightCX, 10, { align: "center" });
+    doc.setFontSize(20);
+    doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
+    const evLines = doc.splitTextToSize(eventName.toUpperCase(), W - 40);
+    doc.text(evLines, CX, evNameY, { align: "center" });
 
-    // ── "Se invita cordialmente a:" ───────────────────────────────────
+    // ── LÍNEA DORADA ──────────────────────────────────────────────────
+    const dividerY = headerH + 14;
+    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.setLineWidth(1.5);
+    doc.line(16, dividerY, W - 16, dividerY);
+    // Diamante central
+    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
+    const ds = 3;
+    doc.triangle(CX, dividerY - ds, CX + ds, dividerY, CX, dividerY + ds, "F");
+    doc.triangle(CX, dividerY - ds, CX - ds, dividerY, CX, dividerY + ds, "F");
+    // Puntos dorados en extremos
+    doc.circle(18, dividerY, 1.5, "F");
+    doc.circle(W - 18, dividerY, 1.5, "F");
+
+    // ── NOMBRE DEL ASISTENTE ──────────────────────────────────────────
+    const nameY = dividerY + 16;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.setTextColor(130, 130, 130);
-    doc.text("Se invita cordialmente a:", rightCX, 30, { align: "center" });
+    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.text("SE INVITA CORDIALMENTE A:", CX, nameY, { align: "center" });
 
-    // ── NOMBRE DE LA PERSONA ──────────────────────────────────────────
     const fullName = `${reg.nombres} ${reg.apellidos}`;
     doc.setFont("helvetica", "bold");
-    let nameFontSize = 26;
-    doc.setFontSize(nameFontSize);
-    doc.setTextColor(...EMERALD as [number,number,number]);
-    let namePersonLines = doc.splitTextToSize(fullName, rightW - 24);
-    while (namePersonLines.length > 2 && nameFontSize > 16) {
-      nameFontSize -= 2;
-      doc.setFontSize(nameFontSize);
-      namePersonLines = doc.splitTextToSize(fullName, rightW - 24);
+    let fontSize = 28;
+    doc.setFontSize(fontSize);
+    doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
+    let nameLines = doc.splitTextToSize(fullName, W - 32);
+    while (nameLines.length > 2 && fontSize > 18) {
+      fontSize -= 2;
+      doc.setFontSize(fontSize);
+      nameLines = doc.splitTextToSize(fullName, W - 32);
     }
-    const personNameY = 46;
-    doc.text(namePersonLines, rightCX, personNameY, { align: "center" });
+    const personNameY = nameY + 10;
+    doc.text(nameLines, CX, personNameY, { align: "center" });
 
-    // Línea dorada decorativa bajo el nombre
-    const nameEndY = personNameY + (namePersonLines.length - 1) * (nameFontSize * 0.4) + 5;
-    doc.setDrawColor(...GOLD as [number,number,number]);
-    doc.setLineWidth(1);
-    const lineStart = splitX + 22;
-    const lineEnd = W - 22;
-    doc.line(lineStart, nameEndY, lineEnd, nameEndY);
-    // Diamantes en los extremos de la línea
-    doc.setFillColor(...GOLD as [number,number,number]);
-    const ds = 1.5;
-    // Izquierda
-    doc.triangle(lineStart, nameEndY - ds, lineStart + ds, nameEndY, lineStart, nameEndY + ds, "F");
-    doc.triangle(lineStart, nameEndY - ds, lineStart - ds, nameEndY, lineStart, nameEndY + ds, "F");
-    // Derecha
-    doc.triangle(lineEnd, nameEndY - ds, lineEnd + ds, nameEndY, lineEnd, nameEndY + ds, "F");
-    doc.triangle(lineEnd, nameEndY - ds, lineEnd - ds, nameEndY, lineEnd, nameEndY + ds, "F");
+    // ── CONTENEDOR FECHA/LUGAR ─────────────────────────────────────────
+    let infoY = personNameY + (nameLines.length * (fontSize * 0.4)) + 14;
 
-    // ── QR CENTRADO ───────────────────────────────────────────────────
-    const footerH = 14;
-    const textBelowQR = 10;
-    const spaceTop = nameEndY + 6;
-    const spaceBottom = H - footerH - textBelowQR;
-    const available = spaceBottom - spaceTop;
-    const qrSize = Math.min(58, Math.max(38, available - 8));
-    const qrY = spaceTop + (available - qrSize) / 2;
-    const qrX = rightCX - qrSize / 2;
+    if (eventDate || eventPlace) {
+      const infoBoxH = (eventDate ? 14 : 0) + (eventPlace ? 14 : 0) + 16;
+      doc.setFillColor(GREEN_DEEP[0], GREEN_DEEP[1], GREEN_DEEP[2]);
+      rr(doc, 14, infoY, W - 28, infoBoxH, 6, "F");
+      doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+      doc.setLineWidth(0.4);
+      rr(doc, 14, infoY, W - 28, infoBoxH, 6, "S");
 
-    // Marco exterior verde con sombra
-    doc.setFillColor(220, 220, 215);
-    roundedRect(doc, qrX - 5 + 1.5, qrY - 5 + 1.5, qrSize + 10, qrSize + 10, 4, "F");
-    doc.setFillColor(...EMERALD as [number,number,number]);
-    roundedRect(doc, qrX - 5, qrY - 5, qrSize + 10, qrSize + 10, 4, "F");
+      // Franja izquierda dorada
+      doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
+      doc.rect(14, infoY, 3, infoBoxH, "F");
 
-    // Marco dorado interior
-    doc.setDrawColor(...GOLD as [number,number,number]);
-    doc.setLineWidth(0.6);
-    roundedRect(doc, qrX - 2.5, qrY - 2.5, qrSize + 5, qrSize + 5, 2.5, "D");
+      let lineY = infoY + 12;
+      if (eventDate) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
+        doc.text("📅  Fecha:", 24, lineY);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
+        const dateStr = eventDate.charAt(0).toUpperCase() + eventDate.slice(1);
+        doc.text(`${dateStr}${eventTime ? "  ·  " + eventTime : ""}`, 54, lineY);
+        lineY += 14;
+      }
+      if (eventPlace) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
+        doc.text("📍  Lugar:", 24, lineY);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
+        doc.text(eventPlace, 54, lineY);
+      }
 
-    // Fondo blanco para el QR
-    doc.setFillColor(...WHITE as [number,number,number]);
+      infoY += infoBoxH + 14;
+    }
+
+    // ── PERFORACIÓN HORIZONTAL (Separador Ticket) ─────────────────────
+    const perfY = infoY + 4;
+    doc.setDrawColor(30, 65, 95);
+    doc.setLineWidth(0.5);
+    doc.setLineDashPattern([3, 3], 0);
+    doc.line(24, perfY, W - 24, perfY);
+    doc.setLineDashPattern([], 0);
+    // Semicírculos a los lados
+    doc.setFillColor(DARK[0], DARK[1], DARK[2]);
+    doc.circle(8, perfY, 5, "F");
+    doc.circle(W - 8, perfY, 5, "F");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6);
+    doc.setTextColor(50, 90, 120);
+    doc.text("PRESENTAR ESTE DOCUMENTO AL INGRESAR", CX, perfY - 2, { align: "center" });
+
+    // ── SECCIÓN QR ────────────────────────────────────────────────────
+    const qrSectionY = perfY + 10;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.text("CÓDIGO DE ACCESO", CX, qrSectionY + 7, { align: "center" });
+
+    const qrSize = 55;
+    const qrX = CX - qrSize / 2;
+    const qrY = qrSectionY + 12;
+
+    // Sombra del QR
+    doc.setFillColor(2, 10, 22);
+    rr(doc, qrX + 2, qrY + 2, qrSize, qrSize, 5, "F");
+    // Marco verde
+    doc.setFillColor(GREEN_MID[0], GREEN_MID[1], GREEN_MID[2]);
+    rr(doc, qrX - 5, qrY - 5, qrSize + 10, qrSize + 10, 5, "F");
+    // Borde dorado
+    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.setLineWidth(0.8);
+    rr(doc, qrX - 3.5, qrY - 3.5, qrSize + 7, qrSize + 7, 4, "S");
+    // Fondo blanco para QR
+    doc.setFillColor(WHITE[0], WHITE[1], WHITE[2]);
     doc.rect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, "F");
-
     // QR
     doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
 
     // Texto bajo QR
+    const qrEndY = qrY + qrSize + 8;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7);
-    doc.setTextColor(140, 140, 140);
-    doc.text("Presenta este codigo en la entrada", rightCX, qrY + qrSize + 8, { align: "center" });
+    doc.setTextColor(GRAY[0], GRAY[1], GRAY[2]);
+    doc.text("Escanea este código en la entrada del evento", CX, qrEndY + 3, { align: "center" });
 
-    // ── FOOTER PANEL DERECHO ──────────────────────────────────────────
-    doc.setFillColor(...EMERALD_DEEP as [number,number,number]);
-    doc.rect(splitX + 1.5, H - footerH, rightW - 1.5, footerH, "F");
-    // Línea dorada sobre el footer
-    doc.setFillColor(...GOLD as [number,number,number]);
-    doc.rect(splitX + 1.5, H - footerH, rightW - 1.5, 1, "F");
+    // ID corto
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.text(registrationId.slice(0, 8).toUpperCase(), CX, qrEndY + 10, { align: "center" });
 
+    // ── MENSAJE FINAL ─────────────────────────────────────────────────
+    const msgY = qrEndY + 18;
+    const msgW = W - 40;
+
+    // Fondo contenedor mensaje
+    doc.setFillColor(GREEN_DEEP[0], GREEN_DEEP[1], GREEN_DEEP[2]);
+    rr(doc, 14, msgY - 6, msgW + 12, 30, 5, "F");
+
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8.5);
+    doc.setTextColor(CREAM[0], CREAM[1], CREAM[2]);
+    const msgLines = doc.splitTextToSize(`"${emailMessage}"`, msgW);
+    doc.text(msgLines.slice(0, 2), CX, msgY + 4, { align: "center" });
+
+    // ── FOOTER ───────────────────────────────────────────────────────
+    const footerY = H - 18;
+    doc.setFillColor(GREEN_DEEP[0], GREEN_DEEP[1], GREEN_DEEP[2]);
+    rr(doc, 8, footerY - 4, W - 16, 14, 6, "F");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.text("Centro Mundial de Gloria  ·  CMG Eventos", CX, footerY + 3, { align: "center" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6);
-    doc.setTextColor(...GOLD as [number,number,number]);
-    doc.text(
-      `ID: ${registrationId.slice(0, 8).toUpperCase()}  |  Documento personal e intransferible`,
-      rightCX, H - 5, { align: "center" }
-    );
+    doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
+    doc.text("Documento personal e intransferible  ·  Conserva esta invitación", CX, footerY + 8, { align: "center" });
 
     // ── Subir PDF ─────────────────────────────────────────────────────
     const pdfBytes = new Uint8Array(doc.output("arraybuffer"));
@@ -422,7 +362,7 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error generating invitation:", err);
     return new Response(
       JSON.stringify({ error: err.message || "Internal server error" }),
