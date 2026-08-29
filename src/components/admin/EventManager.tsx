@@ -10,14 +10,46 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare } from "lucide-react";
+import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare, ListChecks } from "lucide-react";
+
+interface CustomField {
+  key: string;
+  label: string;
+  type: string;
+  required: boolean;
+}
+
+const AVAILABLE_SYSTEM_FIELDS = [
+  { key: "nombres", label: "Nombre(s)", type: "text", defaultRequired: true },
+  { key: "apellidos", label: "Apellidos / 1er Apellido", type: "text", defaultRequired: true },
+  { key: "segundo_apellido", label: "2do Apellido", type: "text", defaultRequired: false },
+  { key: "tipo_documento_id", label: "Tipo de Documento (Catálogo)", type: "select", defaultRequired: true },
+  { key: "numero_documento", label: "Número de Documento", type: "text", defaultRequired: true },
+  { key: "sexo_id", label: "Sexo (Catálogo)", type: "radio", defaultRequired: true },
+  { key: "fecha_nacimiento", label: "Fecha de Nacimiento", type: "date", defaultRequired: true },
+  { key: "telefono", label: "Teléfono / Celular", type: "phone", defaultRequired: true },
+  { key: "correo", label: "Correo Electrónico", type: "email", defaultRequired: true },
+  { key: "direccion", label: "Dirección", type: "text", defaultRequired: false },
+  { key: "barrio", label: "Barrio", type: "text", defaultRequired: false },
+  { key: "ciudad", label: "Ciudad", type: "text", defaultRequired: false },
+  { key: "pais", label: "País", type: "text", defaultRequired: false },
+  { key: "bautizo", label: "Estado de Bautizo (Opciones)", type: "radio", defaultRequired: false },
+  { key: "estado_civil_id", label: "Estado Civil (Catálogo)", type: "select", defaultRequired: false },
+  { key: "participo_previo", label: "Participación Previa (Sí/No)", type: "radio", defaultRequired: false },
+  { key: "red_id", label: "RED (Catálogo)", type: "select", defaultRequired: false },
+  { key: "cdp_id", label: "CDP (Catálogo)", type: "select", defaultRequired: false },
+  { key: "iglesia_cobertura", label: "Iglesia en Cobertura", type: "text", defaultRequired: false },
+  { key: "nombre_invitador", label: "Nombre de quien te invitó", type: "text", defaultRequired: false },
+];
 
 export const EventManager = () => {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"general" | "campos" | "sistema">("general");
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -38,6 +70,15 @@ export const EventManager = () => {
     correo_remitente: "cmgeventos0@gmail.com",
   });
 
+  const [selectedFields, setSelectedFields] = useState<string[]>([
+    "nombres", "apellidos", "tipo_documento_id", "numero_documento", "telefono", "correo", "fecha_nacimiento", "red_id", "cdp_id"
+  ]);
+
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [newCustomLabel, setNewCustomLabel] = useState("");
+  const [newCustomType, setNewCustomType] = useState("text");
+  const [newCustomReq, setNewCustomReq] = useState(false);
+
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
 
@@ -57,6 +98,11 @@ export const EventManager = () => {
     setEditingEventId(null);
     setLogoPreview(null);
     setBannerPreview(null);
+    setActiveTab("general");
+    setSelectedFields([
+      "nombres", "apellidos", "tipo_documento_id", "numero_documento", "telefono", "correo", "fecha_nacimiento", "red_id", "cdp_id"
+    ]);
+    setCustomFields([]);
     setFormData({
       nombre: "",
       slug: "",
@@ -98,7 +144,7 @@ export const EventManager = () => {
     }));
   };
 
-  const handleEditClick = (evt: EventItem) => {
+  const handleEditClick = async (evt: EventItem) => {
     setEditingEventId(evt.id);
     setLogoPreview(evt.logo_url || null);
     setBannerPreview(evt.banner_url || null);
@@ -129,6 +175,18 @@ export const EventManager = () => {
       mensaje_whatsapp: evt.mensaje_whatsapp || "Hola, aquí está mi invitación al evento. Puedes descargarla desde este enlace:",
       correo_remitente: evt.correo_remitente || "cmgeventos0@gmail.com",
     });
+
+    // Cargar campos guardados de event_field_configs
+    const { data: savedFields } = await supabase
+      .from("event_field_configs")
+      .select("*")
+      .eq("event_id", evt.id);
+
+    if (savedFields && savedFields.length > 0) {
+      const keys = savedFields.map((f: any) => f.field_key);
+      setSelectedFields(keys);
+    }
+
     setIsDialogOpen(true);
   };
 
@@ -156,6 +214,27 @@ export const EventManager = () => {
     reader.readAsDataURL(file);
   };
 
+  const toggleFieldSelection = (key: string) => {
+    setSelectedFields((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
+
+  const addCustomField = () => {
+    if (!newCustomLabel.trim()) {
+      toast.error("Ingresa el nombre del campo personalizado");
+      return;
+    }
+    const key = "custom_" + generateSlug(newCustomLabel).replace(/-/g, "_");
+    setCustomFields((prev) => [
+      ...prev,
+      { key, label: newCustomLabel.trim(), type: newCustomType, required: newCustomReq }
+    ]);
+    setSelectedFields((prev) => [...prev, key]);
+    setNewCustomLabel("");
+    toast.success("Campo personalizado agregado");
+  };
+
   const saveEventMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const slugClean = generateSlug(data.nombre);
@@ -178,23 +257,49 @@ export const EventManager = () => {
         correo_remitente: data.correo_remitente,
       };
 
-      if (editingEventId) {
-        const { error } = await supabase.from("events").update(payload).eq("id", editingEventId);
+      let targetEventId = editingEventId;
+
+      if (targetEventId) {
+        const { error } = await supabase.from("events").update(payload).eq("id", targetEventId);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("events").insert(payload);
+        const { data: newEvt, error } = await supabase.from("events").insert(payload).select().single();
         if (error) throw error;
+        targetEventId = newEvt.id;
       }
 
-      // Intentar crear la tabla de registros dedicada para este evento en Supabase
+      // Guardar la configuración de campos en event_field_configs
+      if (targetEventId) {
+        await supabase.from("event_field_configs").delete().eq("event_id", targetEventId);
+
+        const configsToInsert = selectedFields.map((fieldKey, index) => {
+          const sys = AVAILABLE_SYSTEM_FIELDS.find((f) => f.key === fieldKey);
+          const cust = customFields.find((f) => f.key === fieldKey);
+
+          return {
+            event_id: targetEventId,
+            field_key: fieldKey,
+            field_type: sys?.type || cust?.type || "text",
+            label: sys?.label || cust?.label || fieldKey,
+            required: sys?.defaultRequired ?? cust?.required ?? false,
+            orden: index + 1,
+          };
+        });
+
+        if (configsToInsert.length > 0) {
+          await supabase.from("event_field_configs").insert(configsToInsert);
+        }
+      }
+
+      // Crear la tabla dedicada para este evento en Supabase
       try {
         await supabase.rpc("create_event_registration_table", { event_slug: slugClean });
       } catch (e) {
-        console.warn("RPC create_event_registration_table not available, fallback to general registrations table:", e);
+        console.warn("RPC create_event_registration_table not available, fallback to default table:", e);
       }
     },
     onSuccess: () => {
-      toast.success(editingEventId ? "¡Evento y configuración actualizados!" : "¡Evento y tabla de datos creados!");
+      toast.success(editingEventId ? "¡Evento y campos actualizados!" : "¡Evento, campos y tabla creados!");
       queryClient.invalidateQueries({ queryKey: ["admin_events"] });
       queryClient.invalidateQueries({ queryKey: ["events"] });
       setIsDialogOpen(false);
@@ -242,10 +347,10 @@ export const EventManager = () => {
         <div>
           <h2 className="text-2xl font-bold font-heading text-emerald-900 flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-amber-600" />
-            Gestión de Eventos y Tablas Dedicadas
+            Gestión de Eventos y Constructor de Formularios
           </h2>
           <p className="text-xs text-emerald-800 mt-1 font-medium">
-            Cada evento creado cuenta con su tabla independiente de registros y configuración completa del sistema.
+            Selecciona qué campos tendrá el formulario de cada evento y crea automáticamente su tabla de registros.
           </p>
         </div>
 
@@ -265,9 +370,36 @@ export const EventManager = () => {
           <DialogContent className="max-w-2xl bg-white border border-emerald-200 text-emerald-950 max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold font-heading text-emerald-900">
-                {editingEventId ? "Editar Evento y Configuración" : "Nuevo Evento y Tabla Dedicada"}
+                {editingEventId ? "Editar Evento y Formulario" : "Nuevo Evento y Selector de Campos"}
               </DialogTitle>
             </DialogHeader>
+
+            {/* Pestañas dentro del Modal */}
+            <div className="flex gap-2 border-b border-emerald-100 pb-2 pt-1 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setActiveTab("general")}
+                className={`px-3 py-1.5 rounded-lg transition-colors ${activeTab === "general" ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
+              >
+                1. Información General & Imágenes
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("campos")}
+                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${activeTab === "campos" ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
+              >
+                <ListChecks className="w-3.5 h-3.5" />
+                2. Campos del Formulario ({selectedFields.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("sistema")}
+                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${activeTab === "sistema" ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
+              >
+                <Settings2 className="w-3.5 h-3.5" />
+                3. Configuración del Sistema
+              </button>
+            </div>
 
             <form
               onSubmit={(e) => {
@@ -276,158 +408,228 @@ export const EventManager = () => {
               }}
               className="space-y-4 pt-2 text-xs"
             >
-              {/* 1. Nombre del evento (recrea la URL automáticamente) */}
-              <div>
-                <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Nombre del Evento *</Label>
-                <Input
-                  required
-                  placeholder="Ej: Conferencia de Parejas 2026"
-                  value={formData.nombre}
-                  onChange={handleNameChange}
-                  className="bg-white border-emerald-300 text-emerald-950 focus:ring-emerald-500/20 font-semibold"
-                />
-              </div>
-
-              {/* 2. URL / Slug recreada automáticamente */}
-              <div>
-                <Label className="text-xs font-semibold text-emerald-900 mb-1 block">URL de Registro (Generada del Nombre) *</Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200 font-mono">/eventos/</span>
-                  <Input
-                    required
-                    readOnly
-                    value={formData.slug}
-                    className="bg-emerald-50/60 border-emerald-300 text-emerald-900 font-mono font-bold"
-                  />
-                </div>
-                <p className="text-[11px] text-emerald-700 mt-1">La URL se recrea automáticamente al cambiar el nombre del evento.</p>
-              </div>
-
-              <div>
-                <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Descripción del Evento</Label>
-                <Textarea
-                  placeholder="Información relevante para los asistentes..."
-                  value={formData.descripcion}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, descripcion: e.target.value }))}
-                  className="bg-white border-emerald-300 text-emerald-950"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Fecha y Hora</Label>
-                  <Input
-                    type="datetime-local"
-                    value={formData.fecha_evento}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, fecha_evento: e.target.value }))}
-                    className="bg-white border-emerald-300 text-emerald-950"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Lugar</Label>
-                  <Input
-                    placeholder="Ej: Auditorio Principal CMG"
-                    value={formData.lugar_evento}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, lugar_evento: e.target.value }))}
-                    className="bg-white border-emerald-300 text-emerald-950"
-                  />
-                </div>
-              </div>
-
-              {/* Imágenes Locales */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2 bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200">
-                  <Label className="text-xs font-semibold text-emerald-950 flex items-center gap-1.5">
-                    <ImageIcon className="w-4 h-4 text-emerald-700" />
-                    Logo (Subir archivo local)
-                  </Label>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileUpload(e, "logo")}
-                    className="bg-white border-emerald-300 text-xs text-emerald-950 file:bg-emerald-100 file:text-emerald-900 file:border-0 file:rounded-md cursor-pointer"
-                  />
-                  {logoPreview && (
-                    <img src={logoPreview} alt="Logo" className="h-10 w-auto object-contain rounded border border-emerald-200 bg-white p-1" />
-                  )}
-                </div>
-
-                <div className="space-y-2 bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200">
-                  <Label className="text-xs font-semibold text-emerald-950 flex items-center gap-1.5">
-                    <Upload className="w-4 h-4 text-emerald-700" />
-                    Banner (Subir archivo local)
-                  </Label>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileUpload(e, "banner")}
-                    className="bg-white border-emerald-300 text-xs text-emerald-950 file:bg-emerald-100 file:text-emerald-900 file:border-0 file:rounded-md cursor-pointer"
-                  />
-                  {bannerPreview && (
-                    <img src={bannerPreview} alt="Banner" className="h-10 w-24 object-cover rounded border border-emerald-200" />
-                  )}
-                </div>
-              </div>
-
-              {/* Configuración del Sistema para el Evento */}
-              <div className="space-y-3 bg-white p-4 rounded-xl border border-emerald-300 shadow-sm">
-                <div className="flex items-center gap-2 font-bold text-emerald-900 border-b border-emerald-100 pb-2">
-                  <Settings2 className="w-4 h-4 text-amber-600" />
-                  Configuración del Sistema para este Evento
-                </div>
-
-                <div>
-                  <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
-                    <Mail className="w-3.5 h-3.5 text-emerald-700" /> Asunto del Correo Electrónico
-                  </Label>
-                  <Input
-                    value={formData.asunto_correo}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, asunto_correo: e.target.value }))}
-                    className="bg-white border-emerald-300 text-emerald-950"
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
-                    <MessageSquare className="w-3.5 h-3.5 text-emerald-700" /> Mensaje para WhatsApp
-                  </Label>
-                  <Textarea
-                    rows={2}
-                    value={formData.mensaje_whatsapp}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, mensaje_whatsapp: e.target.value }))}
-                    className="bg-white border-emerald-300 text-emerald-950 text-xs"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <div className="flex items-center justify-between bg-emerald-50/60 p-2.5 rounded-lg border border-emerald-200">
-                    <Label className="text-xs font-semibold text-emerald-950">Invitado Obligatorio</Label>
-                    <Switch
-                      checked={formData.invitado_obligatorio}
-                      onCheckedChange={(val) => setFormData((prev) => ({ ...prev, invitado_obligatorio: val }))}
+              {/* TAB 1: GENERAL */}
+              {activeTab === "general" && (
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Nombre del Evento *</Label>
+                    <Input
+                      required
+                      placeholder="Ej: Conferencia de Parejas 2026"
+                      value={formData.nombre}
+                      onChange={handleNameChange}
+                      className="bg-white border-emerald-300 text-emerald-950 focus:ring-emerald-500/20 font-semibold"
                     />
                   </div>
 
-                  <div className="flex items-center justify-between bg-emerald-50/60 p-2.5 rounded-lg border border-emerald-200">
-                    <Label className="text-xs font-semibold text-emerald-950">Requiere Check-in</Label>
+                  <div>
+                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block">URL de Registro (Recreada del Nombre) *</Label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200 font-mono">/eventos/</span>
+                      <Input
+                        required
+                        readOnly
+                        value={formData.slug}
+                        className="bg-emerald-50/60 border-emerald-300 text-emerald-900 font-mono font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Descripción del Evento</Label>
+                    <Textarea
+                      placeholder="Información relevante para los asistentes..."
+                      value={formData.descripcion}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, descripcion: e.target.value }))}
+                      className="bg-white border-emerald-300 text-emerald-950"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Fecha y Hora</Label>
+                      <Input
+                        type="datetime-local"
+                        value={formData.fecha_evento}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, fecha_evento: e.target.value }))}
+                        className="bg-white border-emerald-300 text-emerald-950"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Lugar</Label>
+                      <Input
+                        placeholder="Ej: Auditorio Principal CMG"
+                        value={formData.lugar_evento}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, lugar_evento: e.target.value }))}
+                        className="bg-white border-emerald-300 text-emerald-950"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Imágenes Locales */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2 bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200">
+                      <Label className="text-xs font-semibold text-emerald-950 flex items-center gap-1.5">
+                        <ImageIcon className="w-4 h-4 text-emerald-700" />
+                        Logo (Subir archivo local)
+                      </Label>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileUpload(e, "logo")}
+                        className="bg-white border-emerald-300 text-xs text-emerald-950 cursor-pointer"
+                      />
+                      {logoPreview && (
+                        <img src={logoPreview} alt="Logo" className="h-10 w-auto object-contain rounded border border-emerald-200 bg-white p-1" />
+                      )}
+                    </div>
+
+                    <div className="space-y-2 bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200">
+                      <Label className="text-xs font-semibold text-emerald-950 flex items-center gap-1.5">
+                        <Upload className="w-4 h-4 text-emerald-700" />
+                        Banner (Subir archivo local)
+                      </Label>
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileUpload(e, "banner")}
+                        className="bg-white border-emerald-300 text-xs text-emerald-950 cursor-pointer"
+                      />
+                      {bannerPreview && (
+                        <img src={bannerPreview} alt="Banner" className="h-10 w-24 object-cover rounded border border-emerald-200" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: SELECCIÓN DE CAMPOS DEL FORMULARIO */}
+              {activeTab === "campos" && (
+                <div className="space-y-4">
+                  <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
+                    <h4 className="font-bold text-emerald-900 mb-1 flex items-center gap-1.5 text-xs">
+                      <ListChecks className="w-4 h-4 text-amber-600" />
+                      Campos Estándar del Sistema
+                    </h4>
+                    <p className="text-[11px] text-emerald-800">
+                      Marca los campos que el usuario deberá diligenciar para este evento:
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-60 overflow-y-auto p-2 bg-white border border-emerald-200 rounded-xl">
+                    {AVAILABLE_SYSTEM_FIELDS.map((field) => {
+                      const isSelected = selectedFields.includes(field.key);
+                      return (
+                        <label
+                          key={field.key}
+                          className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-colors border ${isSelected ? "bg-emerald-50 border-emerald-300 font-semibold" : "bg-white border-slate-200 hover:bg-slate-50"}`}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleFieldSelection(field.key)}
+                          />
+                          <span className="text-xs text-emerald-950">{field.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  {/* Campos Personalizados */}
+                  <div className="space-y-2 pt-2 border-t border-emerald-100">
+                    <h5 className="font-bold text-emerald-900 text-xs">+ Agregar Campo Personalizado</h5>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        placeholder="Ej: Talla de Camiseta"
+                        value={newCustomLabel}
+                        onChange={(e) => setNewCustomLabel(e.target.value)}
+                        className="flex-1 min-w-[150px] bg-white border-emerald-300 text-xs"
+                      />
+                      <select
+                        value={newCustomType}
+                        onChange={(e) => setNewCustomType(e.target.value)}
+                        className="bg-white border border-emerald-300 text-xs rounded-md p-2 text-emerald-950"
+                      >
+                        <option value="text">Texto corto</option>
+                        <option value="date">Fecha</option>
+                        <option value="phone">Teléfono</option>
+                        <option value="email">Correo</option>
+                      </select>
+                      <Button type="button" size="sm" onClick={addCustomField} className="bg-emerald-800 hover:bg-emerald-900 text-white">
+                        Agregar
+                      </Button>
+                    </div>
+
+                    {customFields.length > 0 && (
+                      <div className="space-y-1 pt-2">
+                        {customFields.map((f) => (
+                          <div key={f.key} className="flex items-center justify-between p-2 bg-emerald-50 rounded border border-emerald-200 text-xs">
+                            <span>{f.label} ({f.type})</span>
+                            <Button type="button" variant="ghost" size="sm" onClick={() => setCustomFields(prev => prev.filter(c => c.key !== f.key))} className="text-red-600 h-6">
+                              Quitar
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: CONFIGURACIÓN DEL SISTEMA */}
+              {activeTab === "sistema" && (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
+                      <Mail className="w-3.5 h-3.5 text-emerald-700" /> Asunto del Correo Electrónico
+                    </Label>
+                    <Input
+                      value={formData.asunto_correo}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, asunto_correo: e.target.value }))}
+                      className="bg-white border-emerald-300 text-emerald-950"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-700" /> Mensaje para WhatsApp
+                    </Label>
+                    <Textarea
+                      rows={2}
+                      value={formData.mensaje_whatsapp}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, mensaje_whatsapp: e.target.value }))}
+                      className="bg-white border-emerald-300 text-emerald-950 text-xs"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                    <div className="flex items-center justify-between bg-emerald-50/60 p-2.5 rounded-lg border border-emerald-200">
+                      <Label className="text-xs font-semibold text-emerald-950">Invitado Obligatorio</Label>
+                      <Switch
+                        checked={formData.invitado_obligatorio}
+                        onCheckedChange={(val) => setFormData((prev) => ({ ...prev, invitado_obligatorio: val }))}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between bg-emerald-50/60 p-2.5 rounded-lg border border-emerald-200">
+                      <Label className="text-xs font-semibold text-emerald-950">Requiere Check-in</Label>
+                      <Switch
+                        checked={formData.requiere_checkin}
+                        onCheckedChange={(val) => setFormData((prev) => ({ ...prev, requiere_checkin: val }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-emerald-50/80 p-3 rounded-xl border border-emerald-200">
+                    <div>
+                      <Label className="text-xs font-semibold text-emerald-950">Evento Activo en Catálogo</Label>
+                    </div>
                     <Switch
-                      checked={formData.requiere_checkin}
-                      onCheckedChange={(val) => setFormData((prev) => ({ ...prev, requiere_checkin: val }))}
+                      checked={formData.activo}
+                      onCheckedChange={(val) => setFormData((prev) => ({ ...prev, activo: val }))}
                     />
                   </div>
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between bg-emerald-50/80 p-3.5 rounded-xl border border-emerald-200">
-                <div>
-                  <Label className="text-xs font-semibold text-emerald-950">Evento Activo en el Catálogo</Label>
-                  <p className="text-[11px] text-emerald-700">Si está activo, aparecerá en el portal público de la iglesia.</p>
-                </div>
-                <Switch
-                  checked={formData.activo}
-                  onCheckedChange={(val) => setFormData((prev) => ({ ...prev, activo: val }))}
-                />
-              </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4 border-t border-emerald-100">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="border-emerald-300 text-emerald-900">
@@ -462,7 +664,7 @@ export const EventManager = () => {
                       size="icon"
                       onClick={() => handleEditClick(evt)}
                       className="h-8 w-8 text-emerald-800 hover:bg-emerald-100"
-                      title="Editar evento y configuración"
+                      title="Editar evento y campos"
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -475,9 +677,9 @@ export const EventManager = () => {
                       </AlertDialogTrigger>
                       <AlertDialogContent className="bg-white border-emerald-200">
                         <AlertDialogHeader>
-                          <AlertDialogTitle className="text-emerald-950 font-heading">¿Eliminar evento y su tabla?</AlertDialogTitle>
+                          <AlertDialogTitle className="text-emerald-950 font-heading">¿Eliminar evento?</AlertDialogTitle>
                           <AlertDialogDescription className="text-emerald-800 text-xs">
-                            Se eliminará el evento <strong>{evt.nombre}</strong> y su configuración.
+                            Se eliminará el evento <strong>{evt.nombre}</strong> y sus registros.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -540,7 +742,7 @@ export const EventManager = () => {
                 </a>
 
                 <Button variant="outline" size="sm" onClick={() => handleEditClick(evt)} className="text-xs h-7 border-emerald-300 text-emerald-900">
-                  <Pencil className="w-3 h-3 mr-1" /> Configurar
+                  <Pencil className="w-3 h-3 mr-1" /> Configurar Campos
                 </Button>
               </div>
             </Card>
