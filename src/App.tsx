@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
+import EventRegistrationPage from "./pages/EventRegistrationPage";
 import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -21,6 +22,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/eventos/:slug" element={<EventRegistrationPage />} />
           <Route path="/descargar/:id" element={<DownloadInvitation />} />
           <Route path="/checkin" element={<CheckIn />} />
           <Route path="/admin/login" element={<AdminLogin />} />

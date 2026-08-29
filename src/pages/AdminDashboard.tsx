@@ -9,16 +9,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
 import { DashboardStats } from "@/components/admin/DashboardStats";
 import { WhatsAppManager } from "@/components/admin/WhatsAppManager";
+import { EventManager } from "@/components/admin/EventManager";
 import { useCatalog } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 
-type Tab = "registros" | "asistencia" | "catalogos" | "config" | "whatsapp" | "dashboard";
+type Tab = "eventos" | "registros" | "asistencia" | "catalogos" | "config" | "whatsapp" | "dashboard";
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
@@ -269,6 +270,7 @@ const AdminDashboard = () => {
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: "eventos", label: "Eventos", icon: <Sparkles className="w-4 h-4" /> },
     { id: "registros", label: "Registros", icon: <Users className="w-4 h-4" /> },
     { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-4 h-4" /> },
     { id: "catalogos", label: "Catálogos", icon: <List className="w-4 h-4" /> },
@@ -299,6 +301,7 @@ const AdminDashboard = () => {
           ))}
         </div>
 
+        {tab === "eventos" && <div className="animate-fade-in pb-8"><EventManager /></div>}
         {tab === "asistencia" && <div className="animate-fade-in pb-8"><AttendanceReport /></div>}
 
         {tab === "registros" && (
