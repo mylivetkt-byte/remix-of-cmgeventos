@@ -159,40 +159,40 @@ export const EventCatalogPage = () => {
                 key={evt.id}
                 className="glass-card border-white/90 hover:border-amber-400 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1.5 rounded-3xl flex flex-col justify-between overflow-hidden group"
               >
-                {/* Portada / Banner del Evento */}
+                {/* Portada / Banner del Evento (Gran Formato) */}
                 <div
-                  className="h-48 w-full bg-cover bg-center relative overflow-hidden flex items-end p-4 transition-transform duration-500 group-hover:scale-105"
+                  className="h-64 sm:h-72 w-full bg-cover bg-center relative overflow-hidden flex items-end p-5 transition-transform duration-500 group-hover:scale-105"
                   style={{
                     backgroundImage: `url(${evt.banner_url || '/images/default_event_banner.jpg'})`,
                   }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/90 via-emerald-950/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/95 via-emerald-950/30 to-transparent" />
                   
                   {/* Badge de Inscripción y Precio */}
                   <div className="absolute top-4 right-4 flex items-center gap-2">
                     {evt.es_de_pago ? (
-                      <Badge className="bg-amber-400 text-emerald-950 font-black border-amber-300 px-3 py-1 text-xs shadow-md">
+                      <Badge className="bg-amber-400 text-emerald-950 font-black border-amber-300 px-3.5 py-1.5 text-xs sm:text-sm shadow-lg">
                         {new Intl.NumberFormat("es-CO", { style: "currency", currency: evt.moneda || "COP", maximumFractionDigits: 0 }).format(evt.precio || 0)}
                       </Badge>
                     ) : (
-                      <Badge className="bg-emerald-600 text-white font-extrabold border-emerald-500 px-3 py-1 text-xs shadow-md">
+                      <Badge className="bg-emerald-600 text-white font-extrabold border-emerald-500 px-3.5 py-1.5 text-xs sm:text-sm shadow-lg">
                         Gratis
                       </Badge>
                     )}
                   </div>
 
-                  {/* Logo Avatar */}
+                  {/* Logo Avatar Principal */}
                   <div className="relative z-10 flex items-center gap-3">
                     {evt.logo_url ? (
                       <img
                         src={evt.logo_url}
                         alt={evt.nombre}
-                        className="w-14 h-14 rounded-2xl object-contain bg-white/95 p-1.5 border-2 border-amber-400 shadow-md"
+                        className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-contain bg-white p-2 border-2 border-amber-400 shadow-xl"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-800 to-amber-500 p-0.5 shadow-md flex items-center justify-center">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-emerald-800 to-amber-500 p-0.5 shadow-xl flex items-center justify-center">
                         <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
-                          <Ticket className="w-6 h-6 text-emerald-800" />
+                          <Ticket className="w-8 h-8 text-emerald-800" />
                         </div>
                       </div>
                     )}

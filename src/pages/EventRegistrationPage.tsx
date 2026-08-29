@@ -99,10 +99,10 @@ export const EventRegistrationPage = () => {
 
       {/* Contenedor principal de Evento */}
       <div className="w-full max-w-2xl mx-auto space-y-5">
-        {/* Banner Ilustrado del Evento */}
+        {/* Banner Ilustrado del Evento (Gran Formato) */}
         <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/80 glass-card">
           <div
-            className="h-44 md:h-52 w-full bg-cover bg-center relative flex items-end p-6"
+            className="h-64 md:h-80 w-full bg-cover bg-center relative flex items-end p-6 md:p-8"
             style={{
               backgroundImage: `url(${event.banner_url || '/images/default_event_banner.jpg'})`,
             }}
@@ -114,21 +114,21 @@ export const EventRegistrationPage = () => {
                 <img
                   src={event.logo_url}
                   alt={event.nombre}
-                  className="h-16 w-16 rounded-2xl object-contain bg-white/95 p-1.5 border-2 border-amber-400 shadow-lg"
+                  className="h-20 w-20 md:h-24 md:w-24 rounded-2xl object-contain bg-white p-2 border-2 border-amber-400 shadow-xl shrink-0"
                 />
               ) : (
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-800 to-amber-500 p-0.5 shadow-lg flex items-center justify-center">
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-tr from-emerald-800 to-amber-500 p-0.5 shadow-xl flex items-center justify-center shrink-0">
                   <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
-                    <Ticket className="w-7 h-7 text-emerald-800" />
+                    <Ticket className="w-8 h-8 text-emerald-800" />
                   </div>
                 </div>
               )}
 
               <div>
-                <h1 className="text-2xl md:text-3xl font-black font-heading drop-shadow-sm leading-tight text-white">
+                <h1 className="text-2xl md:text-3xl font-black font-heading drop-shadow-md leading-tight text-white">
                   {event.nombre}
                 </h1>
-                <p className="text-xs text-amber-200 font-medium">Centro Mundial de Gloria</p>
+                <p className="text-xs md:text-sm text-amber-300 font-semibold mt-0.5">Centro Mundial de Gloria</p>
               </div>
             </div>
           </div>
