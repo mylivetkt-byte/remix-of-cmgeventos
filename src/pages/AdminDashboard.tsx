@@ -279,22 +279,22 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-white/10 bg-black/30 backdrop-blur-md sticky top-0 z-10">
+    <div className="min-h-screen text-emerald-950 font-sans">
+      <header className="border-b border-emerald-200/60 bg-white/70 backdrop-blur-md sticky top-0 z-10 shadow-sm">
         <div className="container flex items-center justify-between h-14">
-          <h1 className="font-heading font-bold text-lg">Panel Admin</h1>
-          <Button variant="ghost" size="sm" onClick={signOut}>
-            <LogOut className="w-4 h-4 mr-1" /> Salir
+          <h1 className="font-heading font-bold text-lg text-emerald-900">Panel Admin</h1>
+          <Button variant="outline" size="sm" onClick={signOut} className="border-emerald-300 text-emerald-900 hover:bg-emerald-50">
+            <LogOut className="w-4 h-4 mr-1 text-amber-600" /> Salir
           </Button>
         </div>
       </header>
 
       <div className="container mt-4">
-        <div className="flex gap-1 bg-white/5 border border-white/10 p-1 rounded-lg mb-4">
+        <div className="flex flex-wrap gap-1 glass-card border border-white/80 p-1 rounded-xl mb-4 shadow-sm">
           {tabs.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-sm font-medium transition-all ${
-                tab === t.id ? "bg-white/10 text-foreground shadow-sm border border-white/20" : "text-muted-foreground hover:text-foreground"
+              className={`flex-1 min-w-[100px] flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
+                tab === t.id ? "bg-emerald-800 text-white shadow" : "text-emerald-900 hover:bg-emerald-100/60"
               }`}>
               {t.icon}{t.label}
             </button>
