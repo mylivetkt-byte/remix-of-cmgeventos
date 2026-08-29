@@ -251,7 +251,7 @@ export const EventManager = () => {
   const saveEventMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const slugClean = generateSlug(data.nombre);
-      const payload = {
+      const fullPayload: Record<string, any> = {
         nombre: data.nombre,
         slug: slugClean,
         descripcion: data.descripcion,
@@ -277,13 +277,35 @@ export const EventManager = () => {
 
       let targetEventId = editingEventId;
 
-      if (targetEventId) {
-        const { error } = await supabase.from("events").update(payload).eq("id", targetEventId);
-        if (error) throw error;
-      } else {
-        const { data: newEvt, error } = await supabase.from("events").insert(payload).select().single();
-        if (error) throw error;
-        targetEventId = newEvt.id;
+      const performSave = async (currentPayload: Record<string, any>) => {
+        if (targetEventId) {
+          const { error } = await supabase.from("events").update(currentPayload).eq("id", targetEventId);
+          if (error) throw error;
+        } else {
+          const { data: newEvt, error } = await supabase.from("events").insert(currentPayload).select().single();
+          if (error) throw error;
+          targetEventId = newEvt.id;
+        }
+      };
+
+      try {
+        await performSave(fullPayload);
+      } catch (err: any) {
+        // Fallback: Si la base de datos de Supabase aún no tiene alguna columna nueva (ej. banner_url, es_de_pago)
+        if (err.message && err.message.includes("Could not find the")) {
+          const safePayload = { ...fullPayload };
+          // Eliminar dinámicamente el campo reportado como no encontrado
+          if (err.message.includes("banner_url")) delete safePayload.banner_url;
+          if (err.message.includes("es_de_pago")) delete safePayload.es_de_pago;
+          if (err.message.includes("precio")) delete safePayload.precio;
+          if (err.message.includes("moneda")) delete safePayload.moneda;
+          if (err.message.includes("instrucciones_pago")) delete safePayload.instrucciones_pago;
+          if (err.message.includes("requiere_comprobante")) delete safePayload.requiere_comprobante;
+
+          await performSave(safePayload);
+        } else {
+          throw err;
+        }
       }
 
       if (targetEventId) {
