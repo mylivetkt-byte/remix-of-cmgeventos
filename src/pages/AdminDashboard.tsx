@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
@@ -9,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
@@ -279,6 +281,8 @@ const AdminDashboard = () => {
     new Date(r.created_at).toLocaleString("es-CO"),
   ];
 
+  const navigate = useNavigate();
+
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
     { id: "eventos", label: "Eventos", icon: <Sparkles className="w-4 h-4" /> },
@@ -289,26 +293,81 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen text-emerald-950 font-sans">
-      <header className="border-b border-emerald-200/60 bg-white/70 backdrop-blur-md sticky top-0 z-10 shadow-sm">
-        <div className="container flex items-center justify-between h-14">
-          <h1 className="font-heading font-bold text-lg text-emerald-900">Panel Admin</h1>
-          <Button variant="outline" size="sm" onClick={signOut} className="border-emerald-300 text-emerald-900 hover:bg-emerald-50">
-            <LogOut className="w-4 h-4 mr-1 text-amber-600" /> Salir
-          </Button>
+    <div className="min-h-screen text-emerald-950 font-sans bg-slate-900 selection:bg-amber-400">
+      {/* Cabecera del Panel Admin en Oscuro/Oro Lujo */}
+      <header className="border-b border-amber-500/30 bg-gradient-to-r from-emerald-950 via-emerald-900 to-slate-950 sticky top-0 z-30 shadow-2xl backdrop-blur-md">
+        <div className="container max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-400 to-amber-600 p-0.5 shadow-lg flex items-center justify-center">
+              <div className="w-full h-full bg-emerald-950 rounded-[10px] flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-amber-400" />
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="font-heading font-black text-lg text-white tracking-wide">
+                  CMG Eventos
+                </h1>
+                <Badge className="bg-amber-400 text-slate-950 font-black text-[10px] px-2 py-0.5 shadow-md">
+                  <ShieldCheck className="w-3 h-3 mr-1" /> ADMIN
+                </Badge>
+              </div>
+              <p className="text-[11px] text-emerald-300 font-medium">Centro Mundial de Gloria · Panel de Control</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/")}
+              className="border-emerald-700/60 bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800 hover:text-white text-xs font-bold rounded-xl hidden sm:flex items-center gap-1.5"
+            >
+              <Globe className="w-3.5 h-3.5 text-amber-400" /> Sitio Público
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/checkin")}
+              className="border-emerald-700/60 bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800 hover:text-white text-xs font-bold rounded-xl hidden sm:flex items-center gap-1.5"
+            >
+              <QrCode className="w-3.5 h-3.5 text-emerald-400" /> Escáner Puerta
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={signOut}
+              className="border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-white text-xs font-bold rounded-xl"
+            >
+              <LogOut className="w-3.5 h-3.5 mr-1" /> Salir
+            </Button>
+          </div>
         </div>
       </header>
 
-      <div className="container mt-4">
-        <div className="flex flex-wrap gap-1 glass-card border border-white/80 p-1 rounded-xl mb-4 shadow-sm">
-          {tabs.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex-1 min-w-[100px] flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold transition-all ${
-                tab === t.id ? "bg-emerald-800 text-white shadow" : "text-emerald-900 hover:bg-emerald-100/60"
-              }`}>
-              {t.icon}{t.label}
-            </button>
-          ))}
+      {/* Cuerpo Principal del Panel */}
+      <div className="container max-w-7xl mx-auto px-4 mt-6 pb-12">
+        {/* Menú Nav Principal de Pestañas Moderno */}
+        <div className="bg-slate-950/80 backdrop-blur-xl border border-emerald-800/40 p-2 rounded-2xl shadow-2xl flex flex-wrap gap-2 mb-6">
+          {tabs.map((t) => {
+            const isActive = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all duration-300 ${
+                  isActive
+                    ? "bg-gradient-to-r from-amber-400 via-amber-400 to-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 scale-[1.02] border border-amber-300"
+                    : "text-slate-300 hover:text-white hover:bg-emerald-900/40"
+                }`}
+              >
+                {t.icon}
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {tab === "eventos" && <div className="animate-fade-in pb-8"><EventManager /></div>}
