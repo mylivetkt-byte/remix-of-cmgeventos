@@ -56,8 +56,8 @@ export function BannerCarousel() {
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {/* Contenedor del Slide */}
-      <div className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden">
+      {/* Contenedor del Slide Panorámico exacto a la proporción original */}
+      <div className="relative aspect-[16/5] sm:aspect-[21/6] min-h-[200px] w-full overflow-hidden bg-slate-950">
         {SLIDES.map((slide, index) => {
           const isActive = index === currentIndex;
           return (
@@ -67,13 +67,12 @@ export function BannerCarousel() {
                 isActive ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
               }`}
             >
-              {/* Imagen de Fondo */}
+              {/* Imagen Original Exacta */}
               <img
                 src={slide.image}
                 alt={slide.title}
-                className="w-full h-full object-cover object-center"
+                className="w-full h-full object-contain sm:object-cover object-center"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-slate-950/20" />
             </div>
           );
         })}
