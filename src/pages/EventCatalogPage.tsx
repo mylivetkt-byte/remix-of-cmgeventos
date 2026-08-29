@@ -159,44 +159,48 @@ export const EventCatalogPage = () => {
                 key={evt.id}
                 className="glass-card border-white/90 hover:border-amber-400 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1.5 rounded-3xl flex flex-col justify-between overflow-hidden group"
               >
-                {/* Portada / Banner del Evento (Gran Marco Gigante) */}
-                <div
-                  className="h-80 sm:h-[340px] w-full bg-cover bg-center relative overflow-hidden flex items-end p-5 transition-transform duration-500 group-hover:scale-105"
-                  style={{
-                    backgroundImage: `url(${evt.banner_url || evt.logo_url || '/images/default_event_banner.jpg'})`,
-                  }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/95 via-emerald-950/20 to-transparent" />
-                  
+                {/* Portada / Banner del Evento (Ajuste Perfecto Completo Sin Recortes) */}
+                <div className="h-72 sm:h-80 w-full relative overflow-hidden flex items-end p-4 bg-emerald-950/90 group rounded-t-3xl">
+                  {/* Fondo difuminado de relleno para ajustar proporciones */}
+                  <img
+                    src={evt.banner_url || evt.logo_url || '/images/default_event_banner.jpg'}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover blur-xl opacity-40 scale-110 pointer-events-none"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/95 via-transparent to-black/20" />
+
+                  {/* Imagen Principal Ajustada Completa (Sin Cortar Texto ni Afiches) */}
+                  <div className="absolute inset-0 flex items-center justify-center p-3">
+                    <img
+                      src={evt.banner_url || evt.logo_url || '/images/default_event_banner.jpg'}
+                      alt={evt.nombre}
+                      className="max-h-full max-w-full object-contain drop-shadow-2xl transition-transform duration-500 group-hover:scale-105 rounded-xl"
+                    />
+                  </div>
+
                   {/* Badge de Inscripción y Precio */}
-                  <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+                  <div className="absolute top-3 right-3 flex items-center gap-2 z-20">
                     {evt.es_de_pago ? (
-                      <Badge className="bg-amber-400 text-emerald-950 font-black border-amber-300 px-4 py-1.5 text-xs sm:text-sm shadow-xl">
+                      <Badge className="bg-amber-400 text-emerald-950 font-black border-amber-300 px-3.5 py-1.5 text-xs sm:text-sm shadow-xl">
                         {new Intl.NumberFormat("es-CO", { style: "currency", currency: evt.moneda || "COP", maximumFractionDigits: 0 }).format(evt.precio || 0)}
                       </Badge>
                     ) : (
-                      <Badge className="bg-emerald-600 text-white font-extrabold border-emerald-500 px-4 py-1.5 text-xs sm:text-sm shadow-xl">
+                      <Badge className="bg-emerald-600 text-white font-extrabold border-emerald-500 px-3.5 py-1.5 text-xs sm:text-sm shadow-xl">
                         Gratis
                       </Badge>
                     )}
                   </div>
 
-                  {/* Logo / Emblema Principal */}
-                  <div className="relative z-10 flex items-center gap-3">
-                    {evt.logo_url ? (
+                  {/* Badge de Logo en Esquina (si existe logo independiente) */}
+                  {evt.logo_url && evt.banner_url && evt.logo_url !== evt.banner_url && (
+                    <div className="relative z-20 flex items-center gap-3">
                       <img
                         src={evt.logo_url}
                         alt={evt.nombre}
-                        className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl object-contain bg-white/95 p-2 border-3 border-amber-400 shadow-2xl"
+                        className="w-14 h-14 rounded-2xl object-contain bg-white/95 p-1 border-2 border-amber-400 shadow-xl"
                       />
-                    ) : (
-                      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-tr from-emerald-800 to-amber-500 p-0.5 shadow-2xl flex items-center justify-center">
-                        <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
-                          <Ticket className="w-10 h-10 text-emerald-800" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 <CardHeader className="space-y-2 pt-4 pb-2 px-6">

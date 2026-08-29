@@ -99,36 +99,40 @@ export const EventRegistrationPage = () => {
 
       {/* Contenedor principal de Evento */}
       <div className="w-full max-w-2xl mx-auto space-y-5">
-        {/* Banner Ilustrado del Evento (Gran Marco Gigante) */}
-        <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/80 glass-card">
-          <div
-            className="h-80 md:h-[450px] w-full bg-cover bg-center relative flex items-end p-6 md:p-8"
-            style={{
-              backgroundImage: `url(${event.banner_url || event.logo_url || '/images/default_event_banner.jpg'})`,
-            }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/95 via-emerald-950/40 to-transparent" />
+        {/* Banner Ilustrado del Evento (Ajuste Perfecto Completo) */}
+        <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/80 glass-card bg-emerald-950/90 relative">
+          <div className="h-72 md:h-96 w-full relative flex items-end p-6 md:p-8 overflow-hidden">
+            {/* Fondo difuminado para bordes */}
+            <img
+              src={event.banner_url || event.logo_url || '/images/default_event_banner.jpg'}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover blur-xl opacity-45 scale-110 pointer-events-none"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/95 via-transparent to-black/20" />
+
+            {/* Imagen Principal Adaptable Completa */}
+            <div className="absolute inset-0 flex items-center justify-center p-4">
+              <img
+                src={event.banner_url || event.logo_url || '/images/default_event_banner.jpg'}
+                alt={event.nombre}
+                className="max-h-full max-w-full object-contain drop-shadow-2xl rounded-2xl"
+              />
+            </div>
 
             <div className="relative z-10 flex items-center gap-4 text-white">
-              {event.logo_url ? (
+              {event.logo_url && event.banner_url && event.logo_url !== event.banner_url && (
                 <img
                   src={event.logo_url}
                   alt={event.nombre}
-                  className="h-20 w-20 md:h-24 md:w-24 rounded-2xl object-contain bg-white p-2 border-2 border-amber-400 shadow-xl shrink-0"
+                  className="h-16 w-16 md:h-20 md:w-20 rounded-2xl object-contain bg-white p-1.5 border-2 border-amber-400 shadow-xl shrink-0"
                 />
-              ) : (
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-tr from-emerald-800 to-amber-500 p-0.5 shadow-xl flex items-center justify-center shrink-0">
-                  <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center">
-                    <Ticket className="w-8 h-8 text-emerald-800" />
-                  </div>
-                </div>
               )}
 
-              <div>
-                <h1 className="text-2xl md:text-3xl font-black font-heading drop-shadow-md leading-tight text-white">
+              <div className="bg-emerald-950/60 backdrop-blur-md p-3 rounded-2xl border border-white/10">
+                <h1 className="text-xl md:text-2xl font-black font-heading leading-tight text-white">
                   {event.nombre}
                 </h1>
-                <p className="text-xs md:text-sm text-amber-300 font-semibold mt-0.5">Centro Mundial de Gloria</p>
+                <p className="text-xs text-amber-300 font-semibold mt-0.5">Centro Mundial de Gloria</p>
               </div>
             </div>
           </div>
