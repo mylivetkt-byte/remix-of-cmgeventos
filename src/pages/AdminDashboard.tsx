@@ -285,8 +285,7 @@ const AdminDashboard = () => {
     { id: "registros", label: "Registros", icon: <Users className="w-4 h-4" /> },
     { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-4 h-4" /> },
     { id: "catalogos", label: "Catálogos", icon: <List className="w-4 h-4" /> },
-    { id: "config", label: "Configuración", icon: <Settings className="w-4 h-4" /> },
-    { id: "whatsapp", label: "WhatsApp", icon: <MessageCircle className="w-4 h-4" /> },
+    { id: "whatsapp", label: "WhatsApp & Brevo", icon: <MessageCircle className="w-4 h-4" /> },
   ];
 
   return (
@@ -560,7 +559,6 @@ const AdminDashboard = () => {
         )}
         {tab === "catalogos" && <CatalogManager />}
         {tab === "whatsapp" && <div className="animate-fade-in pb-8"><WhatsAppManager /></div>}
-        {tab === "config" && <EventConfigManager />}
       </div>
 
       {/* Modal de edición */}
