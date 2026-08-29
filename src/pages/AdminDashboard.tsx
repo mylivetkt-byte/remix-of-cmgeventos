@@ -302,20 +302,6 @@ const AdminDashboard = () => {
     new Date(r.created_at).toLocaleString("es-CO"),
   ];
 
-  const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
-
-  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-    { id: "eventos", label: "Eventos", icon: <Sparkles className="w-5 h-5" /> },
-    { id: "registros", label: "Registros", icon: <Users className="w-5 h-5" /> },
-    { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-5 h-5" /> },
-    { id: "catalogos", label: "Catálogos", icon: <List className="w-5 h-5" /> },
-    { id: "whatsapp", label: "WhatsApp & Brevo", icon: <MessageCircle className="w-5 h-5" /> },
-  ];
-
-  const activeTabObj = tabs.find((t) => t.id === tab);
-
   return (
     <div className="min-h-screen text-slate-900 font-sans bg-slate-50 selection:bg-teal-200 flex">
       {/* SIDEBAR LATERAL COLAPSABLE (Estilo iglesiacmg.lovable.app) */}
