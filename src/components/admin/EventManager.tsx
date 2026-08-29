@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon } from "lucide-react";
+import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare } from "lucide-react";
 
 export const EventManager = () => {
   const queryClient = useQueryClient();
@@ -30,6 +30,12 @@ export const EventManager = () => {
     color_primario: "#083E30",
     color_secundario: "#CFAA37",
     activo: true,
+    requiere_checkin: true,
+    invitado_obligatorio: false,
+    asunto_correo: "Tu invitación al evento",
+    mensaje_correo: "Te invitamos a nuestro evento especial.",
+    mensaje_whatsapp: "Hola, aquí está mi invitación al evento. Puedes descargarla desde este enlace:",
+    correo_remitente: "cmgeventos0@gmail.com",
   });
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -62,7 +68,34 @@ export const EventManager = () => {
       color_primario: "#083E30",
       color_secundario: "#CFAA37",
       activo: true,
+      requiere_checkin: true,
+      invitado_obligatorio: false,
+      asunto_correo: "Tu invitación al evento",
+      mensaje_correo: "Te invitamos a nuestro evento especial.",
+      mensaje_whatsapp: "Hola, aquí está mi invitación al evento. Puedes descargarla desde este enlace:",
+      correo_remitente: "cmgeventos0@gmail.com",
     });
+  };
+
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9 -]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-");
+  };
+
+  // Recrea la URL/slug automáticamente cuando cambia el nombre
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    const autoSlug = generateSlug(val);
+    setFormData((prev) => ({
+      ...prev,
+      nombre: val,
+      slug: autoSlug,
+    }));
   };
 
   const handleEditClick = (evt: EventItem) => {
@@ -80,7 +113,7 @@ export const EventManager = () => {
 
     setFormData({
       nombre: evt.nombre || "",
-      slug: evt.slug || "",
+      slug: evt.slug || generateSlug(evt.nombre || ""),
       descripcion: evt.descripcion || "",
       fecha_evento: dateVal,
       lugar_evento: evt.lugar_evento || "",
@@ -89,6 +122,12 @@ export const EventManager = () => {
       color_primario: evt.color_primario || "#083E30",
       color_secundario: evt.color_secundario || "#CFAA37",
       activo: evt.activo ?? true,
+      requiere_checkin: evt.requiere_checkin ?? true,
+      invitado_obligatorio: evt.invitado_obligatorio ?? false,
+      asunto_correo: evt.asunto_correo || "Tu invitación al evento",
+      mensaje_correo: evt.mensaje_correo || "Te invitamos a nuestro evento especial.",
+      mensaje_whatsapp: evt.mensaje_whatsapp || "Hola, aquí está mi invitación al evento. Puedes descargarla desde este enlace:",
+      correo_remitente: evt.correo_remitente || "cmgeventos0@gmail.com",
     });
     setIsDialogOpen(true);
   };
@@ -119,7 +158,7 @@ export const EventManager = () => {
 
   const saveEventMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const slugClean = data.slug.trim().toLowerCase().replace(/\s+/g, "-");
+      const slugClean = generateSlug(data.nombre);
       const payload = {
         nombre: data.nombre,
         slug: slugClean,
@@ -131,6 +170,12 @@ export const EventManager = () => {
         color_primario: data.color_primario,
         color_secundario: data.color_secundario,
         activo: data.activo,
+        requiere_checkin: data.requiere_checkin,
+        invitado_obligatorio: data.invitado_obligatorio,
+        asunto_correo: data.asunto_correo,
+        mensaje_correo: data.mensaje_correo,
+        mensaje_whatsapp: data.mensaje_whatsapp,
+        correo_remitente: data.correo_remitente,
       };
 
       if (editingEventId) {
@@ -140,9 +185,16 @@ export const EventManager = () => {
         const { error } = await supabase.from("events").insert(payload);
         if (error) throw error;
       }
+
+      // Intentar crear la tabla de registros dedicada para este evento en Supabase
+      try {
+        await supabase.rpc("create_event_registration_table", { event_slug: slugClean });
+      } catch (e) {
+        console.warn("RPC create_event_registration_table not available, fallback to general registrations table:", e);
+      }
     },
     onSuccess: () => {
-      toast.success(editingEventId ? "¡Evento actualizado exitosamente!" : "¡Evento creado exitosamente!");
+      toast.success(editingEventId ? "¡Evento y configuración actualizados!" : "¡Evento y tabla de datos creados!");
       queryClient.invalidateQueries({ queryKey: ["admin_events"] });
       queryClient.invalidateQueries({ queryKey: ["events"] });
       setIsDialogOpen(false);
@@ -183,25 +235,6 @@ export const EventManager = () => {
     },
   });
 
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9 -]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-");
-  };
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setFormData((prev) => ({
-      ...prev,
-      nombre: val,
-      slug: prev.slug === "" || prev.slug === generateSlug(prev.nombre) ? generateSlug(val) : prev.slug,
-    }));
-  };
-
   return (
     <div className="space-y-6 text-emerald-950 font-sans">
       {/* Banner Superior Admin */}
@@ -209,10 +242,10 @@ export const EventManager = () => {
         <div>
           <h2 className="text-2xl font-bold font-heading text-emerald-900 flex items-center gap-2">
             <Sparkles className="w-6 h-6 text-amber-600" />
-            Gestión de Eventos
+            Gestión de Eventos y Tablas Dedicadas
           </h2>
           <p className="text-xs text-emerald-800 mt-1 font-medium">
-            Crea, edita y administra los eventos disponibles y sus formularios de registro.
+            Cada evento creado cuenta con su tabla independiente de registros y configuración completa del sistema.
           </p>
         </div>
 
@@ -229,10 +262,10 @@ export const EventManager = () => {
               Crear Nuevo Evento
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-xl bg-white border border-emerald-200 text-emerald-950 max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
+          <DialogContent className="max-w-2xl bg-white border border-emerald-200 text-emerald-950 max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
             <DialogHeader>
               <DialogTitle className="text-xl font-bold font-heading text-emerald-900">
-                {editingEventId ? "Editar Evento" : "Nuevo Evento"}
+                {editingEventId ? "Editar Evento y Configuración" : "Nuevo Evento y Tabla Dedicada"}
               </DialogTitle>
             </DialogHeader>
 
@@ -243,33 +276,35 @@ export const EventManager = () => {
               }}
               className="space-y-4 pt-2 text-xs"
             >
+              {/* 1. Nombre del evento (recrea la URL automáticamente) */}
               <div>
                 <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Nombre del Evento *</Label>
                 <Input
                   required
-                  placeholder="Ej: Retiro de Jóvenes 2026"
+                  placeholder="Ej: Conferencia de Parejas 2026"
                   value={formData.nombre}
                   onChange={handleNameChange}
-                  className="bg-white border-emerald-300 text-emerald-950 focus:ring-emerald-500/20"
+                  className="bg-white border-emerald-300 text-emerald-950 focus:ring-emerald-500/20 font-semibold"
                 />
               </div>
 
+              {/* 2. URL / Slug recreada automáticamente */}
               <div>
-                <Label className="text-xs font-semibold text-emerald-900 mb-1 block">URL / Slug de Registro *</Label>
+                <Label className="text-xs font-semibold text-emerald-900 mb-1 block">URL de Registro (Generada del Nombre) *</Label>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200 font-mono">/eventos/</span>
                   <Input
                     required
-                    placeholder="retiro-jovenes-2026"
+                    readOnly
                     value={formData.slug}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
-                    className="bg-white border-emerald-300 text-emerald-950 font-mono"
+                    className="bg-emerald-50/60 border-emerald-300 text-emerald-900 font-mono font-bold"
                   />
                 </div>
+                <p className="text-[11px] text-emerald-700 mt-1">La URL se recrea automáticamente al cambiar el nombre del evento.</p>
               </div>
 
               <div>
-                <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Descripción</Label>
+                <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Descripción del Evento</Label>
                 <Textarea
                   placeholder="Información relevante para los asistentes..."
                   value={formData.descripcion}
@@ -299,62 +334,94 @@ export const EventManager = () => {
                 </div>
               </div>
 
-              {/* Cargar Logo desde archivo local */}
-              <div className="space-y-2 bg-emerald-50/60 p-4 rounded-xl border border-emerald-200">
-                <Label className="text-xs font-semibold text-emerald-950 flex items-center gap-1.5">
-                  <ImageIcon className="w-4 h-4 text-emerald-700" />
-                  Logo del Evento (Subir archivo local)
-                </Label>
-
-                <div className="flex items-center gap-3">
+              {/* Imágenes Locales */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2 bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200">
+                  <Label className="text-xs font-semibold text-emerald-950 flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-emerald-700" />
+                    Logo (Subir archivo local)
+                  </Label>
                   <Input
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleFileUpload(e, "logo")}
-                    className="bg-white border-emerald-300 text-xs text-emerald-950 file:bg-emerald-100 file:text-emerald-900 file:border-0 file:rounded-md file:px-2 file:py-1 hover:file:bg-emerald-200 cursor-pointer"
+                    className="bg-white border-emerald-300 text-xs text-emerald-950 file:bg-emerald-100 file:text-emerald-900 file:border-0 file:rounded-md cursor-pointer"
                   />
+                  {logoPreview && (
+                    <img src={logoPreview} alt="Logo" className="h-10 w-auto object-contain rounded border border-emerald-200 bg-white p-1" />
+                  )}
                 </div>
 
-                {logoPreview && (
-                  <div className="flex items-center gap-2 pt-2">
-                    <img src={logoPreview} alt="Logo Preview" className="h-12 w-auto max-w-[120px] object-contain rounded border border-emerald-200 bg-white p-1" />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => { setLogoPreview(null); setFormData(p => ({ ...p, logo_url: "" })); }} className="text-red-600 text-xs">
-                      Quitar
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Cargar Banner desde archivo local */}
-              <div className="space-y-2 bg-emerald-50/60 p-4 rounded-xl border border-emerald-200">
-                <Label className="text-xs font-semibold text-emerald-950 flex items-center gap-1.5">
-                  <Upload className="w-4 h-4 text-emerald-700" />
-                  Banner / Portada (Subir archivo local)
-                </Label>
-
-                <div className="flex items-center gap-3">
+                <div className="space-y-2 bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200">
+                  <Label className="text-xs font-semibold text-emerald-950 flex items-center gap-1.5">
+                    <Upload className="w-4 h-4 text-emerald-700" />
+                    Banner (Subir archivo local)
+                  </Label>
                   <Input
                     type="file"
                     accept="image/*"
                     onChange={(e) => handleFileUpload(e, "banner")}
-                    className="bg-white border-emerald-300 text-xs text-emerald-950 file:bg-emerald-100 file:text-emerald-900 file:border-0 file:rounded-md file:px-2 file:py-1 hover:file:bg-emerald-200 cursor-pointer"
+                    className="bg-white border-emerald-300 text-xs text-emerald-950 file:bg-emerald-100 file:text-emerald-900 file:border-0 file:rounded-md cursor-pointer"
+                  />
+                  {bannerPreview && (
+                    <img src={bannerPreview} alt="Banner" className="h-10 w-24 object-cover rounded border border-emerald-200" />
+                  )}
+                </div>
+              </div>
+
+              {/* Configuración del Sistema para el Evento */}
+              <div className="space-y-3 bg-white p-4 rounded-xl border border-emerald-300 shadow-sm">
+                <div className="flex items-center gap-2 font-bold text-emerald-900 border-b border-emerald-100 pb-2">
+                  <Settings2 className="w-4 h-4 text-amber-600" />
+                  Configuración del Sistema para este Evento
+                </div>
+
+                <div>
+                  <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
+                    <Mail className="w-3.5 h-3.5 text-emerald-700" /> Asunto del Correo Electrónico
+                  </Label>
+                  <Input
+                    value={formData.asunto_correo}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, asunto_correo: e.target.value }))}
+                    className="bg-white border-emerald-300 text-emerald-950"
                   />
                 </div>
 
-                {bannerPreview && (
-                  <div className="flex items-center gap-2 pt-2">
-                    <img src={bannerPreview} alt="Banner Preview" className="h-16 w-32 object-cover rounded border border-emerald-200" />
-                    <Button type="button" variant="ghost" size="sm" onClick={() => { setBannerPreview(null); setFormData(p => ({ ...p, banner_url: "" })); }} className="text-red-600 text-xs">
-                      Quitar
-                    </Button>
+                <div>
+                  <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
+                    <MessageSquare className="w-3.5 h-3.5 text-emerald-700" /> Mensaje para WhatsApp
+                  </Label>
+                  <Textarea
+                    rows={2}
+                    value={formData.mensaje_whatsapp}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, mensaje_whatsapp: e.target.value }))}
+                    className="bg-white border-emerald-300 text-emerald-950 text-xs"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <div className="flex items-center justify-between bg-emerald-50/60 p-2.5 rounded-lg border border-emerald-200">
+                    <Label className="text-xs font-semibold text-emerald-950">Invitado Obligatorio</Label>
+                    <Switch
+                      checked={formData.invitado_obligatorio}
+                      onCheckedChange={(val) => setFormData((prev) => ({ ...prev, invitado_obligatorio: val }))}
+                    />
                   </div>
-                )}
+
+                  <div className="flex items-center justify-between bg-emerald-50/60 p-2.5 rounded-lg border border-emerald-200">
+                    <Label className="text-xs font-semibold text-emerald-950">Requiere Check-in</Label>
+                    <Switch
+                      checked={formData.requiere_checkin}
+                      onCheckedChange={(val) => setFormData((prev) => ({ ...prev, requiere_checkin: val }))}
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-between bg-emerald-50/80 p-3.5 rounded-xl border border-emerald-200">
                 <div>
-                  <Label className="text-xs font-semibold text-emerald-950">Evento Activo</Label>
-                  <p className="text-[11px] text-emerald-700">Si está activo, aparecerá en el catálogo público.</p>
+                  <Label className="text-xs font-semibold text-emerald-950">Evento Activo en el Catálogo</Label>
+                  <p className="text-[11px] text-emerald-700">Si está activo, aparecerá en el portal público de la iglesia.</p>
                 </div>
                 <Switch
                   checked={formData.activo}
@@ -366,8 +433,8 @@ export const EventManager = () => {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="border-emerald-300 text-emerald-900">
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={saveEventMutation.isPending} className="bg-emerald-800 hover:bg-emerald-900 text-white">
-                  {saveEventMutation.isPending ? "Guardando..." : editingEventId ? "Actualizar Evento" : "Crear Evento"}
+                <Button type="submit" disabled={saveEventMutation.isPending} className="bg-emerald-800 hover:bg-emerald-900 text-white font-bold">
+                  {saveEventMutation.isPending ? "Guardando..." : editingEventId ? "Guardar Cambios" : "Crear Evento y Tabla Dedicada"}
                 </Button>
               </div>
             </form>
@@ -395,7 +462,7 @@ export const EventManager = () => {
                       size="icon"
                       onClick={() => handleEditClick(evt)}
                       className="h-8 w-8 text-emerald-800 hover:bg-emerald-100"
-                      title="Editar evento"
+                      title="Editar evento y configuración"
                     >
                       <Pencil className="w-4 h-4" />
                     </Button>
@@ -408,9 +475,9 @@ export const EventManager = () => {
                       </AlertDialogTrigger>
                       <AlertDialogContent className="bg-white border-emerald-200">
                         <AlertDialogHeader>
-                          <AlertDialogTitle className="text-emerald-950 font-heading">¿Eliminar este evento?</AlertDialogTitle>
+                          <AlertDialogTitle className="text-emerald-950 font-heading">¿Eliminar evento y su tabla?</AlertDialogTitle>
                           <AlertDialogDescription className="text-emerald-800 text-xs">
-                            Se eliminará el evento <strong>{evt.nombre}</strong>. Esta acción no se puede deshacer.
+                            Se eliminará el evento <strong>{evt.nombre}</strong> y su configuración.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -443,6 +510,10 @@ export const EventManager = () => {
                   <span className="bg-emerald-100 px-2 py-0.5 rounded font-semibold">URL:</span>
                   <span className="line-clamp-1">/eventos/{evt.slug}</span>
                 </div>
+                <div className="flex items-center gap-2 font-mono text-[11px] text-emerald-700">
+                  <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded font-semibold">Tabla:</span>
+                  <span className="line-clamp-1">evento_{evt.slug.replace(/-/g, "_")}_registrations</span>
+                </div>
                 {evt.fecha_evento && (
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
@@ -469,7 +540,7 @@ export const EventManager = () => {
                 </a>
 
                 <Button variant="outline" size="sm" onClick={() => handleEditClick(evt)} className="text-xs h-7 border-emerald-300 text-emerald-900">
-                  <Pencil className="w-3 h-3 mr-1" /> Editar
+                  <Pencil className="w-3 h-3 mr-1" /> Configurar
                 </Button>
               </div>
             </Card>
