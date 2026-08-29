@@ -417,44 +417,45 @@ export const EventManager = () => {
               Crear Nuevo Evento
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl bg-white border border-emerald-200 text-emerald-950 max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
+          <DialogContent className="max-w-4xl w-[95vw] bg-white border border-slate-200 text-slate-900 max-h-[92vh] overflow-y-auto rounded-3xl p-6 sm:p-8 shadow-2xl">
             <DialogHeader>
-              <DialogTitle className="text-xl font-bold font-heading text-emerald-900">
-                {editingEventId ? "Editar Evento" : "Nuevo Evento"}
+              <DialogTitle className="text-2xl font-black font-heading text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-teal-600" />
+                {editingEventId ? "Editar Configuración del Evento" : "Crear Nuevo Evento"}
               </DialogTitle>
             </DialogHeader>
 
-            {/* Pestañas dentro del Modal */}
-            <div className="flex flex-wrap gap-2 border-b border-emerald-100 pb-2 pt-1 text-xs font-semibold">
+            {/* Pestañas dentro del Modal (Amplias y Cómodas) */}
+            <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3 pt-2 text-sm font-bold">
               <button
                 type="button"
                 onClick={() => setActiveTab("general")}
-                className={`px-3 py-1.5 rounded-lg transition-colors ${activeTab === "general" ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
+                className={`px-4 py-2.5 rounded-xl transition-all ${activeTab === "general" ? "bg-teal-100/90 text-teal-950 border border-teal-200 font-extrabold shadow-xs" : "bg-slate-100 text-slate-700 hover:bg-slate-200/80"}`}
               >
                 1. Info & Imágenes
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("pago")}
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${activeTab === "pago" ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
+                className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 ${activeTab === "pago" ? "bg-teal-100/90 text-teal-950 border border-teal-200 font-extrabold shadow-xs" : "bg-slate-100 text-slate-700 hover:bg-slate-200/80"}`}
               >
-                <DollarSign className="w-3.5 h-3.5" />
+                <DollarSign className="w-4 h-4 text-teal-700" />
                 2. Configuración de Pago
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("campos")}
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${activeTab === "campos" ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
+                className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 ${activeTab === "campos" ? "bg-teal-100/90 text-teal-950 border border-teal-200 font-extrabold shadow-xs" : "bg-slate-100 text-slate-700 hover:bg-slate-200/80"}`}
               >
-                <ListChecks className="w-3.5 h-3.5" />
+                <ListChecks className="w-4 h-4 text-teal-700" />
                 3. Campos Formulario ({selectedFields.length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("sistema")}
-                className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${activeTab === "sistema" ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-900 hover:bg-emerald-100"}`}
+                className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-1.5 ${activeTab === "sistema" ? "bg-teal-100/90 text-teal-950 border border-teal-200 font-extrabold shadow-xs" : "bg-slate-100 text-slate-700 hover:bg-slate-200/80"}`}
               >
-                <Settings2 className="w-3.5 h-3.5" />
+                <Settings2 className="w-4 h-4 text-teal-700" />
                 4. Mensajes & Sistema
               </button>
             </div>
@@ -464,113 +465,114 @@ export const EventManager = () => {
                 e.preventDefault();
                 saveEventMutation.mutate(formData);
               }}
-              className="space-y-4 pt-2 text-xs"
+              className="space-y-5 pt-3 text-sm"
             >
               {/* TAB 1: GENERAL */}
               {activeTab === "general" && (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   <div>
-                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Nombre del Evento *</Label>
+                    <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Nombre del Evento *</Label>
                     <Input
                       required
                       placeholder="Ej: Retiro de Jóvenes / Conferencia de Parejas"
                       value={formData.nombre}
                       onChange={handleNameChange}
-                      className="bg-white border-emerald-300 text-emerald-950 font-semibold"
+                      className="bg-white border-slate-300 text-slate-900 font-semibold h-11 text-sm rounded-xl"
                     />
                   </div>
 
                   <div>
-                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block">URL de Registro (Auto-generada) *</Label>
+                    <Label className="text-sm font-bold text-slate-900 mb-1.5 block">URL de Registro (Auto-generada) *</Label>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-200 font-mono">/eventos/</span>
+                      <span className="text-sm font-bold text-teal-900 bg-teal-50 px-3.5 py-2.5 rounded-xl border border-teal-200 font-mono">/eventos/</span>
                       <Input
                         required
                         readOnly
                         value={formData.slug}
-                        className="bg-emerald-50/60 border-emerald-300 text-emerald-900 font-mono font-bold"
+                        className="bg-slate-50 border-slate-300 text-slate-900 font-mono font-bold h-11 text-sm rounded-xl"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Descripción del Evento</Label>
+                    <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Descripción del Evento</Label>
                     <Textarea
                       placeholder="Información relevante para los asistentes..."
                       value={formData.descripcion}
                       onChange={(e) => setFormData((prev) => ({ ...prev, descripcion: e.target.value }))}
-                      className="bg-white border-emerald-300 text-emerald-950"
+                      rows={3}
+                      className="bg-white border-slate-300 text-slate-900 text-sm rounded-xl"
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Fecha y Hora</Label>
+                      <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Fecha y Hora</Label>
                       <Input
                         type="datetime-local"
                         value={formData.fecha_evento}
                         onChange={(e) => setFormData((prev) => ({ ...prev, fecha_evento: e.target.value }))}
-                        className="bg-white border-emerald-300 text-emerald-950"
+                        className="bg-white border-slate-300 text-slate-900 h-11 text-sm rounded-xl"
                       />
                     </div>
                     <div>
-                      <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Lugar</Label>
+                      <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Lugar del Evento</Label>
                       <Input
                         placeholder="Ej: Auditorio Principal CMG"
                         value={formData.lugar_evento}
                         onChange={(e) => setFormData((prev) => ({ ...prev, lugar_evento: e.target.value }))}
-                        className="bg-white border-emerald-300 text-emerald-950"
+                        className="bg-white border-slate-300 text-slate-900 h-11 text-sm rounded-xl"
                       />
                     </div>
                   </div>
 
                   {/* Imágenes Locales */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2 bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200">
-                      <Label className="text-xs font-semibold text-emerald-950 flex items-center gap-1.5">
-                        <ImageIcon className="w-4 h-4 text-emerald-700" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                      <Label className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4 text-teal-700" />
                         Logo (Subir archivo local)
                       </Label>
                       <Input
                         type="file"
                         accept="image/*"
                         onChange={(e) => handleFileUpload(e, "logo")}
-                        className="bg-white border-emerald-300 text-xs text-emerald-950 cursor-pointer"
+                        className="bg-white border-slate-300 text-sm text-slate-900 cursor-pointer h-10"
                       />
                       {logoPreview && (
-                        <img src={logoPreview} alt="Logo" className="h-10 w-auto object-contain rounded border border-emerald-200 bg-white p-1" />
+                        <img src={logoPreview} alt="Logo" className="h-14 w-auto object-contain rounded-xl border border-slate-200 bg-white p-1.5 mt-2" />
                       )}
                     </div>
 
-                    <div className="space-y-2 bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200">
-                      <Label className="text-xs font-semibold text-emerald-950 flex items-center gap-1.5">
-                        <Upload className="w-4 h-4 text-emerald-700" />
+                    <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                      <Label className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <Upload className="w-4 h-4 text-teal-700" />
                         Banner (Subir archivo local)
                       </Label>
                       <Input
                         type="file"
                         accept="image/*"
                         onChange={(e) => handleFileUpload(e, "banner")}
-                        className="bg-white border-emerald-300 text-xs text-emerald-950 cursor-pointer"
+                        className="bg-white border-slate-300 text-sm text-slate-900 cursor-pointer h-10"
                       />
                       {bannerPreview && (
-                        <img src={bannerPreview} alt="Banner" className="h-10 w-24 object-cover rounded border border-emerald-200" />
+                        <img src={bannerPreview} alt="Banner" className="h-14 w-28 object-cover rounded-xl border border-slate-200 mt-2" />
                       )}
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* TAB 2: CONFIGURACIÓN DE PAGO (GRATIS VS DE PAGO) */}
+              {/* TAB 2: CONFIGURACIÓN DE PAGO */}
               {activeTab === "pago" && (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between bg-amber-50 p-4 rounded-xl border border-amber-200">
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between bg-amber-50 p-4 rounded-2xl border border-amber-200">
                     <div>
-                      <Label className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                        <CreditCard className="w-4 h-4 text-amber-700" />
+                      <Label className="text-sm font-bold text-amber-950 flex items-center gap-2">
+                        <CreditCard className="w-5 h-5 text-amber-700" />
                         ¿Este evento es de PAGO?
                       </Label>
-                      <p className="text-[11px] text-amber-800">
+                      <p className="text-xs text-amber-900 mt-0.5">
                         Si está activo, se mostrará el valor de la boleta y las instrucciones de transferencia/pago.
                       </p>
                     </div>
@@ -581,52 +583,42 @@ export const EventManager = () => {
                   </div>
 
                   {formData.es_de_pago && (
-                    <div className="space-y-3 bg-white p-4 rounded-xl border border-emerald-200 shadow-sm">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-5 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Precio de la Entrada / Inscripción *</Label>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-700">$</span>
-                            <Input
-                              type="number"
-                              min="0"
-                              placeholder="Ej: 50000"
-                              value={formData.precio}
-                              onChange={(e) => setFormData((prev) => ({ ...prev, precio: Number(e.target.value) }))}
-                              className="pl-7 bg-white border-emerald-300 text-emerald-950 font-bold"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Moneda</Label>
+                          <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Precio por Boleta *</Label>
                           <Input
-                            placeholder="COP"
+                            type="number"
+                            min={0}
+                            placeholder="Ej: 50000"
+                            value={formData.precio}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, precio: Number(e.target.value) }))}
+                            className="bg-white border-slate-300 text-slate-900 font-bold h-11 text-sm rounded-xl"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Moneda</Label>
+                          <Input
                             value={formData.moneda}
                             onChange={(e) => setFormData((prev) => ({ ...prev, moneda: e.target.value }))}
-                            className="bg-white border-emerald-300 text-emerald-950 font-bold"
+                            className="bg-white border-slate-300 text-slate-900 font-bold h-11 text-sm rounded-xl"
                           />
                         </div>
                       </div>
 
                       <div>
-                        <Label className="text-xs font-semibold text-emerald-900 mb-1 block">
-                          Instrucciones de Pago / Cuentas Bancarias
-                        </Label>
+                        <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Instrucciones de Pago / Cuentas Bancarias</Label>
                         <Textarea
                           rows={3}
-                          placeholder="Ej: Transferir Nequi/Daviplata al 3001234567 o Bancolombia Ahorros #1234567..."
+                          placeholder="Ej: Transferir a Nequi / Bancolombia Cta 123456789..."
                           value={formData.instrucciones_pago}
                           onChange={(e) => setFormData((prev) => ({ ...prev, instrucciones_pago: e.target.value }))}
-                          className="bg-white border-emerald-300 text-emerald-950 text-xs"
+                          className="bg-white border-slate-300 text-slate-900 text-sm rounded-xl"
                         />
                       </div>
 
-                      <div className="flex items-center justify-between bg-emerald-50 p-3 rounded-lg border border-emerald-200">
-                        <div>
-                          <Label className="text-xs font-semibold text-emerald-950">Solicitar Comprobante de Pago en el Registro</Label>
-                          <p className="text-[11px] text-emerald-700">El usuario deberá adjuntar la foto/comprobante de su transferencia.</p>
-                        </div>
+                      <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                        <Label className="text-sm font-bold text-slate-900">Requiere adjuntar comprobante de pago</Label>
                         <Switch
                           checked={formData.requiere_comprobante}
                           onCheckedChange={(val) => setFormData((prev) => ({ ...prev, requiere_comprobante: val }))}
@@ -637,68 +629,75 @@ export const EventManager = () => {
                 </div>
               )}
 
-              {/* TAB 3: CAMPOS DEL FORMULARIO */}
+              {/* TAB 3: CAMPOS DEL FORMULARIO (Gran Tamaño y Legibilidad) */}
               {activeTab === "campos" && (
-                <div className="space-y-4">
-                  <div className="bg-emerald-50 p-3.5 rounded-xl border border-emerald-200">
-                    <h4 className="font-bold text-emerald-900 mb-1 flex items-center gap-1.5 text-xs">
-                      <ListChecks className="w-4 h-4 text-amber-600" />
-                      Seleccionar Campos del Formulario
+                <div className="space-y-5">
+                  <div className="bg-teal-50/80 p-4 rounded-2xl border border-teal-200">
+                    <h4 className="font-bold text-teal-950 mb-1 flex items-center gap-2 text-sm">
+                      <ListChecks className="w-5 h-5 text-teal-700" />
+                      Seleccionar Campos del Formulario de Registro
                     </h4>
-                    <p className="text-[11px] text-emerald-800">
-                      Marca los campos que se solicitarán en el formulario de este evento:
+                    <p className="text-xs text-teal-900 font-medium">
+                      Marca los campos que se solicitarán a los usuarios al registrarse en este evento:
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-60 overflow-y-auto p-2 bg-white border border-emerald-200 rounded-xl">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[380px] overflow-y-auto p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
                     {AVAILABLE_SYSTEM_FIELDS.map((field) => {
                       const isSelected = selectedFields.includes(field.key);
                       return (
                         <label
                           key={field.key}
-                          className={`flex items-center gap-2.5 p-2 rounded-lg cursor-pointer transition-colors border ${isSelected ? "bg-emerald-50 border-emerald-300 font-semibold" : "bg-white border-slate-200 hover:bg-slate-50"}`}
+                          className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all border ${
+                            isSelected
+                              ? "bg-teal-100/90 border-teal-300 font-extrabold text-teal-950 shadow-xs"
+                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100/80 font-semibold"
+                          }`}
                         >
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => toggleFieldSelection(field.key)}
+                            className="w-4 h-4 border-teal-600"
                           />
-                          <span className="text-xs text-emerald-950">{field.label}</span>
+                          <span className="text-xs sm:text-sm">{field.label}</span>
                         </label>
                       );
                     })}
                   </div>
 
                   {/* Campos Personalizados */}
-                  <div className="space-y-2 pt-2 border-t border-emerald-100">
-                    <h5 className="font-bold text-emerald-900 text-xs">+ Agregar Campo Personalizado</h5>
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="space-y-3 pt-3 border-t border-slate-200">
+                    <h5 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <Plus className="w-4 h-4 text-teal-600" /> Agregar Campo Personalizado Adicional
+                    </h5>
+                    <div className="flex flex-wrap items-center gap-3">
                       <Input
-                        placeholder="Ej: Talla de Camiseta"
+                        placeholder="Ej: Talla de Camiseta / Ocupación"
                         value={newCustomLabel}
                         onChange={(e) => setNewCustomLabel(e.target.value)}
-                        className="flex-1 min-w-[150px] bg-white border-emerald-300 text-xs"
+                        className="flex-1 min-w-[200px] bg-white border-slate-300 text-sm h-11 rounded-xl"
                       />
                       <select
                         value={newCustomType}
                         onChange={(e) => setNewCustomType(e.target.value)}
-                        className="bg-white border border-emerald-300 text-xs rounded-md p-2 text-emerald-950"
+                        className="bg-white border border-slate-300 text-sm font-semibold rounded-xl p-2.5 h-11 text-slate-900"
                       >
                         <option value="text">Texto corto</option>
                         <option value="date">Fecha</option>
                         <option value="phone">Teléfono</option>
                         <option value="email">Correo</option>
                       </select>
-                      <Button type="button" size="sm" onClick={addCustomField} className="bg-emerald-800 hover:bg-emerald-900 text-white">
-                        Agregar
+                      <Button type="button" size="sm" onClick={addCustomField} className="bg-teal-700 hover:bg-teal-800 text-white font-bold h-11 px-5 rounded-xl">
+                        Agregar Campo
                       </Button>
                     </div>
 
                     {customFields.length > 0 && (
-                      <div className="space-y-1 pt-2">
+                      <div className="space-y-2 pt-2">
                         {customFields.map((f) => (
-                          <div key={f.key} className="flex items-center justify-between p-2 bg-emerald-50 rounded border border-emerald-200 text-xs">
+                          <div key={f.key} className="flex items-center justify-between p-3 bg-teal-50 rounded-xl border border-teal-200 text-xs sm:text-sm font-semibold text-teal-950">
                             <span>{f.label} ({f.type})</span>
-                            <Button type="button" variant="ghost" size="sm" onClick={() => setCustomFields(prev => prev.filter(c => c.key !== f.key))} className="text-red-600 h-6">
+                            <Button type="button" variant="ghost" size="sm" onClick={() => setCustomFields(prev => prev.filter(c => c.key !== f.key))} className="text-red-600 hover:bg-red-50 h-8">
                               Quitar
                             </Button>
                           </div>
@@ -711,66 +710,66 @@ export const EventManager = () => {
 
               {/* TAB 4: CONFIGURACIÓN DEL SISTEMA Y MENSAJES INDIVIDUALES */}
               {activeTab === "sistema" && (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div>
-                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
-                      <Mail className="w-3.5 h-3.5 text-emerald-700" /> Correo Remitente (Brevo) para este evento
+                    <Label className="text-sm font-bold text-slate-900 mb-1.5 block flex items-center gap-1.5">
+                      <Mail className="w-4 h-4 text-teal-700" /> Correo Remitente (Brevo) para este evento
                     </Label>
                     <Input
                       placeholder="cmgeventos0@gmail.com"
                       value={formData.correo_remitente}
                       onChange={(e) => setFormData((prev) => ({ ...prev, correo_remitente: e.target.value }))}
-                      className="bg-white border-emerald-300 text-emerald-950"
+                      className="bg-white border-slate-300 text-slate-900 h-11 text-sm rounded-xl font-semibold"
                     />
                   </div>
 
                   <div>
-                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
-                      <Mail className="w-3.5 h-3.5 text-emerald-700" /> Asunto del Correo Electrónico
+                    <Label className="text-sm font-bold text-slate-900 mb-1.5 block flex items-center gap-1.5">
+                      <Mail className="w-4 h-4 text-teal-700" /> Asunto del Correo Electrónico
                     </Label>
                     <Input
                       value={formData.asunto_correo}
                       onChange={(e) => setFormData((prev) => ({ ...prev, asunto_correo: e.target.value }))}
-                      className="bg-white border-emerald-300 text-emerald-950 font-semibold"
+                      className="bg-white border-slate-300 text-slate-900 font-bold h-11 text-sm rounded-xl"
                     />
                   </div>
 
                   <div>
-                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
-                      <Mail className="w-3.5 h-3.5 text-emerald-700" /> Cuerpo / Mensaje del Correo Electrónico
+                    <Label className="text-sm font-bold text-slate-900 mb-1.5 block flex items-center gap-1.5">
+                      <Mail className="w-4 h-4 text-teal-700" /> Cuerpo / Mensaje del Correo Electrónico
                     </Label>
                     <Textarea
                       rows={3}
                       placeholder="Escribe aquí el texto personalizado que llegará en el correo del usuario..."
                       value={formData.mensaje_correo}
                       onChange={(e) => setFormData((prev) => ({ ...prev, mensaje_correo: e.target.value }))}
-                      className="bg-white border-emerald-300 text-emerald-950 text-xs"
+                      className="bg-white border-slate-300 text-slate-900 text-sm rounded-xl"
                     />
                   </div>
 
                   <div>
-                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
-                      <MessageSquare className="w-3.5 h-3.5 text-emerald-700" /> Mensaje para WhatsApp
+                    <Label className="text-sm font-bold text-slate-900 mb-1.5 block flex items-center gap-1.5">
+                      <MessageSquare className="w-4 h-4 text-teal-700" /> Mensaje para WhatsApp
                     </Label>
                     <Textarea
                       rows={2}
                       value={formData.mensaje_whatsapp}
                       onChange={(e) => setFormData((prev) => ({ ...prev, mensaje_whatsapp: e.target.value }))}
-                      className="bg-white border-emerald-300 text-emerald-950 text-xs"
+                      className="bg-white border-slate-300 text-slate-900 text-sm rounded-xl"
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                    <div className="flex items-center justify-between bg-emerald-50/60 p-2.5 rounded-lg border border-emerald-200">
-                      <Label className="text-xs font-semibold text-emerald-950">Invitado Obligatorio</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                      <Label className="text-sm font-bold text-slate-900">Invitado Obligatorio</Label>
                       <Switch
                         checked={formData.invitado_obligatorio}
                         onCheckedChange={(val) => setFormData((prev) => ({ ...prev, invitado_obligatorio: val }))}
                       />
                     </div>
 
-                    <div className="flex items-center justify-between bg-emerald-50/60 p-2.5 rounded-lg border border-emerald-200">
-                      <Label className="text-xs font-semibold text-emerald-950">Requiere Check-in</Label>
+                    <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                      <Label className="text-sm font-bold text-slate-900">Requiere Check-in</Label>
                       <Switch
                         checked={formData.requiere_checkin}
                         onCheckedChange={(val) => setFormData((prev) => ({ ...prev, requiere_checkin: val }))}
@@ -778,9 +777,9 @@ export const EventManager = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between bg-emerald-50/80 p-3 rounded-xl border border-emerald-200">
+                  <div className="flex items-center justify-between bg-teal-50 p-4 rounded-xl border border-teal-200">
                     <div>
-                      <Label className="text-xs font-semibold text-emerald-950">Evento Activo en Catálogo</Label>
+                      <Label className="text-sm font-bold text-teal-950">Evento Activo en Catálogo</Label>
                     </div>
                     <Switch
                       checked={formData.activo}
@@ -790,11 +789,11 @@ export const EventManager = () => {
                 </div>
               )}
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-emerald-100">
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="border-emerald-300 text-emerald-900">
+              <div className="flex justify-end gap-3 pt-5 border-t border-slate-200">
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="border-slate-300 text-slate-700 font-bold px-6 py-2.5 text-sm rounded-xl">
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={saveEventMutation.isPending} className="bg-emerald-800 hover:bg-emerald-900 text-white font-bold">
+                <Button type="submit" disabled={saveEventMutation.isPending} className="bg-teal-700 hover:bg-teal-800 text-white font-extrabold px-8 py-2.5 text-sm sm:text-base rounded-xl shadow-md">
                   {saveEventMutation.isPending ? "Guardando..." : editingEventId ? "Guardar Cambios" : "Crear Evento y Tabla Dedicada"}
                 </Button>
               </div>

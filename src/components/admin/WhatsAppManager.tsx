@@ -94,83 +94,83 @@ export function WhatsAppManager() {
   }, [status, serverUrl, apiToken]);
 
   return (
-    <div className="space-y-8 max-w-xl animate-fade-in text-emerald-950 font-sans pb-8">
+    <div className="space-y-8 max-w-2xl animate-fade-in text-slate-900 font-sans pb-8">
       {/* 1. SECCIÓN WHATSAPP */}
-      <div className="glass-card p-6 rounded-2xl border border-white/80 space-y-4 shadow-sm">
-        <h2 className="text-lg font-bold text-emerald-900 flex items-center gap-2">
-          <MessageCircle className="w-5 h-5 text-emerald-700" />
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 space-y-5 shadow-xs">
+        <h2 className="text-xl font-black text-slate-900 flex items-center gap-2.5">
+          <MessageCircle className="w-6 h-6 text-teal-600" />
           Configuración e Integración de WhatsApp
         </h2>
 
         {/* Estado de conexión */}
-        <div className={`flex items-center gap-3 p-4 rounded-xl border ${
+        <div className={`flex items-center gap-4 p-5 rounded-2xl border ${
           status === "connected"   ? "bg-green-50 border-green-200 text-green-950"  :
-          status === "qr"          ? "bg-yellow-50 border-yellow-200 text-yellow-950" :
-          status === "loading"     ? "bg-gray-50 border-gray-200 text-gray-900"     :
+          status === "qr"          ? "bg-amber-50 border-amber-200 text-amber-950" :
+          status === "loading"     ? "bg-slate-50 border-slate-200 text-slate-900"   :
                                      "bg-red-50 border-red-200 text-red-950"
         }`}>
-          {status === "connected"   && <Wifi     className="w-6 h-6 text-green-600" />}
-          {status === "qr"          && <QrCode   className="w-6 h-6 text-yellow-600" />}
-          {status === "loading"     && <Loader2  className="w-6 h-6 text-gray-400 animate-spin" />}
-          {status === "disconnected"&& <WifiOff  className="w-6 h-6 text-red-500" />}
+          {status === "connected"   && <Wifi     className="w-7 h-7 text-green-600 shrink-0" />}
+          {status === "qr"          && <QrCode   className="w-7 h-7 text-amber-600 shrink-0" />}
+          {status === "loading"     && <Loader2  className="w-7 h-7 text-slate-400 animate-spin shrink-0" />}
+          {status === "disconnected"&& <WifiOff  className="w-7 h-7 text-red-500 shrink-0" />}
           <div>
-            <p className="font-bold text-sm">
+            <p className="font-extrabold text-base">
               {status === "connected"    && "✅ WhatsApp Conectado"}
               {status === "qr"           && "📱 Escanea el código QR"}
               {status === "loading"      && "Verificando conexión..."}
               {status === "disconnected" && "❌ WhatsApp Desconectado"}
             </p>
-            <p className="text-xs">
+            <p className="text-xs sm:text-sm font-medium mt-0.5">
               {status === "connected"    && "Listo para enviar invitaciones y pases por WhatsApp"}
               {status === "qr"           && "Abre WhatsApp → Dispositivos vinculados → Vincular dispositivo"}
               {status === "disconnected" && "Configura la URL del servidor y guarda para conectar"}
             </p>
           </div>
           <Button variant="ghost" size="icon" className="ml-auto" onClick={() => checkStatus()} disabled={checking}>
-            <RefreshCw className={`w-4 h-4 ${checking ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-5 h-5 ${checking ? "animate-spin" : ""}`} />
           </Button>
         </div>
 
         {/* QR Code */}
         {status === "qr" && qrCode && (
-          <div className="flex flex-col items-center gap-3 p-6 bg-white rounded-xl border-2 border-amber-300">
-            <p className="font-semibold text-sm text-center">Escanea este código con tu WhatsApp</p>
-            <img src={qrCode} alt="QR WhatsApp" className="w-56 h-56 rounded-lg border-4 border-emerald-500" />
-            <p className="text-xs text-slate-500 text-center">Se actualiza automáticamente cada 10 segundos</p>
+          <div className="flex flex-col items-center gap-3 p-6 bg-slate-50 rounded-2xl border-2 border-amber-300">
+            <p className="font-bold text-base text-center">Escanea este código con tu WhatsApp</p>
+            <img src={qrCode} alt="QR WhatsApp" className="w-64 h-64 rounded-xl border-4 border-teal-500 shadow-md" />
+            <p className="text-xs text-slate-500 text-center font-medium">Se actualiza automáticamente cada 10 segundos</p>
           </div>
         )}
 
         {/* Configuración del servidor */}
-        <div className="space-y-3 pt-2">
+        <div className="space-y-4 pt-2">
           <div>
-            <Label className="text-xs font-semibold text-emerald-900 mb-1 block">URL del Servidor WhatsApp</Label>
+            <Label className="text-sm font-bold text-slate-900 mb-1.5 block">URL del Servidor WhatsApp</Label>
             <Input
               value={serverUrl}
               onChange={(e) => setServerUrl(e.target.value)}
               placeholder="https://cmg-whatsapp.onrender.com"
-              className="bg-white border-emerald-300 text-xs font-semibold text-emerald-950"
+              className="bg-white border-slate-300 text-sm font-semibold text-slate-900 h-11 rounded-xl"
             />
-            <p className="text-[11px] text-emerald-700 mt-1">URL del servicio de WhatsApp (ej. Render/VPS)</p>
+            <p className="text-xs text-slate-500 mt-1">URL del servicio de WhatsApp (ej. Render/VPS)</p>
           </div>
           <div>
-            <Label className="text-xs font-semibold text-emerald-900 mb-1 block">Token de Seguridad API</Label>
+            <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Token de Seguridad API</Label>
             <Input
               type="password"
               value={apiToken}
               onChange={(e) => setApiToken(e.target.value)}
               placeholder="cmg-token-2024"
-              className="bg-white border-emerald-300 text-xs font-semibold text-emerald-950"
+              className="bg-white border-slate-300 text-sm font-semibold text-slate-900 h-11 rounded-xl"
             />
           </div>
-          <Button onClick={saveConfig} disabled={saving} className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl shadow">
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          <Button onClick={saveConfig} disabled={saving} className="w-full bg-teal-700 hover:bg-teal-800 text-white font-extrabold h-12 text-sm sm:text-base rounded-xl shadow-md">
+            {saving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
             {saving ? "Guardando..." : "Guardar y Conectar WhatsApp"}
           </Button>
         </div>
       </div>
 
       {/* 2. SECCIÓN BREVO EMAIL API KEY */}
-      <div className="glass-card p-6 rounded-2xl border border-white/80 space-y-4 shadow-sm">
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 space-y-5 shadow-xs">
         <BrevoApiKeySection />
       </div>
     </div>
@@ -221,21 +221,21 @@ function BrevoApiKeySection() {
   };
 
   return (
-    <div className="space-y-3">
-      <h2 className="text-lg font-bold text-emerald-900 flex items-center gap-2">
-        <Mail className="w-5 h-5 text-amber-600" />
+    <div className="space-y-4">
+      <h2 className="text-xl font-black text-slate-900 flex items-center gap-2.5">
+        <Mail className="w-6 h-6 text-teal-600" />
         Configuración de Correos con Brevo API Key
       </h2>
 
-      <p className="text-xs text-emerald-800 leading-relaxed">
+      <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-medium">
         Ingresa tu clave API de Brevo para habilitar el envío automático de invitaciones por correo electrónico.
       </p>
 
       <div>
-        <Label className="text-xs font-semibold text-emerald-900 mb-1 block">
-          Brevo API Key {hasExisting && <span className="text-xs text-emerald-700 font-bold ml-1">✓ Configurada</span>}
+        <Label className="text-sm font-bold text-slate-900 mb-1.5 block">
+          Brevo API Key {hasExisting && <span className="text-xs text-teal-700 font-bold ml-1.5">✓ Configurada</span>}
         </Label>
-        <div className="flex gap-2 mt-1">
+        <div className="flex gap-2.5 mt-1">
           <div className="relative flex-1">
             <Input
               type={showKey ? "text" : "password"}
@@ -243,20 +243,20 @@ function BrevoApiKeySection() {
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={loading ? "Cargando..." : hasExisting ? "••••••••••••••••" : "xkeysib-xxxxxxxx..."}
               disabled={loading}
-              className="bg-white border-emerald-300 text-xs font-semibold text-emerald-950 pr-10"
+              className="bg-white border-slate-300 text-sm font-semibold text-slate-900 pr-10 h-11 rounded-xl"
             />
           </div>
-          <Button type="button" variant="outline" size="icon" onClick={() => setShowKey(!showKey)} className="border-emerald-300 text-emerald-900">
-            {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          <Button type="button" variant="outline" size="icon" onClick={() => setShowKey(!showKey)} className="border-slate-300 text-slate-700 h-11 w-11 rounded-xl">
+            {showKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
           </Button>
         </div>
-        <p className="text-[11px] text-emerald-700 mt-1.5">
-          Obtén tu API Key en <a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener noreferrer" className="underline text-emerald-900 font-semibold">Brevo → Configuración → API Keys</a>
+        <p className="text-xs text-slate-500 mt-2">
+          Obtén tu API Key en <a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener noreferrer" className="underline text-teal-700 font-bold">Brevo → Configuración → API Keys</a>
         </p>
       </div>
 
-      <Button size="sm" onClick={handleSave} disabled={saving || loading} className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl shadow">
-        {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+      <Button size="sm" onClick={handleSave} disabled={saving || loading} className="w-full bg-teal-700 hover:bg-teal-800 text-white font-extrabold h-12 text-sm sm:text-base rounded-xl shadow-md">
+        {saving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
         {hasExisting ? "Actualizar API Key de Brevo" : "Guardar API Key de Brevo"}
       </Button>
     </div>

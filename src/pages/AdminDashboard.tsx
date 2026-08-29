@@ -694,82 +694,87 @@ const AdminDashboard = () => {
         </main>
       </div>
 
-      {/* Modal de edición */}
+      {/* Modal de edición (Amplio y cómodo) */}
       <Dialog open={!!editReg} onOpenChange={(o) => !o && setEditReg(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl w-[95vw] bg-white border border-slate-200 text-slate-900 max-h-[92vh] overflow-y-auto rounded-3xl p-6 sm:p-8 shadow-2xl">
           <DialogHeader>
-            <DialogTitle>✏️ Editar Registro — {editReg?.nombres} {editReg?.apellidos}</DialogTitle>
+            <DialogTitle className="text-xl sm:text-2xl font-black font-heading text-slate-900 flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-teal-600" />
+              Editar Registro — {editReg?.nombres} {editReg?.apellidos}
+            </DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-3 py-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-3">
 
             {/* Texto simples */}
             {[
               { field: "nombres",           label: "Nombres",          span: false },
               { field: "apellidos",         label: "Apellidos",        span: false },
-              { field: "telefono",          label: "Teléfono",         span: false },
+              { field: "telefono",          label: "Teléfono / WhatsApp", span: false },
               { field: "fecha_nacimiento",  label: "Fecha Nacimiento", span: false },
               { field: "numero_documento",  label: "N° Documento",     span: false },
               { field: "barrio",            label: "Barrio",           span: false },
-              { field: "correo",            label: "Correo",           span: true  },
-              { field: "direccion",         label: "Dirección",        span: true  },
-              { field: "nombre_invitador",  label: "Invitado por",     span: true  },
+              { field: "correo",            label: "Correo Electrónico", span: true  },
+              { field: "direccion",         label: "Dirección Residencia", span: true  },
+              { field: "nombre_invitador",  label: "Invitado Por (Persona que lo invitó)", span: true },
             ].map(({ field, label, span }) => (
-              <div key={field} className={span ? "col-span-2" : ""}>
-                <Label className="text-xs mb-1 block">{label}</Label>
+              <div key={field} className={span ? "sm:col-span-2" : ""}>
+                <Label className="text-sm font-bold text-slate-900 mb-1.5 block">{label}</Label>
                 <Input
                   value={editForm[field] || ""}
                   onChange={(e) => setEditForm({ ...editForm, [field]: e.target.value })}
-                  className="h-8 text-sm"
+                  className="h-11 text-sm font-semibold border-slate-300 rounded-xl bg-white text-slate-900"
                 />
               </div>
             ))}
 
             {/* Selects de catálogos */}
             <div>
-              <Label className="text-xs mb-1 block">Tipo Documento</Label>
+              <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Tipo Documento</Label>
               <select value={editForm.tipo_documento_id || ""} onChange={(e) => setEditForm({ ...editForm, tipo_documento_id: e.target.value })}
-                className="w-full h-8 text-sm rounded-md border border-input bg-background px-2">
+                className="w-full h-11 text-sm font-semibold rounded-xl border border-slate-300 bg-white px-3 text-slate-900">
                 <option value="">— Seleccionar —</option>
                 {tiposDocs.data?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
               </select>
             </div>
             <div>
-              <Label className="text-xs mb-1 block">Estado Civil</Label>
+              <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Estado Civil</Label>
               <select value={editForm.estado_civil_id || ""} onChange={(e) => setEditForm({ ...editForm, estado_civil_id: e.target.value })}
-                className="w-full h-8 text-sm rounded-md border border-input bg-background px-2">
+                className="w-full h-11 text-sm font-semibold rounded-xl border border-slate-300 bg-white px-3 text-slate-900">
                 <option value="">— Seleccionar —</option>
                 {estadosCiviles.data?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
               </select>
             </div>
             <div>
-              <Label className="text-xs mb-1 block">Sexo</Label>
+              <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Sexo</Label>
               <select value={editForm.sexo_id || ""} onChange={(e) => setEditForm({ ...editForm, sexo_id: e.target.value })}
-                className="w-full h-8 text-sm rounded-md border border-input bg-background px-2">
+                className="w-full h-11 text-sm font-semibold rounded-xl border border-slate-300 bg-white px-3 text-slate-900">
                 <option value="">— Seleccionar —</option>
                 {sexos.data?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
               </select>
             </div>
             <div>
-              <Label className="text-xs mb-1 block">RED</Label>
+              <Label className="text-sm font-bold text-slate-900 mb-1.5 block">RED</Label>
               <select value={editForm.red_id || ""} onChange={(e) => setEditForm({ ...editForm, red_id: e.target.value })}
-                className="w-full h-8 text-sm rounded-md border border-input bg-background px-2">
+                className="w-full h-11 text-sm font-semibold rounded-xl border border-slate-300 bg-white px-3 text-slate-900">
                 <option value="">— Seleccionar —</option>
                 {reds.data?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
               </select>
             </div>
-            <div className="col-span-2">
-              <Label className="text-xs mb-1 block">Casa de Paz (CDP)</Label>
+            <div className="sm:col-span-2">
+              <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Casa de Paz (CDP)</Label>
               <select value={editForm.cdp_id || ""} onChange={(e) => setEditForm({ ...editForm, cdp_id: e.target.value })}
-                className="w-full h-8 text-sm rounded-md border border-input bg-background px-2">
+                className="w-full h-11 text-sm font-semibold rounded-xl border border-slate-300 bg-white px-3 text-slate-900">
                 <option value="">— Seleccionar —</option>
                 {cdps.data?.map((t: any) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
               </select>
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
-            <Button variant="outline" onClick={() => setEditReg(null)}>Cancelar</Button>
-            <Button onClick={saveEdit} disabled={saving}>
-              {saving ? "Guardando..." : "Guardar cambios"}
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <Button variant="outline" onClick={() => setEditReg(null)} className="border-slate-300 text-slate-700 font-bold px-6 py-2.5 text-sm rounded-xl">
+              Cancelar
+            </Button>
+            <Button onClick={saveEdit} disabled={saving} className="bg-teal-700 hover:bg-teal-800 text-white font-extrabold px-8 py-2.5 text-sm sm:text-base rounded-xl shadow-md">
+              {saving ? "Guardando..." : "Guardar Cambios"}
             </Button>
           </div>
         </DialogContent>
