@@ -50,24 +50,47 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: config } = await supabase
-      .from("event_config")
-      .select("*")
-      .limit(1)
-      .single();
+    let eventName  = "Evento";
+    let eventPlace = "";
+    let eventDate  = "";
+    let eventTime  = "";
+    let logoUrl: string | null = null;
 
-    const eventName  = config?.nombre_evento || "Evento";
-    const eventPlace = config?.lugar_evento  || "";
-    const eventDate  = config?.fecha_evento
-      ? new Date(config.fecha_evento).toLocaleDateString("es-CO", {
-          weekday: "long", year: "numeric", month: "long", day: "numeric",
-        })
-      : "";
-    const eventTime = config?.fecha_evento
-      ? new Date(config.fecha_evento).toLocaleTimeString("es-CO", {
-          hour: "2-digit", minute: "2-digit",
-        })
-      : "";
+    if (reg.event_id) {
+      const { data: evt } = await supabase.from("events").select("*").eq("id", reg.event_id).maybeSingle();
+      if (evt) {
+        eventName  = evt.nombre || "Evento";
+        eventPlace = evt.lugar_evento || "";
+        logoUrl    = evt.logo_url || null;
+        if (evt.fecha_evento) {
+          const d = new Date(evt.fecha_evento);
+          eventDate = d.toLocaleDateString("es-CO", {
+            weekday: "long", year: "numeric", month: "long", day: "numeric",
+          });
+          eventTime = d.toLocaleTimeString("es-CO", {
+            hour: "2-digit", minute: "2-digit",
+          });
+        }
+      }
+    }
+
+    if (!reg.event_id || !eventName) {
+      const { data: config } = await supabase.from("event_config").select("*").limit(1).maybeSingle();
+      if (config) {
+        eventName  = config.nombre_evento || "Evento";
+        eventPlace = config.lugar_evento  || "";
+        logoUrl    = config.logo_url || null;
+        if (config.fecha_evento) {
+          const d = new Date(config.fecha_evento);
+          eventDate = d.toLocaleDateString("es-CO", {
+            weekday: "long", year: "numeric", month: "long", day: "numeric",
+          });
+          eventTime = d.toLocaleTimeString("es-CO", {
+            hour: "2-digit", minute: "2-digit",
+          });
+        }
+      }
+    }
 
     // ── QR ─────────────────────────────────────────────────────────────
     const qrDataUrl = await QRCode.toDataURL(registrationId, {
@@ -143,9 +166,9 @@ Deno.serve(async (req) => {
     const leftCX = splitX / 2;
     let logoBottomY = 16;
 
-    if (config?.logo_url) {
+    if (logoUrl) {
       try {
-        const logoRes = await fetch(config.logo_url);
+        const logoRes = await fetch(logoUrl);
         if (logoRes.ok) {
           const logoBuffer = await logoRes.arrayBuffer();
           const logoBytes  = new Uint8Array(logoBuffer);

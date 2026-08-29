@@ -709,9 +709,21 @@ export const EventManager = () => {
                 </div>
               )}
 
-              {/* TAB 4: CONFIGURACIÓN DEL SISTEMA */}
+              {/* TAB 4: CONFIGURACIÓN DEL SISTEMA Y MENSAJES INDIVIDUALES */}
               {activeTab === "sistema" && (
                 <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
+                      <Mail className="w-3.5 h-3.5 text-emerald-700" /> Correo Remitente (Brevo) para este evento
+                    </Label>
+                    <Input
+                      placeholder="cmgeventos0@gmail.com"
+                      value={formData.correo_remitente}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, correo_remitente: e.target.value }))}
+                      className="bg-white border-emerald-300 text-emerald-950"
+                    />
+                  </div>
+
                   <div>
                     <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
                       <Mail className="w-3.5 h-3.5 text-emerald-700" /> Asunto del Correo Electrónico
@@ -719,7 +731,20 @@ export const EventManager = () => {
                     <Input
                       value={formData.asunto_correo}
                       onChange={(e) => setFormData((prev) => ({ ...prev, asunto_correo: e.target.value }))}
-                      className="bg-white border-emerald-300 text-emerald-950"
+                      className="bg-white border-emerald-300 text-emerald-950 font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-semibold text-emerald-900 mb-1 block flex items-center gap-1">
+                      <Mail className="w-3.5 h-3.5 text-emerald-700" /> Cuerpo / Mensaje del Correo Electrónico
+                    </Label>
+                    <Textarea
+                      rows={3}
+                      placeholder="Escribe aquí el texto personalizado que llegará en el correo del usuario..."
+                      value={formData.mensaje_correo}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, mensaje_correo: e.target.value }))}
+                      className="bg-white border-emerald-300 text-emerald-950 text-xs"
                     />
                   </div>
 

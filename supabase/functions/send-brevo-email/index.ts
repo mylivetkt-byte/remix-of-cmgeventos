@@ -50,29 +50,69 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Obtener configuración del evento
-    const { data: config } = await supabase
-      .from("event_config")
-      .select("*")
-      .limit(1)
-      .maybeSingle();
+    // Obtener configuración del evento específico
+    let eventName    = "Evento";
+    let emailSubject = "Tu invitación al evento";
+    let emailMessage = "Te invitamos a nuestro evento especial.";
+    let eventPlace   = "";
+    let senderEmail  = "cmgeventos0@gmail.com";
+    let logoUrl: string | null = null;
+    let eventDate    = "";
+    let eventTime    = "";
 
-    const eventName    = config?.nombre_evento   || "Evento";
-    const emailSubject = config?.asunto_correo   || `Tu invitación a ${eventName}`;
-    const emailMessage = config?.mensaje_correo  || "Te invitamos a nuestro evento especial.";
-    const eventPlace   = config?.lugar_evento    || "";
-    const senderEmail  = config?.correo_remitente || "cmgeventos0@gmail.com";
+    if (reg.event_id) {
+      const { data: evt } = await supabase
+        .from("events")
+        .select("*")
+        .eq("id", reg.event_id)
+        .maybeSingle();
 
-    const eventDate = config?.fecha_evento
-      ? new Date(config.fecha_evento).toLocaleDateString("es-CO", {
-          weekday: "long", year: "numeric", month: "long", day: "numeric",
-        })
-      : "";
-    const eventTime = config?.fecha_evento
-      ? new Date(config.fecha_evento).toLocaleTimeString("es-CO", {
-          hour: "2-digit", minute: "2-digit",
-        })
-      : "";
+      if (evt) {
+        eventName    = evt.nombre || "Evento";
+        emailSubject = evt.asunto_correo || `Tu invitación a ${eventName}`;
+        emailMessage = evt.mensaje_correo || "Te invitamos a nuestro evento especial.";
+        eventPlace   = evt.lugar_evento || "";
+        senderEmail  = evt.correo_remitente || "cmgeventos0@gmail.com";
+        logoUrl      = evt.logo_url || null;
+
+        if (evt.fecha_evento) {
+          const d = new Date(evt.fecha_evento);
+          eventDate = d.toLocaleDateString("es-CO", {
+            weekday: "long", year: "numeric", month: "long", day: "numeric",
+          });
+          eventTime = d.toLocaleTimeString("es-CO", {
+            hour: "2-digit", minute: "2-digit",
+          });
+        }
+      }
+    }
+
+    // Fallback a event_config general si no hay event_id
+    if (!reg.event_id) {
+      const { data: config } = await supabase
+        .from("event_config")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+
+      if (config) {
+        eventName    = config.nombre_evento   || "Evento";
+        emailSubject = config.asunto_correo   || `Tu invitación a ${eventName}`;
+        emailMessage = config.mensaje_correo  || "Te invitamos a nuestro evento especial.";
+        eventPlace   = config.lugar_evento    || "";
+        senderEmail  = config.correo_remitente || "cmgeventos0@gmail.com";
+        logoUrl      = config.logo_url || null;
+        if (config.fecha_evento) {
+          const d = new Date(config.fecha_evento);
+          eventDate = d.toLocaleDateString("es-CO", {
+            weekday: "long", year: "numeric", month: "long", day: "numeric",
+          });
+          eventTime = d.toLocaleTimeString("es-CO", {
+            hour: "2-digit", minute: "2-digit",
+          });
+        }
+      }
+    }
 
     const appUrl      = Deno.env.get("APP_URL") || "https://cmgeventos.lovable.app";
     const downloadUrl = reg.pdf_url || `${appUrl}/descargar/${registrationId}`;
@@ -86,7 +126,7 @@ Deno.serve(async (req) => {
       <table width="600" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
         <tr>
           <td style="background-color:#005537;padding:30px 40px;text-align:center;">
-            ${config?.logo_url ? `<img src="${config.logo_url}" alt="${eventName}" style="max-height:80px;max-width:200px;margin-bottom:15px;display:block;margin-left:auto;margin-right:auto;">` : ""}
+            ${logoUrl ? `<img src="${logoUrl}" alt="${eventName}" style="max-height:80px;max-width:200px;margin-bottom:15px;display:block;margin-left:auto;margin-right:auto;">` : ""}
             <h1 style="color:#ffffff;margin:0;font-size:26px;letter-spacing:2px;">${eventName.toUpperCase()}</h1>
             <div style="width:60px;height:3px;background-color:#ffd200;margin:12px auto 0;"></div>
           </td>
@@ -132,7 +172,7 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    // Enviar via Resend
+    // Enviar vía Brevo API
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
@@ -151,18 +191,18 @@ Deno.serve(async (req) => {
     const result = await response.json();
 
     if (!response.ok) {
-      console.error("Resend error:", JSON.stringify(result));
-      throw new Error(`Resend: ${result.message || JSON.stringify(result)}`);
+      console.error("Brevo API error:", JSON.stringify(result));
+      throw new Error(`Brevo: ${result.message || JSON.stringify(result)}`);
     }
 
-    console.log("✅ Email enviado a:", reg.correo, "id:", result.id);
+    console.log("✅ Email enviado a:", reg.correo, "para el evento:", eventName);
     return new Response(
       JSON.stringify({ success: true, messageId: result.messageId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (err: any) {
-    console.error("Error:", err.message);
+    console.error("Error enviando correo:", err.message);
     return new Response(
       JSON.stringify({ error: err.message || "Error interno" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -77,6 +77,15 @@ export function EventConfigManager() {
 
   return (
     <div className="space-y-6 animate-fade-in max-w-lg">
+      <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-xs text-amber-950 space-y-1 shadow-sm">
+        <div className="font-bold text-amber-900 flex items-center gap-1.5 text-sm">
+          💡 Configuración Individual de Correos por Evento
+        </div>
+        <p className="leading-relaxed text-amber-900">
+          El <strong>Asunto del Correo</strong>, el <strong>Cuerpo del Correo</strong>, el <strong>Correo Remitente</strong> y el <strong>Mensaje de WhatsApp</strong> se configuran **individualmente para cada evento** ingresando a la pestaña <strong>Eventos</strong> → <kbd>✏️ Configurar</kbd> → <kbd>4. Mensajes & Sistema</kbd>.
+        </p>
+      </div>
+
       <div>
         <h2 className="text-lg font-semibold mb-4">Datos del Evento</h2>
         <div className="space-y-4">

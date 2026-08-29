@@ -54,21 +54,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Obtener mensaje configurado
-    const { data: config } = await supabase
-      .from("event_config").select("mensaje_whatsapp, nombre_evento").limit(1).single();
+    // Obtener mensaje de WhatsApp específico del evento
+    let waMsg = "Hola, aquí está mi invitación al evento. Puedes descargarla desde este enlace:";
+    let eventName = "Evento";
 
-    const waMsg = config?.mensaje_whatsapp;
-    if (!waMsg) {
-      return new Response(JSON.stringify({ error: "Mensaje de WhatsApp no configurado" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (reg.event_id) {
+      const { data: evt } = await supabase
+        .from("events")
+        .select("mensaje_whatsapp, nombre")
+        .eq("id", reg.event_id)
+        .maybeSingle();
+
+      if (evt) {
+        if (evt.mensaje_whatsapp) waMsg = evt.mensaje_whatsapp;
+        if (evt.nombre) eventName = evt.nombre;
+      }
+    } else {
+      const { data: config } = await supabase
+        .from("event_config").select("mensaje_whatsapp, nombre_evento").limit(1).maybeSingle();
+
+      if (config?.mensaje_whatsapp) waMsg = config.mensaje_whatsapp;
+      if (config?.nombre_evento) eventName = config.nombre_evento;
     }
 
     // Construir URL de descarga
-    const appUrl = Deno.env.get("APP_URL") || "https://id-preview--4d25c4e0-21df-421d-8790-b42f08873fdd.lovable.app";
+    const appUrl = Deno.env.get("APP_URL") || "https://cmgeventos.lovable.app";
     const downloadUrl = reg.pdf_url || `${appUrl}/descargar/${registrationId}`;
-    const message = `${waMsg}\n\n📄 Descarga tu invitación aquí:\n${downloadUrl}`;
+    const message = `${waMsg}\n\n📄 Descarga tu invitación a ${eventName} aquí:\n${downloadUrl}`;
 
     // Enviar al servidor WhatsApp
     const res = await fetch(`${waUrl}/send`, {
@@ -89,7 +101,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log("✅ WhatsApp enviado a:", reg.telefono);
+    console.log("✅ WhatsApp enviado a:", reg.telefono, "evento:", eventName);
     return new Response(JSON.stringify({ success: true, to: result.to }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
