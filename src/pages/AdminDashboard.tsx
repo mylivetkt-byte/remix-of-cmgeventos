@@ -40,7 +40,7 @@ function downloadCSV(content: string, filename: string) {
 }
 
 const HEADERS = [
-  "NOMBRES", "APELLIDOS", "EDAD", "DOC_ID", "NUM_DOC",
+  "EVENTO", "NOMBRES", "APELLIDOS", "EDAD", "DOC_ID", "NUM_DOC",
   "TELEFONO", "CORREO", "DIRECCION", "BARRIO", "FECHA_NACIMIENTO",
   "EST_CIVIL", "SEXO", "RED", "CDP", "INVITADO_POR", "ASISTIO", "FECHA_REGISTRO",
 ];
@@ -50,6 +50,7 @@ const AdminDashboard = () => {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("registros");
   const [search, setSearch] = useState("");
+  const [filterEvent, setFilterEvent] = useState<string>("all");
   const [filterRed, setFilterRed] = useState<string>("all");
   const [filterCdp, setFilterCdp] = useState<string>("all");
   const [editReg, setEditReg] = useState<any>(null);
@@ -63,14 +64,23 @@ const AdminDashboard = () => {
   const estadosCiviles = useCatalog("catalog_estado_civil");
   const sexos     = useCatalog("catalog_sexo");
 
+  const eventsList = useQuery({
+    queryKey: ["admin_events_filter_list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("events").select("id, nombre, slug").order("created_at", { ascending: false });
+      return data || [];
+    },
+  });
+
   const registrations = useQuery({
-    queryKey: ["admin_registrations", search, filterRed, filterCdp],
+    queryKey: ["admin_registrations", search, filterEvent, filterRed, filterCdp],
     queryFn: async () => {
       let q = supabase.from("registrations").select(`
         *, catalog_tipo_documento(nombre), catalog_estado_civil(nombre),
-        catalog_sexo(nombre), catalog_cdp(nombre), catalog_red(nombre)
+        catalog_sexo(nombre), catalog_cdp(nombre), catalog_red(nombre), events(nombre)
       `).order("created_at", { ascending: false });
       if (search) q = q.or(`nombres.ilike.%${search}%,apellidos.ilike.%${search}%,numero_documento.ilike.%${search}%,correo.ilike.%${search}%`);
+      if (filterEvent !== "all") q = q.eq("event_id", filterEvent);
       if (filterRed !== "all") q = q.eq("red_id", filterRed);
       if (filterCdp !== "all") q = q.eq("cdp_id", filterCdp);
       const { data, error } = await q;
@@ -249,6 +259,7 @@ const AdminDashboard = () => {
   };
 
   const getRow = (r: typeof data[0]) => [
+    (r as any).events?.nombre ?? "Evento General",
     r.nombres,
     r.apellidos,
     r.edad,
@@ -311,18 +322,29 @@ const AdminDashboard = () => {
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input placeholder="Buscar por nombre, documento, correo..." value={search}
-                  onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+                  onChange={(e) => setSearch(e.target.value)} className="pl-9 bg-white border-emerald-300" />
               </div>
+              <Select value={filterEvent} onValueChange={setFilterEvent}>
+                <SelectTrigger className="w-52 bg-white border-emerald-300 font-bold text-emerald-950">
+                  <SelectValue placeholder="Filtrar por Evento" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-emerald-200">
+                  <SelectItem value="all">📊 Todos los Eventos</SelectItem>
+                  {eventsList.data?.map((evt) => (
+                    <SelectItem key={evt.id} value={evt.id}>{evt.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={filterRed} onValueChange={setFilterRed}>
-                <SelectTrigger className="w-44"><SelectValue placeholder="Filtrar por RED" /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="w-44 bg-white border-emerald-300"><SelectValue placeholder="Filtrar por RED" /></SelectTrigger>
+                <SelectContent className="bg-white border-emerald-200">
                   <SelectItem value="all">Todas las RED</SelectItem>
                   {reds.data?.map((r) => <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={filterCdp} onValueChange={setFilterCdp}>
-                <SelectTrigger className="w-44"><SelectValue placeholder="Filtrar por CDP" /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="w-44 bg-white border-emerald-300"><SelectValue placeholder="Filtrar por CDP" /></SelectTrigger>
+                <SelectContent className="bg-white border-emerald-200">
                   <SelectItem value="all">Todos los CDP</SelectItem>
                   {cdps.data?.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                 </SelectContent>
@@ -420,9 +442,12 @@ const AdminDashboard = () => {
                         {/* Contenido */}
                         <div className="flex-1 min-w-0">
 
-                          {/* Fila 1: nombre + asistencia */}
+                          {/* Fila 1: nombre + evento + asistencia */}
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span className="font-bold text-base text-white">{r.nombres} {r.apellidos}</span>
+                            <span className="bg-amber-400/90 text-slate-950 font-extrabold text-[11px] px-2.5 py-0.5 rounded-full shadow-sm">
+                              {(r as any).events?.nombre ?? "Evento General"}
+                            </span>
                             {r.asistio
                               ? <span className="inline-flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow">
                                   <UserCheck className="w-3 h-3" /> Asistió
