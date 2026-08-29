@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, Menu } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
@@ -282,36 +282,142 @@ const AdminDashboard = () => {
   ];
 
   const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" /> },
-    { id: "eventos", label: "Eventos", icon: <Sparkles className="w-4 h-4" /> },
-    { id: "registros", label: "Registros", icon: <Users className="w-4 h-4" /> },
-    { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-4 h-4" /> },
-    { id: "catalogos", label: "Catálogos", icon: <List className="w-4 h-4" /> },
-    { id: "whatsapp", label: "WhatsApp & Brevo", icon: <MessageCircle className="w-4 h-4" /> },
+    { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
+    { id: "eventos", label: "Eventos", icon: <Sparkles className="w-5 h-5" /> },
+    { id: "registros", label: "Registros", icon: <Users className="w-5 h-5" /> },
+    { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-5 h-5" /> },
+    { id: "catalogos", label: "Catálogos", icon: <List className="w-5 h-5" /> },
+    { id: "whatsapp", label: "WhatsApp & Brevo", icon: <MessageCircle className="w-5 h-5" /> },
   ];
 
+  const activeTabObj = tabs.find((t) => t.id === tab);
+
   return (
-    <div className="min-h-screen text-slate-900 font-sans bg-slate-50 selection:bg-teal-200">
-      {/* Cabecera Limpia en Blanco Pulcro con Borde Gris Claro (Estilo iglesiacmg.lovable.app) */}
-      <header className="border-b border-slate-200/80 bg-white sticky top-0 z-30 shadow-xs backdrop-blur-md">
-        <div className="container max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center shadow-xs">
+    <div className="min-h-screen text-slate-900 font-sans bg-slate-50 selection:bg-teal-200 flex">
+      {/* SIDEBAR LATERAL COLAPSABLE (Estilo iglesiacmg.lovable.app) */}
+      <aside
+        className={`fixed left-0 top-0 bottom-0 z-40 bg-white border-r border-slate-200/80 flex flex-col justify-between shadow-xs transition-all duration-300 ${
+          collapsed ? "w-20" : "w-64"
+        }`}
+      >
+        {/* Cabecera del Sidebar */}
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center shrink-0 shadow-xs">
               <Sparkles className="w-5 h-5 text-teal-700" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-heading font-black text-lg text-slate-900 tracking-tight">
-                  CMG Eventos
-                </h1>
-                <Badge className="bg-teal-100 text-teal-900 font-bold border-teal-300 text-[10px] px-2 py-0.5 shadow-none">
-                  <ShieldCheck className="w-3 h-3 mr-1 text-teal-700" /> ADMIN
-                </Badge>
+            {!collapsed && (
+              <div className="truncate">
+                <div className="flex items-center gap-1.5">
+                  <h1 className="font-heading font-black text-sm text-slate-900 tracking-tight truncate">
+                    CMG Eventos
+                  </h1>
+                </div>
+                <p className="text-[10px] text-slate-500 font-medium truncate">Centro Mundial de Gloria</p>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium">Centro Mundial de Gloria · Panel de Control</p>
-            </div>
+            )}
+          </div>
+
+          {/* Botón Colapsar / Expandir */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCollapsed(!collapsed)}
+            className="h-8 w-8 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg shrink-0"
+            title={collapsed ? "Expandir menú" : "Colapsar menú"}
+          >
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </Button>
+        </div>
+
+        {/* Lista de Navegación de Pestañas */}
+        <div className="p-3 space-y-1.5 flex-1 overflow-y-auto">
+          {!collapsed && (
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">
+              Navegación
+            </p>
+          )}
+
+          {tabs.map((t) => {
+            const isActive = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                title={collapsed ? t.label : undefined}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+                  isActive
+                    ? "bg-teal-100/90 text-teal-950 shadow-xs border border-teal-200/80 font-extrabold"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-medium"
+                } ${collapsed ? "justify-center px-0" : ""}`}
+              >
+                <div className={`${isActive ? "text-teal-900" : "text-slate-500"}`}>{t.icon}</div>
+                {!collapsed && <span className="truncate">{t.label}</span>}
+              </button>
+            );
+          })}
+
+          <div className="pt-4 my-2 border-t border-slate-100">
+            {!collapsed && (
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">
+                Accesos Rápido
+              </p>
+            )}
+
+            <button
+              onClick={() => navigate("/")}
+              title={collapsed ? "Sitio Público" : undefined}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all ${
+                collapsed ? "justify-center px-0" : ""
+              }`}
+            >
+              <Globe className="w-4 h-4 text-teal-600 shrink-0" />
+              {!collapsed && <span className="truncate">Sitio Público</span>}
+            </button>
+
+            <button
+              onClick={() => navigate("/checkin")}
+              title={collapsed ? "Escáner Puerta" : undefined}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all mt-1 ${
+                collapsed ? "justify-center px-0" : ""
+              }`}
+            >
+              <QrCode className="w-4 h-4 text-teal-600 shrink-0" />
+              {!collapsed && <span className="truncate">Escáner Puerta</span>}
+            </button>
+          </div>
+        </div>
+
+        {/* Footer del Sidebar (Cuenta y Salir) */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+          <button
+            onClick={signOut}
+            title={collapsed ? "Cerrar Sesión" : undefined}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition-all ${
+              collapsed ? "justify-center px-0" : ""
+            }`}
+          >
+            <LogOut className="w-4 h-4 shrink-0 text-red-500" />
+            {!collapsed && <span className="truncate">Cerrar Sesión</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* ÁREA DE CONTENIDO PRINCIPAL (Alineada dinámicamente según estado colapsado) */}
+      <div className={`flex-1 transition-all duration-300 ${collapsed ? "ml-20" : "ml-64"}`}>
+        {/* Cabecera Superior del Área de Contenido */}
+        <header className="border-b border-slate-200/80 bg-white sticky top-0 z-30 shadow-xs h-16 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="font-heading font-black text-lg text-slate-900 flex items-center gap-2">
+              {activeTabObj?.icon}
+              <span>{activeTabObj?.label}</span>
+            </h2>
+            <Badge className="bg-teal-50 text-teal-900 border-teal-200 text-[11px] font-bold">
+              Panel Admin
+            </Badge>
           </div>
 
           <div className="flex items-center gap-2">
@@ -319,54 +425,23 @@ const AdminDashboard = () => {
               variant="outline"
               size="sm"
               onClick={() => navigate("/")}
-              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 text-xs font-semibold rounded-xl hidden sm:flex items-center gap-1.5 shadow-xs"
+              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-xs font-semibold rounded-xl hidden md:flex items-center gap-1.5"
             >
-              <Globe className="w-3.5 h-3.5 text-teal-600" /> Sitio Público
+              <Globe className="w-3.5 h-3.5 text-teal-600" /> Ver Sitio
             </Button>
-
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate("/checkin")}
-              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 text-xs font-semibold rounded-xl hidden sm:flex items-center gap-1.5 shadow-xs"
+              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-xs font-semibold rounded-xl hidden md:flex items-center gap-1.5"
             >
-              <QrCode className="w-3.5 h-3.5 text-teal-600" /> Escáner Puerta
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={signOut}
-              className="border-slate-200 bg-white text-slate-700 hover:bg-red-50 hover:text-red-700 hover:border-red-200 text-xs font-semibold rounded-xl shadow-xs"
-            >
-              <LogOut className="w-3.5 h-3.5 mr-1 text-slate-500" /> Salir
+              <QrCode className="w-3.5 h-3.5 text-teal-600" /> Escáner
             </Button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Cuerpo Principal del Panel */}
-      <div className="container max-w-7xl mx-auto px-4 mt-6 pb-12">
-        {/* Menú Nav Principal de Pestañas en Gris Claro / Verde Suave (Píldoras iglesiacmg.lovable.app) */}
-        <div className="bg-white border border-slate-200 p-1.5 rounded-2xl shadow-xs flex flex-wrap gap-1 mb-6">
-          {tabs.map((t) => {
-            const isActive = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${
-                  isActive
-                    ? "bg-teal-100/90 text-teal-950 shadow-xs border border-teal-200/80 font-extrabold"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-medium"
-                }`}
-              >
-                {t.icon}
-                <span>{t.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Vista del Módulo Seleccionado */}
+        <main className="p-6 max-w-7xl mx-auto">
 
         {tab === "eventos" && <div className="animate-fade-in pb-8"><EventManager /></div>}
         {tab === "asistencia" && <div className="animate-fade-in pb-8"><AttendanceReport /></div>}
@@ -616,6 +691,7 @@ const AdminDashboard = () => {
         )}
         {tab === "catalogos" && <CatalogManager />}
         {tab === "whatsapp" && <div className="animate-fade-in pb-8"><WhatsAppManager /></div>}
+        </main>
       </div>
 
       {/* Modal de edición */}
