@@ -1,5 +1,7 @@
--- Migración de Corrección: Garantizar que la tabla 'events' tenga todas las columnas de imágenes y pagos
+-- Migración de Corrección Completa: Garantizar todas las columnas en la tabla 'events'
 
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS fecha_evento TIMESTAMPTZ;
+ALTER TABLE public.events ADD COLUMN IF NOT EXISTS lugar_evento TEXT;
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS logo_url TEXT;
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS banner_url TEXT;
 ALTER TABLE public.events ADD COLUMN IF NOT EXISTS color_primario TEXT DEFAULT '#083E30';

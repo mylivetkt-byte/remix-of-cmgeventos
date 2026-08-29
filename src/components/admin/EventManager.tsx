@@ -290,22 +290,29 @@ export const EventManager = () => {
 
       try {
         await performSave(fullPayload);
-      } catch (err: any) {
-        // Fallback: Si la base de datos de Supabase aún no tiene alguna columna nueva (ej. banner_url, es_de_pago)
-        if (err.message && err.message.includes("Could not find the")) {
-          const safePayload = { ...fullPayload };
-          // Eliminar dinámicamente el campo reportado como no encontrado
-          if (err.message.includes("banner_url")) delete safePayload.banner_url;
-          if (err.message.includes("es_de_pago")) delete safePayload.es_de_pago;
-          if (err.message.includes("precio")) delete safePayload.precio;
-          if (err.message.includes("moneda")) delete safePayload.moneda;
-          if (err.message.includes("instrucciones_pago")) delete safePayload.instrucciones_pago;
-          if (err.message.includes("requiere_comprobante")) delete safePayload.requiere_comprobante;
+      } catch (firstErr: any) {
+        let lastErr = firstErr;
+        let currentPayload = { ...fullPayload };
+        let attempts = 0;
 
-          await performSave(safePayload);
-        } else {
-          throw err;
+        while (attempts < 6 && lastErr && lastErr.message && lastErr.message.includes("Could not find the")) {
+          attempts++;
+          const match = lastErr.message.match(/Could not find the '([^']+)' column/);
+          if (match && match[1] && currentPayload[match[1]] !== undefined) {
+            delete currentPayload[match[1]];
+            try {
+              await performSave(currentPayload);
+              lastErr = null; // Guardado con éxito
+              break;
+            } catch (retryErr: any) {
+              lastErr = retryErr;
+            }
+          } else {
+            break;
+          }
         }
+
+        if (lastErr) throw lastErr;
       }
 
       if (targetEventId) {
