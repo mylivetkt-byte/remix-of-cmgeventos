@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useEventBySlug } from "@/hooks/useEvents";
 import { RegistrationForm } from "@/components/registration/RegistrationForm";
 import { DynamicRegistrationForm } from "@/components/registration/DynamicRegistrationForm";
@@ -17,7 +17,6 @@ interface SuccessData {
 
 export const EventRegistrationPage = () => {
   const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
   const { data: event, isLoading, isError } = useEventBySlug(slug);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
 
@@ -48,22 +47,22 @@ export const EventRegistrationPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-emerald-600" />
       </div>
     );
   }
 
   if (isError || !event) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 text-center text-slate-100">
-        <AlertCircle className="w-16 h-16 text-amber-500 mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Evento no encontrado</h2>
-        <p className="text-slate-400 mb-6 max-w-md">
-          El evento que buscas no existe o ha finalizado. Regresa al catálogo para ver los eventos disponibles.
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center text-emerald-950">
+        <AlertCircle className="w-14 h-14 text-amber-600 mb-3" />
+        <h2 className="text-2xl font-bold font-heading mb-2">Evento no encontrado</h2>
+        <p className="text-emerald-800 text-sm mb-6 max-w-md">
+          El evento al que intentas acceder no se encuentra activo en este momento.
         </p>
         <Link to="/">
-          <Button className="bg-emerald-600 hover:bg-emerald-500">
+          <Button className="bg-emerald-800 hover:bg-emerald-900 text-white">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Volver al catálogo
           </Button>
@@ -72,58 +71,49 @@ export const EventRegistrationPage = () => {
     );
   }
 
-  // Determine form component to render
   const isDefaultEvent = !event.slug || event.slug === "evento-principal" || event.slug === "evento-default";
   const isRetiroSanidad = event.slug ? event.slug.includes("retiro-sanidad") : false;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-emerald-950 to-slate-900 text-slate-100 py-8 px-4 flex flex-col items-center justify-between">
-      {/* Header bar */}
-      <div className="w-full max-w-2xl mx-auto flex items-center justify-between mb-6">
+    <div className="min-h-screen py-8 px-4 flex flex-col items-center justify-between font-sans">
+      {/* Botón superior de volver */}
+      <div className="w-full max-w-xl mx-auto flex items-center justify-between mb-4">
         <Link to="/">
-          <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-emerald-900/40 border border-emerald-800/40">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Ver todos los eventos
+          <Button variant="outline" size="sm" className="bg-white/80 border-emerald-300 text-emerald-900 hover:bg-emerald-50">
+            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            Ver eventos
           </Button>
         </Link>
-        
-        <Badge variant="outline" className="border-emerald-500/40 text-emerald-300 bg-emerald-950/60 px-3 py-1">
-          <Ticket className="w-3.5 h-3.5 mr-1 text-amber-400" />
-          Registro Abierto
+
+        <Badge className="bg-emerald-100 text-emerald-900 border-emerald-300 px-3 py-1 font-medium">
+          <Ticket className="w-3.5 h-3.5 mr-1 text-amber-600" />
+          Inscripciones abiertas
         </Badge>
       </div>
 
-      {/* Main card */}
-      <div className="w-full max-w-2xl mx-auto">
-        {/* Banner / Title Header */}
-        <div className="bg-slate-900/90 border border-emerald-800/50 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-md mb-6">
-          <div className="p-6 md:p-8 bg-gradient-to-r from-emerald-950/80 to-slate-900/90 relative">
+      {/* Tarjeta principal glass */}
+      <div className="w-full max-w-xl mx-auto">
+        {/* Cabecera del evento */}
+        <div className="glass-card rounded-2xl p-6 mb-4 shadow-lg border border-white/80">
+          <div className="flex flex-col items-center text-center space-y-2">
             {event.logo_url && (
-              <img
-                src={event.logo_url}
-                alt={event.nombre}
-                className="h-16 w-auto mb-4 object-contain"
-              />
+              <img src={event.logo_url} alt={event.nombre} className="h-16 w-auto object-contain mb-2" />
             )}
-            <h1 className="text-2xl md:text-3xl font-extrabold text-white mb-2">
-              {event.nombre}
-            </h1>
+            <h1 className="text-2xl font-bold font-heading text-emerald-950">{event.nombre}</h1>
             {event.descripcion && (
-              <p className="text-slate-300 text-sm md:text-base leading-relaxed mb-4">
-                {event.descripcion}
-              </p>
+              <p className="text-xs text-emerald-800/80 leading-relaxed max-w-md">{event.descripcion}</p>
             )}
 
-            <div className="flex flex-wrap items-center gap-4 text-xs md:text-sm text-emerald-300 font-medium pt-2 border-t border-emerald-800/40">
+            <div className="flex flex-wrap justify-center items-center gap-3 text-xs text-emerald-900 font-medium pt-2">
               {event.fecha_evento && (
-                <div className="flex items-center gap-2 bg-emerald-900/40 px-3 py-1.5 rounded-lg border border-emerald-700/30">
-                  <Calendar className="w-4 h-4 text-amber-400" />
+                <div className="flex items-center gap-1.5 bg-emerald-100/60 px-3 py-1 rounded-full border border-emerald-200">
+                  <Calendar className="w-3.5 h-3.5 text-emerald-700" />
                   <span className="capitalize">{formatDate(event.fecha_evento)}</span>
                 </div>
               )}
               {event.lugar_evento && (
-                <div className="flex items-center gap-2 bg-emerald-900/40 px-3 py-1.5 rounded-lg border border-emerald-700/30">
-                  <MapPin className="w-4 h-4 text-amber-400" />
+                <div className="flex items-center gap-1.5 bg-emerald-100/60 px-3 py-1 rounded-full border border-emerald-200">
+                  <MapPin className="w-3.5 h-3.5 text-amber-600" />
                   <span>{event.lugar_evento}</span>
                 </div>
               )}
@@ -131,8 +121,8 @@ export const EventRegistrationPage = () => {
           </div>
         </div>
 
-        {/* Form or Success Screen */}
-        <div className="glass-card rounded-2xl p-6 md:p-8 border border-emerald-800/40 shadow-2xl">
+        {/* Contenido del Formulario */}
+        <div className="glass-card rounded-2xl p-6 md:p-8 shadow-xl border border-white/80">
           {successData ? (
             <SuccessScreen
               nombres={successData.nombres}
@@ -142,25 +132,17 @@ export const EventRegistrationPage = () => {
               registrationId={successData.registrationId}
             />
           ) : isRetiroSanidad ? (
-            <RetiroSanidadForm
-              eventId={event.id}
-              onSuccess={setSuccessData}
-            />
+            <RetiroSanidadForm eventId={event.id} onSuccess={setSuccessData} />
           ) : isDefaultEvent ? (
-            <RegistrationForm
-              onSuccess={setSuccessData}
-            />
+            <RegistrationForm onSuccess={setSuccessData} />
           ) : (
-            <DynamicRegistrationForm
-              eventId={event.id}
-              onSuccess={setSuccessData}
-            />
+            <DynamicRegistrationForm eventId={event.id} onSuccess={setSuccessData} />
           )}
         </div>
       </div>
 
-      <footer className="mt-8 text-center text-xs text-slate-500">
-        CMG Eventos • Formulario Seguro de Registro
+      <footer className="mt-6 text-center text-xs text-emerald-800/60">
+        CMG Eventos • Centro Mundial de Gloria
       </footer>
     </div>
   );

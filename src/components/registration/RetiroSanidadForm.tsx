@@ -135,7 +135,7 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
 
   const handleSubmit = async () => {
     if (!validate()) {
-      toast.error("Por favor completa todos los campos obligatorios (*)");
+      toast.error("Por favor completa los campos requeridos (*)");
       return;
     }
 
@@ -167,7 +167,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         iglesia_cobertura: form.iglesia_cobertura.trim() || null,
       };
 
-      // 1. Insert into dedicated retiro_sanidad_registrations table
       const { data, error } = await supabase
         .from("retiro_sanidad_registrations")
         .insert(payload)
@@ -176,7 +175,7 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
 
       if (error) {
         if (error.code === "23505") {
-          toast.error("Ya existe un registro con este número de documento en el Retiro");
+          toast.error("Ya existe un registro con este número de documento");
           setErrors({ numero_documento: "Documento ya registrado" });
         } else {
           toast.error("Error al registrar: " + error.message);
@@ -184,7 +183,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         return;
       }
 
-      // Also mirror to main registrations table for PDF/WhatsApp integration if needed
       await supabase.from("registrations").insert({
         event_id: eventId || null,
         nombres: `${form.nombres.trim()} ${form.primer_apellido.trim()}`,
@@ -223,15 +221,14 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto space-y-6 text-slate-100 animate-fade-in">
-      <div className="text-center border-b border-emerald-800/40 pb-4 mb-6">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-300 via-pink-200 to-amber-200 bg-clip-text text-transparent">
+    <div className="w-full max-w-xl mx-auto space-y-5 text-emerald-950 font-sans">
+      <div className="text-center border-b border-emerald-200/80 pb-3 mb-4">
+        <h2 className="text-xl font-bold font-heading text-emerald-900">
           Retiro de Sanidad Interior y Liberación
         </h2>
-        <p className="text-xs text-slate-300 mt-1">Formulario Oficial de Inscripción</p>
+        <p className="text-xs text-emerald-700 font-medium">Formulario de Inscripción</p>
       </div>
 
-      {/* 1. Correo */}
       <FormField
         label="Correo electrónico *"
         required
@@ -242,7 +239,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         placeholder="Tu dirección de correo electrónico"
       />
 
-      {/* 2. Nombres */}
       <FormField
         label="NOMBRES: *"
         required
@@ -252,7 +248,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         placeholder="Tu respuesta"
       />
 
-      {/* 3. 1er Apellido */}
       <FormField
         label="1ER APELLIDO: *"
         required
@@ -262,7 +257,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         placeholder="Tu respuesta"
       />
 
-      {/* 4. 2do Apellido */}
       <FormField
         label="2DO APELLIDO:"
         value={form.segundo_apellido}
@@ -270,7 +264,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         placeholder="Tu respuesta"
       />
 
-      {/* 5. Tipo de Documento */}
       <CatalogSelect
         label="Tipo de Documento *"
         required
@@ -281,7 +274,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         error={errors.tipo_documento_id}
       />
 
-      {/* 6. Número de Documento */}
       <FormField
         label="Número de Documento *"
         required
@@ -291,7 +283,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         placeholder="Tu respuesta"
       />
 
-      {/* 7. Sexo */}
       <CatalogSelect
         label="Sexo *"
         required
@@ -302,7 +293,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         error={errors.sexo_id}
       />
 
-      {/* 8. Fecha de Nacimiento & 9. Edad */}
       <DateOfBirthPicker
         day={form.birthDay}
         month={form.birthMonth}
@@ -314,7 +304,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         error={errors.birth}
       />
 
-      {/* 10. Celular */}
       <FormField
         label="Celular *"
         required
@@ -325,7 +314,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         placeholder="Tu respuesta"
       />
 
-      {/* 11. Dirección */}
       <FormField
         label="Dirección *"
         required
@@ -335,7 +323,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         placeholder="Tu respuesta"
       />
 
-      {/* 12. Barrio */}
       <FormField
         label="Barrio *"
         required
@@ -345,7 +332,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         placeholder="Tu respuesta"
       />
 
-      {/* 13. Ciudad */}
       <FormField
         label="Ciudad *"
         required
@@ -355,7 +341,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         placeholder="Bucaramanga"
       />
 
-      {/* 14. País */}
       <FormField
         label="País *"
         required
@@ -365,32 +350,31 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         placeholder="Colombia"
       />
 
-      {/* 15. Bautizo */}
-      <div className="space-y-2 bg-slate-900/60 p-4 rounded-xl border border-purple-900/40">
-        <Label className="text-sm font-semibold text-purple-200">Bautizo: *</Label>
-        <div className="space-y-2 text-sm text-slate-200 pt-1">
+      {/* Bautizo */}
+      <div className="space-y-2 bg-white/70 p-4 rounded-xl border border-emerald-200 shadow-sm">
+        <Label className="text-sm font-semibold text-emerald-950">Bautizo: *</Label>
+        <div className="space-y-2 text-sm text-emerald-900 pt-1">
           {[
             { id: "ya_bautizado", label: "Ya es bautizado Por la fe Cristiana" },
             { id: "se_bautiza_retiro", label: "Se va a Bautizar en el retiro" },
             { id: "no_bautiza", label: "No se va a Bautizar en el Retiro" },
           ].map((item) => (
-            <label key={item.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-purple-950/40">
+            <label key={item.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-emerald-50">
               <input
                 type="radio"
                 name="bautizo"
                 value={item.label}
                 checked={form.bautizo === item.label}
                 onChange={(e) => set("bautizo")(e.target.value)}
-                className="w-4 h-4 text-purple-600 accent-purple-500"
+                className="w-4 h-4 text-emerald-700 accent-emerald-700"
               />
               <span>{item.label}</span>
             </label>
           ))}
         </div>
-        {errors.bautizo && <p className="text-xs text-red-400">{errors.bautizo}</p>}
+        {errors.bautizo && <p className="text-xs text-red-600 font-medium">{errors.bautizo}</p>}
       </div>
 
-      {/* 16. Estado Civil */}
       <CatalogSelect
         label="Estado Civil *"
         required
@@ -401,38 +385,37 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         error={errors.estado_civil_id}
       />
 
-      {/* 17. Ha participado antes */}
-      <div className="space-y-2 bg-slate-900/60 p-4 rounded-xl border border-purple-900/40">
-        <Label className="text-sm font-semibold text-purple-200">
+      {/* Ha participado antes */}
+      <div className="space-y-2 bg-white/70 p-4 rounded-xl border border-emerald-200 shadow-sm">
+        <Label className="text-sm font-semibold text-emerald-950">
           ¿HA PARTICIPADO ANTES DE UN RETIRO DE SANIDAD INTERIOR Y LIBERACIÓN? *
         </Label>
         <div className="flex items-center gap-6 pt-1">
-          <label className="flex items-center gap-2 cursor-pointer text-sm">
+          <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
             <input
               type="radio"
               name="participo_previo"
               value="SI"
               checked={form.participo_previo === "SI"}
               onChange={(e) => set("participo_previo")(e.target.value)}
-              className="w-4 h-4 accent-purple-500"
+              className="w-4 h-4 accent-emerald-700"
             />
             <span>Sí</span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer text-sm">
+          <label className="flex items-center gap-2 cursor-pointer text-sm font-medium">
             <input
               type="radio"
               name="participo_previo"
               value="NO"
               checked={form.participo_previo === "NO"}
               onChange={(e) => set("participo_previo")(e.target.value)}
-              className="w-4 h-4 accent-purple-500"
+              className="w-4 h-4 accent-emerald-700"
             />
             <span>No</span>
           </label>
         </div>
       </div>
 
-      {/* 18. RED */}
       <CatalogSelect
         label="RED *"
         required
@@ -443,7 +426,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         error={errors.red_id}
       />
 
-      {/* 19. CDP */}
       <CatalogSelect
         label="CDP *"
         required
@@ -454,7 +436,6 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         error={errors.cdp_id}
       />
 
-      {/* 20. Iglesia en cobertura */}
       <FormField
         label="IGLESIA EN COBERTURA: (si asiste por parte de una iglesia en cobertura)"
         value={form.iglesia_cobertura}
@@ -462,27 +443,27 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         placeholder="Nombre de la iglesia (opcional)"
       />
 
-      {/* Protección de Datos */}
-      <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 text-xs text-slate-400 space-y-2">
-        <div className="flex items-center gap-2 font-semibold text-slate-300">
-          <ShieldCheck className="w-4 h-4 text-purple-400" />
+      {/* Aviso Protección de Datos */}
+      <div className="bg-white/80 p-4 rounded-xl border border-emerald-200 text-xs text-emerald-800 space-y-1.5 shadow-sm">
+        <div className="flex items-center gap-2 font-semibold text-emerald-950">
+          <ShieldCheck className="w-4 h-4 text-emerald-700" />
           Protección de Datos
         </div>
-        <p className="leading-relaxed">
+        <p className="leading-relaxed text-emerald-800/90">
           Este formulario contiene información privilegiada y confidencial de acuerdo a la Ley Estatutaria 1581 de 2012 de Protección de Datos. El titular presta su consentimiento para que sus datos sean tratados con la finalidad exclusiva del evento.
         </p>
       </div>
 
       <Button
         size="xl"
-        className="w-full mt-6 bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold tracking-wide shadow-xl shadow-purple-950"
+        className="w-full mt-6 bg-emerald-800 hover:bg-emerald-900 text-white font-bold tracking-wide shadow-md rounded-xl"
         onClick={handleSubmit}
         disabled={submitting}
       >
         {submitting ? (
-          <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Procesando inscripción...</>
+          <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Procesando...</>
         ) : (
-          <><HeartHandshake className="mr-2 h-5 w-5" /> COMPLETAR INSCRIPCIÓN AL RETIRO</>
+          <><HeartHandshake className="mr-2 h-5 w-5" /> ENVIAR</>
         )}
       </Button>
     </div>

@@ -37,28 +37,28 @@ export const EventCatalogPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-950 via-slate-900 to-teal-950 text-slate-100 flex flex-col justify-between selection:bg-amber-400 selection:text-slate-900">
-      {/* Navbar Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-slate-900/60 border-b border-emerald-800/30 px-6 py-4">
+    <div className="min-h-screen flex flex-col justify-between text-emerald-950 font-sans selection:bg-amber-300 selection:text-emerald-950">
+      {/* Header Bar */}
+      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/70 border-b border-emerald-200/60 px-6 py-4 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-amber-400 p-0.5 shadow-lg shadow-emerald-900/40">
-              <div className="h-full w-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Ticket className="h-5 w-5 text-emerald-400" />
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-700 to-amber-500 p-0.5 shadow-md">
+              <div className="h-full w-full bg-white rounded-[10px] flex items-center justify-center">
+                <Ticket className="h-5 w-5 text-emerald-700" />
               </div>
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-emerald-200 via-white to-amber-200 bg-clip-text text-transparent">
+              <h1 className="text-xl font-bold font-heading text-emerald-900 tracking-tight">
                 CMG Eventos
               </h1>
-              <p className="text-xs text-emerald-400/80 font-medium">Portal Oficial de Inscripciones</p>
+              <p className="text-xs text-emerald-700 font-medium">Portal de Inscripciones</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <Link to="/admin/login">
-              <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-emerald-900/40 border border-emerald-800/40">
-                <ShieldCheck className="w-4 h-4 mr-2 text-amber-400" />
+              <Button variant="outline" size="sm" className="border-emerald-300 text-emerald-800 hover:bg-emerald-50 bg-white/80">
+                <ShieldCheck className="w-4 h-4 mr-2 text-amber-600" />
                 Panel Admin
               </Button>
             </Link>
@@ -67,107 +67,105 @@ export const EventCatalogPage = () => {
       </header>
 
       {/* Hero Banner */}
-      <section className="relative overflow-hidden pt-12 pb-8 px-6 text-center">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="max-w-3xl mx-auto space-y-4 relative z-10">
-          <Badge className="bg-emerald-900/60 text-emerald-300 border-emerald-700/50 px-4 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider backdrop-blur-sm">
-            <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-400 inline" />
+      <section className="relative overflow-hidden pt-10 pb-6 px-6 text-center">
+        <div className="max-w-3xl mx-auto space-y-3 relative z-10">
+          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 px-4 py-1 rounded-full text-xs font-semibold uppercase tracking-wider shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-600 inline" />
             Catálogo de Eventos Activos
           </Badge>
-          <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
-            Encuentra tu próximo evento y <span className="bg-gradient-to-r from-emerald-400 via-teal-200 to-amber-300 bg-clip-text text-transparent">regístrate en segundos</span>
+          <h2 className="text-3xl md:text-4xl font-extrabold font-heading text-emerald-950 leading-tight">
+            Próximos Eventos y Conferencias
           </h2>
-          <p className="text-slate-300 text-base md:text-lg max-w-2xl mx-auto">
-            Explora las actividades, conferencias y retiros de nuestra congregación. Selecciona el evento de tu interés para completar tu inscripción y recibir tu pase con QR.
+          <p className="text-emerald-800 text-sm md:text-base max-w-xl mx-auto">
+            Selecciona el evento al que deseas asistir para realizar tu inscripción y obtener tu pase de ingreso.
           </p>
 
-          {/* Search bar */}
-          <div className="pt-4 max-w-lg mx-auto">
+          {/* Buscador */}
+          <div className="pt-2 max-w-lg mx-auto">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 w-4 h-4" />
               <Input
                 type="text"
-                placeholder="Buscar eventos por nombre, lugar o descripción..."
+                placeholder="Buscar eventos por nombre, lugar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-12 pr-4 py-6 bg-slate-900/80 border-emerald-700/40 rounded-xl text-slate-100 placeholder:text-slate-400 focus:border-amber-400 focus:ring-amber-400/20 shadow-xl"
+                className="pl-11 pr-4 py-5 bg-white/90 border-emerald-300 rounded-xl text-emerald-950 placeholder:text-emerald-700/60 focus:border-emerald-600 focus:ring-emerald-500/20 shadow-md"
               />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Main Content / Events Grid */}
-      <main className="max-w-7xl mx-auto px-6 py-8 flex-1 w-full">
+      {/* Grid de Eventos */}
+      <main className="max-w-7xl mx-auto px-6 py-6 flex-1 w-full">
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((n) => (
-              <div key={n} className="h-72 bg-slate-900/50 rounded-2xl animate-pulse border border-emerald-900/30" />
+              <div key={n} className="h-64 glass-card rounded-2xl animate-pulse" />
             ))}
           </div>
         ) : isError ? (
-          <div className="text-center py-12 bg-slate-900/50 rounded-2xl border border-red-900/30 p-8 max-w-lg mx-auto">
-            <p className="text-red-400 text-lg font-medium">No se pudieron cargar los eventos en este momento.</p>
-            <p className="text-slate-400 text-sm mt-2">Por favor intenta de nuevo más tarde.</p>
+          <div className="text-center py-10 glass-card rounded-2xl p-6 max-w-md mx-auto">
+            <p className="text-red-600 text-sm font-semibold">No se pudieron cargar los eventos.</p>
           </div>
         ) : filteredEvents && filteredEvents.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredEvents.map((evt) => (
               <Card
                 key={evt.id}
-                className="group relative overflow-hidden bg-slate-900/70 border-emerald-800/40 hover:border-amber-400/60 transition-all duration-300 hover:shadow-2xl hover:shadow-emerald-900/40 rounded-2xl flex flex-col justify-between backdrop-blur-md"
+                className="glass-card border-white/80 hover:border-emerald-400 transition-all duration-300 hover:shadow-xl rounded-2xl flex flex-col justify-between overflow-hidden"
               >
-                {/* Visual Header / Banner */}
+                {/* Header del Evento */}
                 <div
-                  className="h-44 w-full bg-cover bg-center relative overflow-hidden flex items-end p-4"
+                  className="h-40 w-full bg-cover bg-center relative overflow-hidden flex items-end p-4"
                   style={{
                     backgroundImage: evt.banner_url
                       ? `url(${evt.banner_url})`
-                      : "linear-gradient(135deg, #083E30 0%, #041F18 100%)",
+                      : "linear-gradient(135deg, #083E30 0%, #0c5c47 100%)",
                   }}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-950/80 via-emerald-950/20 to-transparent" />
                   
                   {evt.logo_url && (
                     <img
                       src={evt.logo_url}
                       alt={evt.nombre}
-                      className="w-14 h-14 rounded-xl object-contain bg-slate-950/80 p-2 border border-emerald-500/30 relative z-10 shadow-md"
+                      className="w-12 h-12 rounded-lg object-contain bg-white/90 p-1.5 border border-white/60 relative z-10 shadow-sm"
                     />
                   )}
 
-                  <Badge className="absolute top-4 right-4 bg-emerald-500/20 text-emerald-300 border-emerald-500/40 backdrop-blur-md px-3 py-1">
-                    Inscripción abierta
+                  <Badge className="absolute top-3 right-3 bg-amber-400 text-emerald-950 font-bold border-amber-300 px-2.5 py-0.5 text-xs shadow-sm">
+                    Inscripciones Abiertas
                   </Badge>
                 </div>
 
-                <CardHeader className="space-y-2 pt-4">
-                  <CardTitle className="text-xl font-bold text-white group-hover:text-amber-300 transition-colors line-clamp-1">
+                <CardHeader className="space-y-1 pt-4 pb-2">
+                  <CardTitle className="text-lg font-bold font-heading text-emerald-950 line-clamp-1">
                     {evt.nombre}
                   </CardTitle>
-                  <p className="text-slate-300 text-sm line-clamp-2 min-h-[2.5rem]">
-                    {evt.descripcion || "Participa en este gran evento. Inscríbete para asegurar tu cupo."}
+                  <p className="text-emerald-800/80 text-xs line-clamp-2 min-h-[2rem]">
+                    {evt.descripcion || "Participa en este evento especial. Asegura tu cupo realizando tu registro."}
                   </p>
                 </CardHeader>
 
-                <CardContent className="space-y-3 text-xs text-slate-300 border-t border-slate-800/60 pt-4 mt-auto">
-                  <div className="flex items-center gap-2.5">
-                    <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+                <CardContent className="space-y-2 text-xs text-emerald-900 border-t border-emerald-100/80 pt-3 mt-auto">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                     <span className="capitalize">{formatDate(evt.fecha_evento)}</span>
                   </div>
                   {evt.lugar_evento && (
-                    <div className="flex items-center gap-2.5">
-                      <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                       <span className="line-clamp-1">{evt.lugar_evento}</span>
                     </div>
                   )}
                 </CardContent>
 
-                <CardFooter className="pt-4">
+                <CardFooter className="pt-3">
                   <Link to={`/eventos/${evt.slug}`} className="w-full">
-                    <Button className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-lg shadow-emerald-900/50 rounded-xl group-hover:shadow-amber-400/20 transition-all flex items-center justify-center gap-2">
+                    <Button className="w-full bg-emerald-800 hover:bg-emerald-900 text-white font-semibold shadow-md rounded-xl flex items-center justify-center gap-2">
                       Inscribirme gratis
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      <ArrowRight className="w-4 h-4" />
                     </Button>
                   </Link>
                 </CardFooter>
@@ -175,29 +173,19 @@ export const EventCatalogPage = () => {
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 bg-slate-900/40 rounded-2xl border border-emerald-900/30 max-w-md mx-auto space-y-4">
-            <Ticket className="w-12 h-12 text-slate-500 mx-auto" />
-            <h3 className="text-lg font-semibold text-slate-200">No se encontraron eventos</h3>
-            <p className="text-slate-400 text-sm">
-              {searchTerm ? "Prueba con otra búsqueda o limpia el filtro." : "Actualmente no hay eventos públicos disponibles."}
+          <div className="text-center py-12 glass-card rounded-2xl max-w-md mx-auto space-y-3">
+            <Ticket className="w-10 h-10 text-emerald-600 mx-auto" />
+            <h3 className="text-base font-semibold text-emerald-950">No hay eventos disponibles</h3>
+            <p className="text-emerald-700 text-xs">
+              {searchTerm ? "Prueba cambiando el término de búsqueda." : "Vuelve pronto para consultar nuevos eventos."}
             </p>
-            {searchTerm && (
-              <Button variant="outline" size="sm" onClick={() => setSearchTerm("")} className="border-emerald-700 text-emerald-300">
-                Limpiar filtro
-              </Button>
-            )}
           </div>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-emerald-900/40 bg-slate-950/80 px-6 py-6 text-center text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} CMG Eventos. Todos los derechos reservados.</p>
-          <div className="flex items-center gap-4 text-slate-400">
-            <Link to="/admin/login" className="hover:text-emerald-400 transition-colors">Administración</Link>
-          </div>
-        </div>
+      <footer className="border-t border-emerald-200/60 bg-white/40 backdrop-blur-sm px-6 py-4 text-center text-xs text-emerald-800">
+        <p>© {new Date().getFullYear()} CMG Eventos • Centro Mundial de Gloria</p>
       </footer>
     </div>
   );
