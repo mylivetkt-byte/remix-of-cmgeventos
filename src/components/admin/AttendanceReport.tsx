@@ -35,7 +35,7 @@ export function AttendanceReport() {
     queryFn: async () => {
       let q = supabase
         .from("registrations")
-        .select("id, event_id, nombres, apellidos, numero_documento, telefono, correo, asistio, fecha_asistencia, estado_pago, catalog_cdp(nombre), catalog_red(nombre), events(nombre)")
+        .select("id, event_id, nombres, apellidos, numero_documento, telefono, correo, asistio, fecha_asistencia, estado_pago, catalog_cdp(nombre), catalog_red(nombre)")
         .order("fecha_asistencia", { ascending: false, nullsFirst: false });
 
       if (filterEvent !== "all") {

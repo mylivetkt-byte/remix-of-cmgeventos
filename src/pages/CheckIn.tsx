@@ -75,7 +75,11 @@ const CheckIn = () => {
   };
 
   const processRegistrationResult = (data: any) => {
-    const reg = data as RegistrationData;
+    const matchedEvent = events.find((e) => e.id === data?.event_id);
+    const reg = {
+      ...data,
+      events: data.events || matchedEvent || null,
+    } as RegistrationData;
     setRegistration(reg);
 
     // Verificar si el pase corresponde al evento seleccionado en el escáner
@@ -96,7 +100,7 @@ const CheckIn = () => {
 
     const { data, error } = await supabase
       .from("registrations")
-      .select("id, event_id, nombres, apellidos, asistio, numero_documento, events(nombre, slug, lugar_evento)")
+      .select("id, event_id, nombres, apellidos, asistio, numero_documento")
       .eq("qr_code", qrCode)
       .maybeSingle();
 
@@ -120,7 +124,7 @@ const CheckIn = () => {
 
     const { data, error } = await supabase
       .from("registrations")
-      .select("id, event_id, nombres, apellidos, asistio, numero_documento, events(nombre, slug, lugar_evento)")
+      .select("id, event_id, nombres, apellidos, asistio, numero_documento")
       .eq("numero_documento", manualDoc.trim())
       .maybeSingle();
 

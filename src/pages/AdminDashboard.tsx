@@ -79,7 +79,7 @@ const AdminDashboard = () => {
     queryFn: async () => {
       let q = supabase.from("registrations").select(`
         *, catalog_tipo_documento(nombre), catalog_estado_civil(nombre),
-        catalog_sexo(nombre), catalog_cdp(nombre), catalog_red(nombre), events(nombre)
+        catalog_sexo(nombre), catalog_cdp(nombre), catalog_red(nombre)
       `).order("created_at", { ascending: false });
       if (search) q = q.or(`nombres.ilike.%${search}%,apellidos.ilike.%${search}%,numero_documento.ilike.%${search}%,correo.ilike.%${search}%`);
       if (filterEvent !== "all") q = q.eq("event_id", filterEvent);
@@ -577,7 +577,7 @@ const AdminDashboard = () => {
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span className="font-bold text-base text-white">{r.nombres} {r.apellidos}</span>
                             <span className="bg-amber-400/90 text-slate-950 font-extrabold text-[11px] px-2.5 py-0.5 rounded-full shadow-sm">
-                              {(r as any).events?.nombre ?? "Evento General"}
+                              {eventsList.data?.find((e) => e.id === r.event_id)?.nombre ?? "Evento General"}
                             </span>
                             {r.asistio
                               ? <span className="inline-flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow">
