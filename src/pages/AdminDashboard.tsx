@@ -333,11 +333,11 @@ const AdminDashboard = () => {
           </Button>
         </div>
 
-        {/* Lista de Navegación de Pestañas */}
-        <div className="p-3 space-y-1.5 flex-1 overflow-y-auto">
+        {/* Lista de Navegación de Pestañas (Fuente Clara text-sm 14px como iglesiacmg.lovable.app) */}
+        <div className="p-3 space-y-1 flex-1 overflow-y-auto">
           {!collapsed && (
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">
-              Navegación
+            <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider px-3.5 mb-2.5">
+              Comunidad / Admin
             </p>
           )}
 
@@ -348,10 +348,10 @@ const AdminDashboard = () => {
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 title={collapsed ? t.label : undefined}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+                className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                   isActive
                     ? "bg-teal-100/90 text-teal-950 shadow-xs border border-teal-200/80 font-extrabold"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-medium"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
                 } ${collapsed ? "justify-center px-0" : ""}`}
               >
                 <div className={`${isActive ? "text-teal-900" : "text-slate-500"}`}>{t.icon}</div>
@@ -362,30 +362,30 @@ const AdminDashboard = () => {
 
           <div className="pt-4 my-2 border-t border-slate-100">
             {!collapsed && (
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">
-                Accesos Rápido
+              <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider px-3.5 mb-2.5">
+                Accesos Rápidos
               </p>
             )}
 
             <button
               onClick={() => navigate("/")}
               title={collapsed ? "Sitio Público" : undefined}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all ${
+              className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all ${
                 collapsed ? "justify-center px-0" : ""
               }`}
             >
-              <Globe className="w-4 h-4 text-teal-600 shrink-0" />
+              <Globe className="w-5 h-5 text-teal-600 shrink-0" />
               {!collapsed && <span className="truncate">Sitio Público</span>}
             </button>
 
             <button
               onClick={() => navigate("/checkin")}
               title={collapsed ? "Escáner Puerta" : undefined}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all mt-1 ${
+              className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all mt-1 ${
                 collapsed ? "justify-center px-0" : ""
               }`}
             >
-              <QrCode className="w-4 h-4 text-teal-600 shrink-0" />
+              <QrCode className="w-5 h-5 text-teal-600 shrink-0" />
               {!collapsed && <span className="truncate">Escáner Puerta</span>}
             </button>
           </div>
@@ -396,11 +396,11 @@ const AdminDashboard = () => {
           <button
             onClick={signOut}
             title={collapsed ? "Cerrar Sesión" : undefined}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 transition-all ${
+            className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 transition-all ${
               collapsed ? "justify-center px-0" : ""
             }`}
           >
-            <LogOut className="w-4 h-4 shrink-0 text-red-500" />
+            <LogOut className="w-5 h-5 shrink-0 text-red-500" />
             {!collapsed && <span className="truncate">Cerrar Sesión</span>}
           </button>
         </div>
@@ -408,14 +408,14 @@ const AdminDashboard = () => {
 
       {/* ÁREA DE CONTENIDO PRINCIPAL (Alineada dinámicamente según estado colapsado) */}
       <div className={`flex-1 transition-all duration-300 ${collapsed ? "ml-20" : "ml-64"}`}>
-        {/* Cabecera Superior del Área de Contenido */}
+        {/* Cabecera Superior del Área de Contenido con Título Destacado en Grande */}
         <header className="border-b border-slate-200/80 bg-white sticky top-0 z-30 shadow-xs h-16 px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h2 className="font-heading font-black text-lg text-slate-900 flex items-center gap-2">
+            <h2 className="font-heading font-extrabold text-xl text-slate-900 flex items-center gap-2.5">
               {activeTabObj?.icon}
               <span>{activeTabObj?.label}</span>
             </h2>
-            <Badge className="bg-teal-50 text-teal-900 border-teal-200 text-[11px] font-bold">
+            <Badge className="bg-teal-50 text-teal-900 border-teal-200 text-xs font-bold px-2.5 py-0.5">
               Panel Admin
             </Badge>
           </div>
@@ -425,17 +425,17 @@ const AdminDashboard = () => {
               variant="outline"
               size="sm"
               onClick={() => navigate("/")}
-              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-xs font-semibold rounded-xl hidden md:flex items-center gap-1.5"
+              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-sm font-semibold rounded-xl hidden md:flex items-center gap-2 px-3.5 py-2"
             >
-              <Globe className="w-3.5 h-3.5 text-teal-600" /> Ver Sitio
+              <Globe className="w-4 h-4 text-teal-600" /> Ver Sitio
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate("/checkin")}
-              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-xs font-semibold rounded-xl hidden md:flex items-center gap-1.5"
+              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-sm font-semibold rounded-xl hidden md:flex items-center gap-2 px-3.5 py-2"
             >
-              <QrCode className="w-3.5 h-3.5 text-teal-600" /> Escáner
+              <QrCode className="w-4 h-4 text-teal-600" /> Escáner
             </Button>
           </div>
         </header>

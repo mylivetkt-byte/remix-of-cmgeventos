@@ -121,17 +121,17 @@ export function CatalogManager() {
   return (
     <div className="space-y-6 animate-fade-in text-slate-900 font-sans pb-8">
       {/* Selector de Catálogo estilo Menú Nav Sub-pestañas Limpias (iglesiacmg.lovable.app) */}
-      <div className="bg-white border border-slate-200 p-1.5 rounded-2xl shadow-xs flex gap-1.5 flex-wrap">
+      <div className="bg-white border border-slate-200 p-2 rounded-2xl shadow-xs flex gap-2 flex-wrap">
         {CATALOGS.map((c) => {
           const isSelected = selected === c.table;
           return (
             <button
               key={c.table}
               onClick={() => setSelected(c.table)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
+              className={`flex items-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${
                 isSelected
                   ? "bg-teal-100/90 text-teal-950 shadow-xs border border-teal-200/80 font-extrabold"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-medium"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-semibold"
               }`}
             >
               {c.icon}
@@ -142,42 +142,42 @@ export function CatalogManager() {
       </div>
 
       {/* Cabecera y Botón Nuevo */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-2">
-          <ListFilter className="w-5 h-5 text-teal-700" />
-          <h2 className="font-heading font-black text-lg text-slate-900">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <ListFilter className="w-6 h-6 text-teal-700" />
+          <h2 className="font-heading font-black text-xl text-slate-900">
             {activeCatalogObj?.label}
           </h2>
         </div>
-        <Button size="sm" onClick={openNew} className="bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl shadow-xs">
-          <Plus className="w-4 h-4 mr-1 text-teal-200" /> Agregar Registro
+        <Button size="sm" onClick={openNew} className="bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl shadow-xs px-4 py-2 text-sm">
+          <Plus className="w-4 h-4 mr-1.5 text-teal-200" /> Agregar Registro
         </Button>
       </div>
 
-      {/* Tabla con Estilo Blanco Pulcro y Gris Claro */}
+      {/* Tabla con Estilo Blanco Pulcro y Gris Claro (Legibilidad 14px) */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <Table>
           <TableHeader className="bg-slate-50 text-slate-700 border-b border-slate-200">
             <TableRow className="border-slate-200 hover:bg-slate-50">
-              <TableHead className="text-slate-800 font-extrabold text-xs">Nombre</TableHead>
-              {selected === "catalog_cdp" && <TableHead className="text-teal-800 font-extrabold text-xs">RED Asociada</TableHead>}
-              <TableHead className="text-slate-800 font-extrabold text-xs">Orden</TableHead>
-              <TableHead className="text-slate-800 font-extrabold text-xs">Estado</TableHead>
-              <TableHead className="text-slate-800 font-extrabold text-xs text-right pr-6">Acciones</TableHead>
+              <TableHead className="text-slate-800 font-extrabold text-sm py-3.5">Nombre</TableHead>
+              {selected === "catalog_cdp" && <TableHead className="text-teal-800 font-extrabold text-sm py-3.5">RED Asociada</TableHead>}
+              <TableHead className="text-slate-800 font-extrabold text-sm py-3.5">Orden</TableHead>
+              <TableHead className="text-slate-800 font-extrabold text-sm py-3.5">Estado</TableHead>
+              <TableHead className="text-slate-800 font-extrabold text-sm py-3.5 text-right pr-6">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {query.data?.map((item) => (
-              <TableRow key={item.id} className="hover:bg-emerald-50/60 border-emerald-100 transition-colors">
-                <TableCell className="font-bold text-emerald-950 text-xs">{item.nombre}</TableCell>
+              <TableRow key={item.id} className="hover:bg-slate-50/70 border-slate-100 transition-colors">
+                <TableCell className="font-bold text-slate-900 text-sm py-3">{item.nombre}</TableCell>
                 {selected === "catalog_cdp" && (
-                  <TableCell className="text-emerald-800 font-medium text-xs">
+                  <TableCell className="text-slate-700 font-medium text-sm py-3">
                     {redQuery.data?.find((r) => r.id === item.red_id)?.nombre || "—"}
                   </TableCell>
                 )}
-                <TableCell className="text-emerald-900 font-semibold text-xs">{item.orden}</TableCell>
-                <TableCell>
-                  <Badge className={item.activo ? "bg-emerald-600 text-white font-bold text-[10px]" : "bg-slate-200 text-slate-700 font-bold text-[10px]"}>
+                <TableCell className="text-slate-800 font-semibold text-sm py-3">{item.orden}</TableCell>
+                <TableCell className="py-3">
+                  <Badge className={item.activo ? "bg-teal-600 text-white font-bold text-xs" : "bg-slate-200 text-slate-700 font-bold text-xs"}>
                     {item.activo ? "Activo" : "Inactivo"}
                   </Badge>
                 </TableCell>
