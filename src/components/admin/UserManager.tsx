@@ -35,7 +35,7 @@ const INITIAL_USERS: AdminUser[] = [
     telefono: "+57 300 123 4567",
     rol: "super_admin",
     activo: true,
-    created_at: new Date().toISOString(),
+    created_at: "2026-08-29T00:00:00.000Z",
   },
   {
     id: "usr-coordinador-1",
@@ -44,7 +44,7 @@ const INITIAL_USERS: AdminUser[] = [
     telefono: "+57 310 987 6543",
     rol: "coordinador",
     activo: true,
-    created_at: new Date().toISOString(),
+    created_at: "2026-08-29T00:00:00.000Z",
   },
   {
     id: "usr-validador-1",
@@ -53,7 +53,7 @@ const INITIAL_USERS: AdminUser[] = [
     telefono: "+57 320 555 1122",
     rol: "validador",
     activo: true,
-    created_at: new Date().toISOString(),
+    created_at: "2026-08-29T00:00:00.000Z",
   },
   {
     id: "usr-lider-1",
@@ -63,23 +63,12 @@ const INITIAL_USERS: AdminUser[] = [
     rol: "lider_red",
     red_nombre: "RED JUVENIL",
     activo: true,
-    created_at: new Date().toISOString(),
+    created_at: "2026-08-29T00:00:00.000Z",
   },
 ];
 
 export function UserManager() {
-  const [users, setUsers] = useState<AdminUser[]>(() => {
-    const saved = localStorage.getItem("cmg_admin_users");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return INITIAL_USERS;
-      }
-    }
-    return INITIAL_USERS;
-  });
-
+  const [users, setUsers] = useState<AdminUser[]>(INITIAL_USERS);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -97,9 +86,23 @@ export function UserManager() {
     activo: true,
   });
 
+  // Cargar de localStorage en cliente
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("cmg_admin_users");
+      if (saved) {
+        setUsers(JSON.parse(saved));
+      }
+    } catch {
+      // Usar INITIAL_USERS por defecto
+    }
+  }, []);
+
   // Guardar en localStorage
   useEffect(() => {
-    localStorage.setItem("cmg_admin_users", JSON.stringify(users));
+    try {
+      localStorage.setItem("cmg_admin_users", JSON.stringify(users));
+    } catch {}
   }, [users]);
 
   // Cargar Catálogos de RED y CDP
