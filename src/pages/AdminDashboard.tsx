@@ -293,26 +293,24 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen text-emerald-950 font-sans bg-slate-900 selection:bg-amber-400">
-      {/* Cabecera del Panel Admin en Oscuro/Oro Lujo */}
-      <header className="border-b border-amber-500/30 bg-gradient-to-r from-emerald-950 via-emerald-900 to-slate-950 sticky top-0 z-30 shadow-2xl backdrop-blur-md">
+    <div className="min-h-screen text-slate-900 font-sans bg-slate-50 selection:bg-teal-200">
+      {/* Cabecera Limpia en Blanco Pulcro con Borde Gris Claro (Estilo iglesiacmg.lovable.app) */}
+      <header className="border-b border-slate-200/80 bg-white sticky top-0 z-30 shadow-xs backdrop-blur-md">
         <div className="container max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-400 to-amber-600 p-0.5 shadow-lg flex items-center justify-center">
-              <div className="w-full h-full bg-emerald-950 rounded-[10px] flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-amber-400" />
-              </div>
+            <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center shadow-xs">
+              <Sparkles className="w-5 h-5 text-teal-700" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-heading font-black text-lg text-white tracking-wide">
+                <h1 className="font-heading font-black text-lg text-slate-900 tracking-tight">
                   CMG Eventos
                 </h1>
-                <Badge className="bg-amber-400 text-slate-950 font-black text-[10px] px-2 py-0.5 shadow-md">
-                  <ShieldCheck className="w-3 h-3 mr-1" /> ADMIN
+                <Badge className="bg-teal-100 text-teal-900 font-bold border-teal-300 text-[10px] px-2 py-0.5 shadow-none">
+                  <ShieldCheck className="w-3 h-3 mr-1 text-teal-700" /> ADMIN
                 </Badge>
               </div>
-              <p className="text-[11px] text-emerald-300 font-medium">Centro Mundial de Gloria · Panel de Control</p>
+              <p className="text-[11px] text-slate-500 font-medium">Centro Mundial de Gloria · Panel de Control</p>
             </div>
           </div>
 
@@ -321,27 +319,27 @@ const AdminDashboard = () => {
               variant="outline"
               size="sm"
               onClick={() => navigate("/")}
-              className="border-emerald-700/60 bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800 hover:text-white text-xs font-bold rounded-xl hidden sm:flex items-center gap-1.5"
+              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 text-xs font-semibold rounded-xl hidden sm:flex items-center gap-1.5 shadow-xs"
             >
-              <Globe className="w-3.5 h-3.5 text-amber-400" /> Sitio Público
+              <Globe className="w-3.5 h-3.5 text-teal-600" /> Sitio Público
             </Button>
 
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate("/checkin")}
-              className="border-emerald-700/60 bg-emerald-900/40 text-emerald-100 hover:bg-emerald-800 hover:text-white text-xs font-bold rounded-xl hidden sm:flex items-center gap-1.5"
+              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 text-xs font-semibold rounded-xl hidden sm:flex items-center gap-1.5 shadow-xs"
             >
-              <QrCode className="w-3.5 h-3.5 text-emerald-400" /> Escáner Puerta
+              <QrCode className="w-3.5 h-3.5 text-teal-600" /> Escáner Puerta
             </Button>
 
             <Button
               variant="outline"
               size="sm"
               onClick={signOut}
-              className="border-amber-500/40 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 hover:text-white text-xs font-bold rounded-xl"
+              className="border-slate-200 bg-white text-slate-700 hover:bg-red-50 hover:text-red-700 hover:border-red-200 text-xs font-semibold rounded-xl shadow-xs"
             >
-              <LogOut className="w-3.5 h-3.5 mr-1" /> Salir
+              <LogOut className="w-3.5 h-3.5 mr-1 text-slate-500" /> Salir
             </Button>
           </div>
         </div>
@@ -349,18 +347,18 @@ const AdminDashboard = () => {
 
       {/* Cuerpo Principal del Panel */}
       <div className="container max-w-7xl mx-auto px-4 mt-6 pb-12">
-        {/* Menú Nav Principal de Pestañas Moderno */}
-        <div className="bg-slate-950/80 backdrop-blur-xl border border-emerald-800/40 p-2 rounded-2xl shadow-2xl flex flex-wrap gap-2 mb-6">
+        {/* Menú Nav Principal de Pestañas en Gris Claro / Verde Suave (Píldoras iglesiacmg.lovable.app) */}
+        <div className="bg-white border border-slate-200 p-1.5 rounded-2xl shadow-xs flex flex-wrap gap-1 mb-6">
           {tabs.map((t) => {
             const isActive = tab === t.id;
             return (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all duration-300 ${
+                className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-bold transition-all duration-200 ${
                   isActive
-                    ? "bg-gradient-to-r from-amber-400 via-amber-400 to-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 scale-[1.02] border border-amber-300"
-                    : "text-slate-300 hover:text-white hover:bg-emerald-900/40"
+                    ? "bg-teal-100/90 text-teal-950 shadow-xs border border-teal-200/80 font-extrabold"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-medium"
                 }`}
               >
                 {t.icon}

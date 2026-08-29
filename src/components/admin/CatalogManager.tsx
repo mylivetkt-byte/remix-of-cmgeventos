@@ -119,19 +119,19 @@ export function CatalogManager() {
   const activeCatalogObj = CATALOGS.find((c) => c.table === selected);
 
   return (
-    <div className="space-y-6 animate-fade-in text-emerald-950 font-sans pb-8">
-      {/* Selector de Catálogo estilo Menú Nav Sub-pestañas */}
-      <div className="bg-slate-950/80 backdrop-blur-xl border border-emerald-800/40 p-2 rounded-2xl shadow-xl flex gap-2 flex-wrap">
+    <div className="space-y-6 animate-fade-in text-slate-900 font-sans pb-8">
+      {/* Selector de Catálogo estilo Menú Nav Sub-pestañas Limpias (iglesiacmg.lovable.app) */}
+      <div className="bg-white border border-slate-200 p-1.5 rounded-2xl shadow-xs flex gap-1.5 flex-wrap">
         {CATALOGS.map((c) => {
           const isSelected = selected === c.table;
           return (
             <button
               key={c.table}
               onClick={() => setSelected(c.table)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
                 isSelected
-                  ? "bg-gradient-to-r from-amber-400 via-amber-400 to-amber-500 text-slate-950 shadow-md shadow-amber-500/20 scale-[1.02] border border-amber-300"
-                  : "text-slate-300 hover:text-white hover:bg-emerald-900/40"
+                  ? "bg-teal-100/90 text-teal-950 shadow-xs border border-teal-200/80 font-extrabold"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 font-medium"
               }`}
             >
               {c.icon}
@@ -142,28 +142,28 @@ export function CatalogManager() {
       </div>
 
       {/* Cabecera y Botón Nuevo */}
-      <div className="glass-card p-5 rounded-2xl border border-white/80 flex items-center justify-between shadow-sm">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-2">
-          <ListFilter className="w-5 h-5 text-amber-600" />
-          <h2 className="font-heading font-black text-lg text-emerald-900">
+          <ListFilter className="w-5 h-5 text-teal-700" />
+          <h2 className="font-heading font-black text-lg text-slate-900">
             {activeCatalogObj?.label}
           </h2>
         </div>
-        <Button size="sm" onClick={openNew} className="bg-emerald-800 hover:bg-emerald-900 text-white font-bold rounded-xl shadow">
-          <Plus className="w-4 h-4 mr-1 text-amber-400" /> Agregar Registro
+        <Button size="sm" onClick={openNew} className="bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl shadow-xs">
+          <Plus className="w-4 h-4 mr-1 text-teal-200" /> Agregar Registro
         </Button>
       </div>
 
-      {/* Tabla con Estilo Premium */}
-      <div className="glass-card rounded-2xl border border-white/90 shadow-md overflow-hidden bg-white/90">
+      {/* Tabla con Estilo Blanco Pulcro y Gris Claro */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <Table>
-          <TableHeader className="bg-emerald-950 text-white">
-            <TableRow className="border-emerald-800 hover:bg-emerald-950">
-              <TableHead className="text-white font-extrabold text-xs">Nombre</TableHead>
-              {selected === "catalog_cdp" && <TableHead className="text-amber-300 font-extrabold text-xs">RED Asociada</TableHead>}
-              <TableHead className="text-white font-extrabold text-xs">Orden</TableHead>
-              <TableHead className="text-white font-extrabold text-xs">Estado</TableHead>
-              <TableHead className="text-white font-extrabold text-xs text-right pr-6">Acciones</TableHead>
+          <TableHeader className="bg-slate-50 text-slate-700 border-b border-slate-200">
+            <TableRow className="border-slate-200 hover:bg-slate-50">
+              <TableHead className="text-slate-800 font-extrabold text-xs">Nombre</TableHead>
+              {selected === "catalog_cdp" && <TableHead className="text-teal-800 font-extrabold text-xs">RED Asociada</TableHead>}
+              <TableHead className="text-slate-800 font-extrabold text-xs">Orden</TableHead>
+              <TableHead className="text-slate-800 font-extrabold text-xs">Estado</TableHead>
+              <TableHead className="text-slate-800 font-extrabold text-xs text-right pr-6">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
