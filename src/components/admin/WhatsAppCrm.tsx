@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { loadStoredContacts } from "./WhatsAppContacts";
+import { CrmAnalytics } from "./CrmAnalytics";
 import { toast } from "sonner";
 import {
   CrmContact,
@@ -29,6 +30,7 @@ import {
   WifiOff,
   ShieldCheck,
   Users,
+  BarChart3,
 } from "lucide-react";
 
 const DEFAULT_TEMPLATE = `Hola {{nombre}} 👋
@@ -65,6 +67,7 @@ export function WhatsAppCrm({ initialContacts }: WhatsAppCrmProps) {
   const [sending, setSending] = useState(false);
   const [sendingStatus, setSendingStatus] = useState<string>("");
   const [progress, setProgress] = useState({ sent: 0, failed: 0, total: 0 });
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   // Cargar contactos iniciales si vienen desde el Módulo de Contactos
   useEffect(() => {
@@ -313,6 +316,20 @@ export function WhatsAppCrm({ initialContacts }: WhatsAppCrmProps) {
             <Users className="w-4 h-4 mr-2 text-teal-600" /> Cargar desde Agenda
           </Button>
 
+          <Button
+            type="button"
+            variant={showAnalytics ? "default" : "outline"}
+            onClick={() => setShowAnalytics(!showAnalytics)}
+            className={`h-11 rounded-xl font-extrabold transition-all ${
+              showAnalytics
+                ? "bg-slate-900 text-white shadow-xs"
+                : "border-teal-200 text-teal-900 hover:bg-teal-50"
+            }`}
+          >
+            <BarChart3 className="w-4 h-4 mr-2 text-teal-600" />
+            {showAnalytics ? "Ocultar Analytics" : "📊 Ver Analytics & Métricas"}
+          </Button>
+
           <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,.txt" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
         </div>
 
@@ -329,6 +346,9 @@ export function WhatsAppCrm({ initialContacts }: WhatsAppCrmProps) {
           </div>
         )}
       </div>
+
+      {/* Módulo de Analytics & Gráficos */}
+      {showAnalytics && <CrmAnalytics contacts={contacts} campaignName={fileName} />}
 
       {/* Editor de mensaje y Vista previa */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
