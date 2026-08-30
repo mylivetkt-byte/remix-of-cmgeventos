@@ -7,6 +7,7 @@ import { useCatalog, useCdpWithRed } from "@/hooks/useCatalogs";
 import { useEventFields } from "@/hooks/useEvents";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { sendInstantWhatsAppTicket } from "@/lib/whatsapp-bot";
 import { Loader2, UserPlus, ShieldCheck } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
@@ -144,6 +145,13 @@ export function DynamicRegistrationForm({ eventId, onSuccess }: Props) {
 
       supabase.functions.invoke("generate-invitation", {
         body: { registrationId: data.id },
+      }).catch(() => {});
+
+      sendInstantWhatsAppTicket({
+        phone: payload.telefono,
+        name: `${payload.nombres} ${payload.apellidos}`.trim(),
+        registrationId: data.id,
+        eventId,
       }).catch(() => {});
 
       onSuccess({

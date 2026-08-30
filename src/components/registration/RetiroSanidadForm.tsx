@@ -6,6 +6,7 @@ import { DateOfBirthPicker } from "./DateOfBirthPicker";
 import { useCatalog, useCdpWithRed } from "@/hooks/useCatalogs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { sendInstantWhatsAppTicket } from "@/lib/whatsapp-bot";
 import { Loader2, HeartHandshake, ShieldCheck } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
@@ -206,6 +207,13 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
       const registrationId = data.id;
       supabase.functions.invoke("generate-invitation", {
         body: { registrationId },
+      }).catch(() => {});
+
+      sendInstantWhatsAppTicket({
+        phone: form.celular,
+        name: `${form.nombres} ${form.primer_apellido}`.trim(),
+        registrationId,
+        eventId,
       }).catch(() => {});
 
       onSuccess({

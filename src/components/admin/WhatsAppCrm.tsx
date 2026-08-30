@@ -37,6 +37,16 @@ Te escribimos desde Doxa Eventos para compartirte esta información.
 
 ¡Te esperamos!`;
 
+const RSVP_TEMPLATE = `Hola {{nombre}} 👋
+
+Queremos confirmar tu asistencia al próximo evento de Doxa Eventos / Centro Mundial de Gloria.
+
+Por favor responde a este mensaje:
+*1* -> Si vas a asistir (Confirmar)
+*2* -> Si no podrás asistir (Declinar)
+
+¡Esperamos contar contigo!`;
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface WhatsAppCrmProps {
@@ -323,7 +333,19 @@ export function WhatsAppCrm({ initialContacts }: WhatsAppCrmProps) {
       {/* Editor de mensaje y Vista previa */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 space-y-4 shadow-xs">
-          <Label className="text-sm font-bold text-slate-900">Mensaje de la campaña</Label>
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-bold text-slate-900">Mensaje de la campaña</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setTemplate(RSVP_TEMPLATE)}
+              disabled={sending}
+              className="rounded-xl border-teal-200 text-teal-800 font-extrabold text-xs"
+            >
+              📩 Cargar Plantilla RSVP (1 / 2)
+            </Button>
+          </div>
           <Textarea value={template} onChange={(e) => setTemplate(e.target.value)} disabled={sending} className="min-h-[220px] rounded-xl border-slate-300 text-sm font-medium" placeholder="Hola {{nombre}}, ..." />
           <p className="text-xs text-slate-500 font-medium">Variables: {"{{nombre}}"}, {"{{whatsapp}}"}. Columnas extra del Excel también funcionan.</p>
           <div>
