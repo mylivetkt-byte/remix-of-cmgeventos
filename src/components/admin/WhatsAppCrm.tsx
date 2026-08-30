@@ -155,7 +155,9 @@ export function WhatsAppCrm() {
         );
       }
       setProgress({ sent, failed, total: contacts.length });
-      if (!abortRef.current) await sleep(Math.max(400, delayMs));
+      // Simulación de envío con retardo aleatorio para evitar baneo
+      const jitter = Math.floor(Math.random() * 1000); // Añade aleatoriedad entre 0-1s
+      if (!abortRef.current) await sleep(Math.max(400, delayMs) + jitter);
     }
 
     setSending(false);
@@ -221,6 +223,39 @@ function CrmUI({ contacts, fileName, template, setTemplate, delayMs, setDelayMs,
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 space-y-4 shadow-xs">
           <Label className="text-sm font-bold text-slate-900">Mensaje de la campaña</Label>
           <Textarea value={template} onChange={(e) => setTemplate(e.target.value)} disabled={sending} className="min-h-[220px] rounded-xl border-slate-300 text-sm font-medium" placeholder="Hola {{nombre}}, ..." />
+          <div className="mb-2">
+            <button
+              type="button"
+              onClick={() => {
+                const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+                if (textarea) {
+                  const start = textarea.selectionStart;
+                  const end = textarea.selectionEnd;
+                  const text = template;
+                  setTemplate(text.substring(0, start) + '👋' + text.substring(end));
+                }
+              }}
+              className="text-2xl hover:bg-slate-100 p-1 rounded"
+            >
+              👋
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+                if (textarea) {
+                  const start = textarea.selectionStart;
+                  const end = textarea.selectionEnd;
+                  const text = template;
+                  setTemplate(text.substring(0, start) + '🎉' + text.substring(end));
+                }
+              }}
+              className="text-2xl hover:bg-slate-100 p-1 rounded"
+            >
+              🎉
+            </button>
+          </div>
+
           <p className="text-xs text-slate-500 font-medium">Variables: {"{{nombre}}"}, {"{{whatsapp}}"}. Columnas extra del Excel también funcionan.</p>
           <div>
             <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Pausa entre mensajes (ms)</Label>
