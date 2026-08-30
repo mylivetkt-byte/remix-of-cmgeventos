@@ -49,7 +49,7 @@ export const EventCatalogPage = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg sm:text-xl font-black font-heading text-slate-900 tracking-tight">
-                  CMG Eventos
+                  Doxa Eventos
                 </h1>
                 <Badge className="bg-teal-100 text-teal-900 font-bold border-teal-300 text-[10px] px-2 py-0.5 shadow-none">
                   OFICIAL
@@ -252,7 +252,7 @@ export const EventCatalogPage = () => {
       {/* Footer Limpio */}
       <footer className="border-t border-slate-200/80 bg-white px-6 py-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
-          <p>© {new Date().getFullYear()} CMG Eventos • Centro Mundial de Gloria. Todos los derechos reservados.</p>
+          <p>© {new Date().getFullYear()} Doxa Eventos • Centro Mundial de Gloria. Todos los derechos reservados.</p>
           <div className="flex items-center gap-4 text-slate-700 font-semibold">
             <Link to="/admin/login" className="hover:text-teal-700 transition-colors">Administración</Link>
           </div>
