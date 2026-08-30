@@ -17,6 +17,7 @@ import {
 } from "../WhatsAppContacts";
 import { personalizeMessage, CrmContact } from "@/lib/whatsapp-crm";
 import { toast } from "sonner";
+import { processWhatsAppMessageIntent } from "@/lib/whatsapp-bot";
 import {
   Loader2,
   Send,
@@ -32,6 +33,8 @@ import {
   UserPlus,
   Radio,
   Folder,
+  Bot,
+  Sparkles,
 } from "lucide-react";
 
 interface Message {
@@ -72,6 +75,7 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
   const [sending, setSending] = useState(false);
   const [typingState, setTypingState] = useState(false);
   const [antiBanMode, setAntiBanMode] = useState(true);
+  const [aiBotActive, setAiBotActive] = useState(true);
   const [waConfig, setWaConfig] = useState({ url: "", token: "" });
   const [status, setStatus] = useState<"connected" | "qr" | "disconnected" | "checking">("checking");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -242,7 +246,27 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
           timestamp: Math.floor(Date.now() / 1000),
         };
         setMessages((prev) => [...prev, localMsg]);
-        setTimeout(() => fetchMessages(activeChat.id), 800);
+
+        // 🤖 Si el Chatbot IA está activo y se envía una pregunta o confirmación 1/2, generar respuesta IA
+        if (aiBotActive) {
+          setTimeout(async () => {
+            const { replyText, rsvpStatus } = await processWhatsAppMessageIntent(messageText, activeChat.id);
+            if (replyText) {
+              const botMsg: Message = {
+                id: `bot-${Date.now()}`,
+                fromMe: false,
+                body: replyText,
+                timestamp: Math.floor(Date.now() / 1000),
+              };
+              setMessages((prev) => [...prev, botMsg]);
+              if (rsvpStatus) {
+                toast.success(`RSVP registrado: ${rsvpStatus.toUpperCase()}`);
+              }
+            }
+          }, 1200);
+        } else {
+          setTimeout(() => fetchMessages(activeChat.id), 800);
+        }
       } else {
         toast.error("Error al enviar el mensaje de WhatsApp");
       }
@@ -251,6 +275,25 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
     } finally {
       setSending(false);
       setTypingState(false);
+    }
+  };
+
+  const handleSimulateIncomingAiMessage = async (queryText: string) => {
+    if (!activeChat) return;
+    setTypingState(true);
+    await sleep(1000);
+    const { replyText, rsvpStatus } = await processWhatsAppMessageIntent(queryText, activeChat.id);
+    setTypingState(false);
+
+    const botMsg: Message = {
+      id: `bot-reply-${Date.now()}`,
+      fromMe: false,
+      body: replyText,
+      timestamp: Math.floor(Date.now() / 1000),
+    };
+    setMessages((prev) => [...prev, botMsg]);
+    if (rsvpStatus) {
+      toast.success(`RSVP registrado automáticamente: ${rsvpStatus.toUpperCase()}`);
     }
   };
 
@@ -451,6 +494,20 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
             />
           </div>
 
+          {/* Toggle Chatbot IA 24/7 */}
+          <div className="flex items-center gap-2 bg-teal-50/80 border border-teal-200 px-3 py-1.5 rounded-full">
+            <Bot className="w-4 h-4 text-teal-700" />
+            <Label htmlFor="ai-bot-chat" className="text-xs font-extrabold text-teal-950 cursor-pointer">
+              Chatbot IA 24/7
+            </Label>
+            <Switch
+              id="ai-bot-chat"
+              checked={aiBotActive}
+              onCheckedChange={setAiBotActive}
+              className="data-[state=checked]:bg-teal-600"
+            />
+          </div>
+
           <Badge
             className={`px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 text-xs border ${
               status === "connected"
@@ -645,6 +702,48 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                   </div>
                 )}
               </ScrollArea>
+
+              {/* Barra de Pruebas Rápidas de IA / RSVP */}
+              <div className="px-4 py-2 bg-slate-50 border-t border-slate-200 flex items-center gap-2 overflow-x-auto">
+                <span className="text-[10px] font-extrabold text-teal-800 uppercase shrink-0 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-teal-600" /> Pruebas IA:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleSimulateIncomingAiMessage("¿A qué hora empieza el evento?")}
+                  className="px-2.5 py-1 bg-white border border-slate-200 hover:border-teal-300 rounded-full text-[11px] font-semibold text-slate-700 shrink-0"
+                >
+                  📅 ¿Horario?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSimulateIncomingAiMessage("¿Dónde es la dirección del evento?")}
+                  className="px-2.5 py-1 bg-white border border-slate-200 hover:border-teal-300 rounded-full text-[11px] font-semibold text-slate-700 shrink-0"
+                >
+                  📍 ¿Ubicación?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSimulateIncomingAiMessage("¿Dónde puedo descargar mi pase QR?")}
+                  className="px-2.5 py-1 bg-white border border-slate-200 hover:border-teal-300 rounded-full text-[11px] font-semibold text-slate-700 shrink-0"
+                >
+                  🎟️ ¿Mi Pase QR?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSimulateIncomingAiMessage("1")}
+                  className="px-2.5 py-1 bg-emerald-50 border border-emerald-300 hover:bg-emerald-100 rounded-full text-[11px] font-bold text-emerald-900 shrink-0"
+                >
+                  ✅ Responder 1 (Confirmar)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSimulateIncomingAiMessage("2")}
+                  className="px-2.5 py-1 bg-red-50 border border-red-300 hover:bg-red-100 rounded-full text-[11px] font-bold text-red-900 shrink-0"
+                >
+                  ❌ Responder 2 (Declinar)
+                </button>
+              </div>
 
               {/* Área de envío de mensajes */}
               <div className="p-4 bg-white border-t border-slate-200/80 flex items-center gap-3">

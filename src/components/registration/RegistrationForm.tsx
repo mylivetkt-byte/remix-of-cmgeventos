@@ -5,7 +5,7 @@ import { CatalogSelect } from "./CatalogSelect";
 import { DateOfBirthPicker } from "./DateOfBirthPicker";
 import { useCatalog, useEventConfig, useCdpWithRed } from "@/hooks/useCatalogs";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { sendInstantWhatsAppTicket } from "@/lib/whatsapp-bot";
 import { Loader2, UserPlus } from "lucide-react";
 
 interface FormData {
@@ -159,11 +159,17 @@ export function RegistrationForm({ eventId, onSuccess }: Props) {
           }
         });
 
-      // WhatsApp se envía automáticamente desde generate-invitation
+      // WhatsApp se envía automáticamente e instantáneamente al celular del registrado
+      sendInstantWhatsAppTicket({
+        phone: form.telefono,
+        name: `${form.nombres} ${form.apellidos}`.trim(),
+        registrationId: data.id,
+        eventId,
+      }).catch(() => {});
 
       onSuccess({
         nombres: `${form.nombres} ${form.apellidos}`,
-        pdfUrl: null, // Will be available via download link
+        pdfUrl: null, // Available via download link
         registrationId: data.id,
       });
     } catch (err: any) {
