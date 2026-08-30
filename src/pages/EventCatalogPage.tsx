@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BannerCarousel } from "@/components/BannerCarousel";
+import { SplashScreen } from "@/components/SplashScreen";
 
 export const EventCatalogPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,7 +39,9 @@ export const EventCatalogPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between font-sans bg-slate-50 text-slate-900 selection:bg-teal-200">
+    <div className="min-h-screen font-sans bg-slate-50 text-slate-900 selection:bg-teal-200">
+      {/* Intro Animada con Logo Metálico DOXA EVENTOS */}
+      <SplashScreen subtitle="Cargando catálogo de eventos DOXA..." />
       {/* Navbar Limpia en Blanco Pulcro (Estilo iglesiacmg.lovable.app) */}
       <header className="sticky top-0 z-50 backdrop-blur-md bg-white/90 border-b border-slate-200/80 px-6 py-3.5 shadow-xs">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
