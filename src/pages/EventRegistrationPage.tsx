@@ -5,6 +5,7 @@ import { RegistrationForm } from "@/components/registration/RegistrationForm";
 import { DynamicRegistrationForm } from "@/components/registration/DynamicRegistrationForm";
 import { RetiroSanidadForm } from "@/components/registration/RetiroSanidadForm";
 import { SuccessScreen } from "@/components/registration/SuccessScreen";
+import { SplashScreen } from "@/components/SplashScreen";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, MapPin, Ticket, AlertCircle, Sparkles } from "lucide-react";
@@ -77,6 +78,9 @@ export const EventRegistrationPage = () => {
 
   return (
     <div className="min-h-screen py-8 px-4 flex flex-col items-center justify-between font-sans bg-slate-50 text-slate-900 selection:bg-teal-200">
+      {/* Intro Animada con Logo Metálico DOXA EVENTOS */}
+      <SplashScreen subtitle={`Cargando formulario de ${event?.nombre || "registro"}...`} />
+
       {/* Botón superior de volver */}
       <div className="w-full max-w-3xl mx-auto flex items-center justify-between mb-6">
         <Link to="/">
