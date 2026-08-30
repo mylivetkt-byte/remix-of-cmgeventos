@@ -195,7 +195,7 @@ export const EventRegistrationPage = () => {
       </div>
 
       <footer className="mt-10 text-center text-xs sm:text-sm text-slate-500 font-semibold">
-        CMG Eventos • Centro Mundial de Gloria
+        Doxa Eventos • Centro Mundial de Gloria
       </footer>
     </div>
   );

@@ -29,7 +29,7 @@ import {
 
 const DEFAULT_TEMPLATE = `Hola {{nombre}} 👋
 
-Te escribimos desde CMG Eventos para compartirte esta información.
+Te escribimos desde Doxa Eventos para compartirte esta información.
 
 ¡Te esperamos!`;
 
