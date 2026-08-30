@@ -175,8 +175,8 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         .single();
 
       if (error) {
-        if (error.code === "23505") {
-          toast.error("Ya existe un registro con este número de documento");
+        if (error.code === "23505" || error.message?.includes("duplicate key") || error.message?.includes("unique constraint")) {
+          toast.error("⚠️ Ya te encuentras inscrito al Retiro con este tipo y número de documento.");
           setErrors({ numero_documento: "Documento ya registrado" });
         } else {
           toast.error("Error al registrar: " + error.message);
@@ -184,23 +184,26 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         return;
       }
 
-      await supabase.from("registrations").insert({
-        event_id: eventId || null,
-        nombres: `${form.nombres.trim()} ${form.primer_apellido.trim()}`,
-        apellidos: form.segundo_apellido.trim() || form.primer_apellido.trim(),
-        correo: form.correo.trim().toLowerCase(),
-        telefono: form.celular.trim(),
-        numero_documento: form.numero_documento.trim(),
-        tipo_documento_id: form.tipo_documento_id,
-        sexo_id: form.sexo_id,
-        fecha_nacimiento: fechaNacimiento,
-        edad: age!,
-        direccion: form.direccion.trim(),
-        barrio: form.barrio.trim(),
-        estado_civil_id: form.estado_civil_id,
-        red_id: form.red_id,
-        cdp_id: form.cdp_id,
-      }).catch(() => {});
+      await supabase.from("registrations").upsert(
+        {
+          event_id: eventId || null,
+          nombres: `${form.nombres.trim()} ${form.primer_apellido.trim()}`,
+          apellidos: form.segundo_apellido.trim() || form.primer_apellido.trim(),
+          correo: form.correo.trim().toLowerCase(),
+          telefono: form.celular.trim(),
+          numero_documento: form.numero_documento.trim(),
+          tipo_documento_id: form.tipo_documento_id,
+          sexo_id: form.sexo_id,
+          fecha_nacimiento: fechaNacimiento,
+          edad: age!,
+          direccion: form.direccion.trim(),
+          barrio: form.barrio.trim(),
+          estado_civil_id: form.estado_civil_id,
+          red_id: form.red_id,
+          cdp_id: form.cdp_id,
+        },
+        { onConflict: "tipo_documento_id,numero_documento" }
+      ).catch(() => {});
 
       toast.success("¡Inscripción exitosa al Retiro!");
 
