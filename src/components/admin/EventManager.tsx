@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare, ListChecks, DollarSign, CreditCard } from "lucide-react";
+import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare, ListChecks, DollarSign, CreditCard, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
 
 interface CustomField {
   key: string;
@@ -231,6 +231,28 @@ export const EventManager = () => {
     setSelectedFields((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
     );
+  };
+
+  const moveFieldUp = (index: number) => {
+    if (index <= 0) return;
+    setSelectedFields((prev) => {
+      const next = [...prev];
+      const temp = next[index - 1];
+      next[index - 1] = next[index];
+      next[index] = temp;
+      return next;
+    });
+  };
+
+  const moveFieldDown = (index: number) => {
+    setSelectedFields((prev) => {
+      if (index >= prev.length - 1) return prev;
+      const next = [...prev];
+      const temp = next[index + 1];
+      next[index + 1] = next[index];
+      next[index] = temp;
+      return next;
+    });
   };
 
   const addCustomField = () => {
@@ -642,7 +664,69 @@ export const EventManager = () => {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[380px] overflow-y-auto p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                  {/* Panel de Ordenación / Posiciones del Formulario */}
+                  {selectedFields.length > 0 && (
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h5 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                          <GripVertical className="w-4 h-4 text-teal-600" />
+                          Orden de Aparición en el Formulario Público ({selectedFields.length} campos)
+                        </h5>
+                        <span className="text-[11px] font-semibold text-slate-500">
+                          Usa las flechas ⬆️ ⬇️ para modificar la posición
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[220px] overflow-y-auto p-1">
+                        {selectedFields.map((fieldKey, idx) => {
+                          const sys = AVAILABLE_SYSTEM_FIELDS.find((f) => f.key === fieldKey);
+                          const cust = customFields.find((f) => f.key === fieldKey);
+                          const label = sys?.label || cust?.label || fieldKey;
+
+                          return (
+                            <div
+                              key={fieldKey}
+                              className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 shadow-2xs"
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Badge className="bg-teal-700 text-white font-black px-2 py-0.5 text-[10px] shrink-0">
+                                  #{idx + 1}
+                                </Badge>
+                                <span className="truncate">{label}</span>
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={idx === 0}
+                                  onClick={() => moveFieldUp(idx)}
+                                  className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30"
+                                  title="Subir posición"
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={idx === selectedFields.length - 1}
+                                  onClick={() => moveFieldDown(idx)}
+                                  className="h-7 w-7 p-0 text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30"
+                                  title="Bajar posición"
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[300px] overflow-y-auto p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
                     {AVAILABLE_SYSTEM_FIELDS.map((field) => {
                       const isSelected = selectedFields.includes(field.key);
                       return (
