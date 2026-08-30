@@ -21,6 +21,9 @@ import {
   Phone,
   Tag,
   Send,
+  FolderPlus,
+  Folder,
+  Check,
 } from "lucide-react";
 
 export interface StoredContact {
@@ -30,10 +33,20 @@ export interface StoredContact {
   correo?: string;
   categoria?: string;
   notas?: string;
+  folderIds?: string[];
+  createdAt: string;
+}
+
+export interface BroadcastFolder {
+  id: string;
+  nombre: string;
+  descripcion?: string;
+  contactIds: string[];
   createdAt: string;
 }
 
 const STORAGE_KEY = "cmg_whatsapp_contacts_v1";
+const FOLDERS_KEY = "cmg_whatsapp_folders_v1";
 
 export function loadStoredContacts(): StoredContact[] {
   try {
@@ -52,6 +65,23 @@ export function saveStoredContacts(list: StoredContact[]) {
   }
 }
 
+export function loadStoredFolders(): BroadcastFolder[] {
+  try {
+    const raw = localStorage.getItem(FOLDERS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredFolders(folders: BroadcastFolder[]) {
+  try {
+    localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
+  } catch (err) {
+    console.error("Error al guardar carpetas en localStorage:", err);
+  }
+}
+
 interface WhatsAppContactsProps {
   onOpenChatWithContact?: (contact: { name: string; phone: string }) => void;
   onSendContactsToCrm?: (contacts: StoredContact[]) => void;
@@ -59,31 +89,65 @@ interface WhatsAppContactsProps {
 
 export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }: WhatsAppContactsProps) {
   const [contacts, setContacts] = useState<StoredContact[]>([]);
+  const [folders, setFolders] = useState<BroadcastFolder[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedFolderId, setSelectedFolderId] = useState<string>("all");
   const [loadingFile, setLoadingFile] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Formulario de nuevo contacto manual
+  // Formulario nuevo contacto
   const [manualName, setManualName] = useState("");
   const [manualPhone, setManualPhone] = useState("");
   const [manualEmail, setManualEmail] = useState("");
   const [manualCategory, setManualCategory] = useState("General");
   const [manualNotes, setManualNotes] = useState("");
+  const [selectedFolderForContact, setSelectedFolderForContact] = useState<string>("");
+
+  // Formulario nueva carpeta
+  const [folderName, setFolderName] = useState("");
+  const [folderDesc, setFolderDesc] = useState("");
 
   useEffect(() => {
     setContacts(loadStoredContacts());
+    setFolders(loadStoredFolders());
   }, []);
 
   const handleSaveContact = (newContact: StoredContact) => {
     setContacts((prev) => {
-      // Evitar duplicados por teléfono
       const filtered = prev.filter((c) => c.telefono !== newContact.telefono);
       const updated = [newContact, ...filtered];
       saveStoredContacts(updated);
       return updated;
     });
+  };
+
+  const handleCreateFolder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!folderName.trim()) {
+      toast.error("Ingresa el nombre de la carpeta");
+      return;
+    }
+
+    const newFolder: BroadcastFolder = {
+      id: `folder-${Date.now()}`,
+      nombre: folderName.trim(),
+      descripcion: folderDesc.trim() || undefined,
+      contactIds: [],
+      createdAt: new Date().toISOString(),
+    };
+
+    setFolders((prev) => {
+      const updated = [newFolder, ...prev];
+      saveStoredFolders(updated);
+      return updated;
+    });
+
+    toast.success(`Carpeta "${newFolder.nombre}" creada`);
+    setFolderName("");
+    setFolderDesc("");
+    setIsFolderDialogOpen(false);
   };
 
   const handleAddManualSubmit = (e: React.FormEvent) => {
@@ -106,18 +170,33 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
       correo: manualEmail.trim() || undefined,
       categoria: manualCategory.trim() || "General",
       notas: manualNotes.trim() || undefined,
+      folderIds: selectedFolderForContact ? [selectedFolderForContact] : [],
       createdAt: new Date().toISOString(),
     };
 
     handleSaveContact(newContact);
+
+    // Si se asignó a una carpeta, actualizar la carpeta también
+    if (selectedFolderForContact) {
+      setFolders((prev) => {
+        const updated = prev.map((f) =>
+          f.id === selectedFolderForContact
+            ? { ...f, contactIds: Array.from(new Set([...f.contactIds, newContact.id])) }
+            : f
+        );
+        saveStoredFolders(updated);
+        return updated;
+      });
+    }
+
     toast.success(`Contacto ${newContact.nombre} agregado`);
 
-    // Limpiar formulario y cerrar
     setManualName("");
     setManualPhone("");
     setManualEmail("");
     setManualCategory("General");
     setManualNotes("");
+    setSelectedFolderForContact("");
     setIsAddDialogOpen(false);
   };
 
@@ -171,15 +250,58 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
       saveStoredContacts(updated);
       return updated;
     });
+
+    setFolders((prev) => {
+      const updated = prev.map((f) => ({
+        ...f,
+        contactIds: f.contactIds.filter((cId) => cId !== id),
+      }));
+      saveStoredFolders(updated);
+      return updated;
+    });
+
     toast.info("Contacto eliminado");
   };
 
-  const handleClearAll = () => {
-    if (window.confirm("¿Seguro que deseas eliminar todos los contactos de la lista local?")) {
-      setContacts([]);
-      saveStoredContacts([]);
-      toast.success("Agenda de contactos limpiada");
+  const handleDeleteFolder = (folderId: string) => {
+    if (window.confirm("¿Deseas eliminar esta carpeta de difusión?")) {
+      setFolders((prev) => {
+        const updated = prev.filter((f) => f.id !== folderId);
+        saveStoredFolders(updated);
+        return updated;
+      });
+      if (selectedFolderId === folderId) setSelectedFolderId("all");
+      toast.info("Carpeta eliminada");
     }
+  };
+
+  const handleToggleContactFolder = (contactId: string, folderId: string) => {
+    setFolders((prev) => {
+      const updated = prev.map((f) => {
+        if (f.id === folderId) {
+          const exists = f.contactIds.includes(contactId);
+          const newIds = exists ? f.contactIds.filter((id) => id !== contactId) : [...f.contactIds, contactId];
+          return { ...f, contactIds: newIds };
+        }
+        return f;
+      });
+      saveStoredFolders(updated);
+      return updated;
+    });
+
+    setContacts((prev) => {
+      const updated = prev.map((c) => {
+        if (c.id === contactId) {
+          const currentFolders = c.folderIds || [];
+          const exists = currentFolders.includes(folderId);
+          const newF = exists ? currentFolders.filter((id) => id !== folderId) : [...currentFolders, folderId];
+          return { ...c, folderIds: newF };
+        }
+        return c;
+      });
+      saveStoredContacts(updated);
+      return updated;
+    });
   };
 
   const handleExportCsv = () => {
@@ -205,15 +327,16 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
     URL.revokeObjectURL(url);
   };
 
-  const categories = Array.from(new Set(contacts.map((c) => c.categoria || "General")));
-
   const filteredContacts = contacts.filter((c) => {
     const matchesSearch =
       c.nombre.toLowerCase().includes(search.toLowerCase()) ||
       c.telefono.includes(search) ||
       (c.correo && c.correo.toLowerCase().includes(search.toLowerCase()));
-    const matchesCat = selectedCategory === "all" || c.categoria === selectedCategory;
-    return matchesSearch && matchesCat;
+
+    if (selectedFolderId === "all") return matchesSearch;
+    const targetFolder = folders.find((f) => f.id === selectedFolderId);
+    const isInFolder = targetFolder?.contactIds.includes(c.id) || (c.folderIds || []).includes(selectedFolderId);
+    return matchesSearch && isInFolder;
   });
 
   return (
@@ -226,19 +349,27 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
               <Users className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-900">Agenda y Contactos de WhatsApp</h2>
+              <h2 className="text-xl font-black text-slate-900">Agenda y Carpetas de Difusión</h2>
               <p className="text-sm text-slate-500 font-medium">
-                Administra tus contactos para chats directos y campañas CRM
+                Agrupa tus contactos en carpetas y envía difusiones personalizadas
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2.5">
             <Button
+              onClick={() => setIsFolderDialogOpen(true)}
+              variant="outline"
+              className="h-11 rounded-xl border-teal-200 text-teal-800 font-extrabold px-4"
+            >
+              <FolderPlus className="w-4 h-4 mr-2 text-teal-600" /> Nueva Carpeta
+            </Button>
+
+            <Button
               onClick={() => setIsAddDialogOpen(true)}
               className="h-11 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-extrabold px-4"
             >
-              <UserPlus className="w-4 h-4 mr-2" /> Agregar Manual
+              <UserPlus className="w-4 h-4 mr-2" /> Agregar Contacto
             </Button>
 
             <Button
@@ -248,7 +379,7 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
               className="h-11 rounded-xl border-slate-300 font-bold"
             >
               {loadingFile ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-              Importar Excel / CSV
+              Importar Excel
             </Button>
 
             <input
@@ -271,48 +402,73 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
         </div>
       </div>
 
-      {/* Controles de Búsqueda y Filtro */}
-      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200/80 flex flex-col md:flex-row gap-4 justify-between items-center shadow-xs">
-        <div className="relative w-full md:w-80">
+      {/* Selector de Carpetas de Grupo */}
+      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200/80 space-y-3 shadow-xs">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+            <Folder className="w-4 h-4 text-teal-600" /> Carpetas / Grupos de Difusión
+          </p>
+          {selectedFolderId !== "all" && (
+            <button
+              onClick={() => handleDeleteFolder(selectedFolderId)}
+              className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Eliminar carpeta seleccionada
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 overflow-x-auto pb-1">
+          <button
+            onClick={() => setSelectedFolderId("all")}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all shrink-0 border ${
+              selectedFolderId === "all"
+                ? "bg-teal-700 text-white border-teal-700 shadow-xs"
+                : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+            }`}
+          >
+            📁 Todos los Contactos ({contacts.length})
+          </button>
+
+          {folders.map((folder) => {
+            const count = contacts.filter(
+              (c) => folder.contactIds.includes(c.id) || (c.folderIds || []).includes(folder.id)
+            ).length;
+            const isSelected = selectedFolderId === folder.id;
+            return (
+              <button
+                key={folder.id}
+                onClick={() => setSelectedFolderId(folder.id)}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all shrink-0 border flex items-center gap-2 ${
+                  isSelected
+                    ? "bg-teal-700 text-white border-teal-700 shadow-xs"
+                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                }`}
+              >
+                <span>📂 {folder.nombre}</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    isSelected ? "bg-teal-900 text-teal-100" : "bg-slate-200 text-slate-800"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Buscador de Contactos */}
+      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs">
+        <div className="relative">
           <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-slate-400" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre, WhatsApp o correo..."
-            className="pl-10 h-11 rounded-xl border-slate-300 text-sm font-semibold"
+            placeholder="Buscar contacto en esta vista por nombre, WhatsApp o correo..."
+            className="pl-10 h-11 rounded-xl border-slate-200 text-sm font-semibold"
           />
-        </div>
-
-        <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto">
-          <span className="text-xs font-extrabold text-slate-500 uppercase shrink-0">Categoría:</span>
-          <button
-            onClick={() => setSelectedCategory("all")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-colors shrink-0 ${
-              selectedCategory === "all"
-                ? "bg-teal-700 text-white shadow-xs"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-            }`}
-          >
-            Todas ({contacts.length})
-          </button>
-
-          {categories.map((cat) => {
-            const count = contacts.filter((c) => c.categoria === cat).length;
-            const isSelected = selectedCategory === cat;
-            return (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-colors shrink-0 ${
-                  isSelected
-                    ? "bg-teal-700 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                {cat} ({count})
-              </button>
-            );
-          })}
         </div>
       </div>
 
@@ -320,39 +476,27 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <p className="font-extrabold text-slate-900 flex items-center gap-2">
-            <Users className="w-4 h-4 text-teal-600" /> Contactos Filtrados ({filteredContacts.length})
+            <Users className="w-4 h-4 text-teal-600" /> Contactos en vista ({filteredContacts.length})
           </p>
 
-          {contacts.length > 0 && (
-            <div className="flex items-center gap-3">
-              {onSendContactsToCrm && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onSendContactsToCrm(filteredContacts)}
-                  className="rounded-xl border-teal-200 text-teal-800 font-extrabold text-xs"
-                >
-                  <Send className="w-3.5 h-3.5 mr-1.5" /> Enviar lista a CRM
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={handleClearAll}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs font-bold"
-              >
-                <Trash2 className="w-3.5 h-3.5 mr-1" /> Limpiar todo
-              </Button>
-            </div>
+          {contacts.length > 0 && onSendContactsToCrm && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onSendContactsToCrm(filteredContacts)}
+              className="rounded-xl border-teal-200 text-teal-800 font-extrabold text-xs"
+            >
+              <Send className="w-3.5 h-3.5 mr-1.5" /> Enviar esta lista a CRM
+            </Button>
           )}
         </div>
 
         {filteredContacts.length === 0 ? (
           <div className="p-12 text-center text-slate-500 space-y-3">
             <Users className="w-12 h-12 mx-auto text-slate-300" />
-            <p className="font-bold text-slate-700">No se encontraron contactos en esta vista</p>
+            <p className="font-bold text-slate-700">No hay contactos en esta carpeta/vista</p>
             <p className="text-xs text-slate-400 max-w-sm mx-auto font-medium">
-              Usa el botón "Agregar Manual" o importa un archivo de Excel/CSV para poblar tu agenda.
+              Agrega contactos nuevos o asígnalos a esta carpeta para difusiones grupales.
             </p>
           </div>
         ) : (
@@ -362,8 +506,8 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
                 <TableRow>
                   <TableHead className="font-extrabold">Nombre</TableHead>
                   <TableHead className="font-extrabold">WhatsApp</TableHead>
-                  <TableHead className="font-extrabold">Categoría / Red</TableHead>
-                  <TableHead className="font-extrabold">Correo</TableHead>
+                  <TableHead className="font-extrabold">Carpetas Asignadas</TableHead>
+                  <TableHead className="font-extrabold">Categoría</TableHead>
                   <TableHead className="font-extrabold text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -377,18 +521,31 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
                       </span>
                     </TableCell>
                     <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {folders.map((f) => {
+                          const isIn = f.contactIds.includes(contact.id) || (contact.folderIds || []).includes(f.id);
+                          return (
+                            <button
+                              key={f.id}
+                              onClick={() => handleToggleContactFolder(contact.id, f.id)}
+                              className={`px-2 py-0.5 rounded-md text-[11px] font-bold border transition-colors flex items-center gap-1 ${
+                                isIn
+                                  ? "bg-teal-100 text-teal-900 border-teal-300"
+                                  : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                              }`}
+                            >
+                              {isIn && <Check className="w-3 h-3 text-teal-700" />}
+                              {f.nombre}
+                            </button>
+                          );
+                        })}
+                        {folders.length === 0 && <span className="text-xs text-slate-400 italic">Crea carpetas arriba</span>}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <Badge className="bg-slate-100 text-slate-800 border-slate-300 font-extrabold">
                         <Tag className="w-3 h-3 mr-1 text-slate-500" /> {contact.categoria || "General"}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-slate-500 font-medium">
-                      {contact.correo ? (
-                        <span className="flex items-center gap-1">
-                          <Mail className="w-3 h-3 text-slate-400" /> {contact.correo}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -422,7 +579,50 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
         )}
       </div>
 
-      {/* Modal para Agregar Contacto Manualmente */}
+      {/* Modal Nueva Carpeta de Difusión */}
+      <Dialog open={isFolderDialogOpen} onOpenChange={setIsFolderDialogOpen}>
+        <DialogContent className="max-w-md bg-white border border-slate-200 text-slate-900 rounded-3xl p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <FolderPlus className="w-5 h-5 text-teal-600" /> Crear Carpeta / Grupo de Difusión
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateFolder} className="space-y-4 pt-2">
+            <div>
+              <Label className="text-xs font-bold text-slate-900 mb-1 block">Nombre de la Carpeta *</Label>
+              <Input
+                value={folderName}
+                onChange={(e) => setFolderName(e.target.value)}
+                placeholder="Ej. Líderes de Red, Servidores VIP..."
+                required
+                className="h-11 rounded-xl border-slate-300 font-semibold"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-slate-900 mb-1 block">Descripción (Opcional)</Label>
+              <Input
+                value={folderDesc}
+                onChange={(e) => setFolderDesc(e.target.value)}
+                placeholder="Ej. Equipo encargado de logística de eventos"
+                className="h-11 rounded-xl border-slate-300 font-semibold"
+              />
+            </div>
+
+            <DialogFooter className="pt-3">
+              <Button type="button" variant="outline" onClick={() => setIsFolderDialogOpen(false)} className="rounded-xl border-slate-300 font-bold">
+                Cancelar
+              </Button>
+              <Button type="submit" className="rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-extrabold">
+                Crear Carpeta
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Agregar Contacto Manual */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="max-w-md bg-white border border-slate-200 text-slate-900 rounded-3xl p-6 shadow-2xl">
           <DialogHeader>
@@ -444,7 +644,7 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-slate-900 mb-1 block">Número WhatsApp (Celular) *</Label>
+              <Label className="text-xs font-bold text-slate-900 mb-1 block">Número WhatsApp *</Label>
               <Input
                 value={manualPhone}
                 onChange={(e) => setManualPhone(e.target.value)}
@@ -452,8 +652,25 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
                 required
                 className="h-11 rounded-xl border-slate-300 font-semibold font-mono"
               />
-              <p className="text-[11px] text-slate-400 mt-1">Se antepondrá el código 57 automáticamente si es de 10 dígitos</p>
             </div>
+
+            {folders.length > 0 && (
+              <div>
+                <Label className="text-xs font-bold text-slate-900 mb-1 block">Asignar a Carpeta de Grupo</Label>
+                <select
+                  value={selectedFolderForContact}
+                  onChange={(e) => setSelectedFolderForContact(e.target.value)}
+                  className="w-full h-11 rounded-xl border border-slate-300 px-3 text-sm font-semibold bg-white"
+                >
+                  <option value="">Sin carpeta (General)</option>
+                  {folders.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      📁 {f.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <Label className="text-xs font-bold text-slate-900 mb-1 block">Categoría / Red</Label>
@@ -472,16 +689,6 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
                 value={manualEmail}
                 onChange={(e) => setManualEmail(e.target.value)}
                 placeholder="ejemplo@correo.com"
-                className="h-11 rounded-xl border-slate-300 font-semibold"
-              />
-            </div>
-
-            <div>
-              <Label className="text-xs font-bold text-slate-900 mb-1 block">Notas (Opcional)</Label>
-              <Input
-                value={manualNotes}
-                onChange={(e) => setManualNotes(e.target.value)}
-                placeholder="Ej. Confirmó asistencia..."
                 className="h-11 rounded-xl border-slate-300 font-semibold"
               />
             </div>
