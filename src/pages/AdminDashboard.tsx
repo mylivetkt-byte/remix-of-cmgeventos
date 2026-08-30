@@ -18,13 +18,14 @@ import { AttendanceReport } from "@/components/admin/AttendanceReport";
 import { DashboardStats } from "@/components/admin/DashboardStats";
 import { WhatsAppCrm } from "@/components/admin/WhatsAppCrm";
 import { WhatsAppManager } from "@/components/admin/WhatsAppManager";
+import { WhatsAppChat } from "@/components/admin/chat/WhatsAppChat";
 import { EventManager } from "@/components/admin/EventManager";
 import { UserManager } from "@/components/admin/UserManager";
 import { UserRole, ROLE_LABELS, ROLE_PERMISSIONS_MAP } from "@/integrations/supabase/user-role-types";
 import { useCatalog } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 
-type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "whatsapp" | "usuarios";
+type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "whatsapp" | "usuarios" | "crm" | "chat";
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
@@ -79,6 +80,7 @@ const AdminDashboard = () => {
     { id: "usuarios", label: "Usuarios & Roles", icon: <ShieldCheck className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "whatsapp", label: "WhatsApp & Brevo", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "crm", label: "CRM WhatsApp", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
+    { id: "chat", label: "Chat WhatsApp", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
   ];
 
   // Sincronizar rol según usuario logueado
@@ -767,6 +769,7 @@ const AdminDashboard = () => {
         {tab === "usuarios" && <div className="animate-fade-in pb-8"><UserManager /></div>}
         {tab === "whatsapp" && <div className="animate-fade-in pb-8"><WhatsAppManager /></div>}
         {tab === "crm" && <div className="animate-fade-in pb-8"><WhatsAppCrm /></div>}
+        {tab === "chat" && <div className="animate-fade-in pb-8"><WhatsAppChat /></div>}
         </main>
       </div>
 
