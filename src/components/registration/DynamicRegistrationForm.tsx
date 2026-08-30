@@ -137,7 +137,11 @@ export function DynamicRegistrationForm({ eventId, onSuccess }: Props) {
       const { data, error } = await supabase.from("registrations").insert(payload).select().single();
 
       if (error) {
-        toast.error("Error al registrar: " + error.message);
+        if (error.code === "23505" || error.message?.includes("duplicate key") || error.message?.includes("unique constraint")) {
+          toast.error("⚠️ Ya te encuentras registrado en este evento con este número de documento.");
+        } else {
+          toast.error("Error al registrar: " + error.message);
+        }
         return;
       }
 

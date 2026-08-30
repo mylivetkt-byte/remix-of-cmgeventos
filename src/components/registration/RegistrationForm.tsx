@@ -136,8 +136,8 @@ export function RegistrationForm({ eventId, onSuccess }: Props) {
       }).select().single();
 
       if (error) {
-        if (error.code === "23505") {
-          toast.error("Ya existe un registro con este tipo y número de documento");
+        if (error.code === "23505" || error.message?.includes("duplicate key") || error.message?.includes("unique constraint")) {
+          toast.error("⚠️ Ya existe un registro con este tipo y número de documento para este evento.");
           setErrors({ numero_documento: "Documento ya registrado" });
         } else {
           toast.error("Error al registrar: " + error.message);
