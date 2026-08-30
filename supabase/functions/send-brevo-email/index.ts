@@ -36,7 +36,6 @@ Deno.serve(async (req) => {
       throw new Error("BREVO_API_KEY no configurada");
     }
 
-    // Obtener registro
     const { data: reg, error: regErr } = await supabase
       .from("registrations")
       .select("*")
@@ -50,7 +49,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Obtener configuración del evento específico
     let eventName    = "Evento";
     let emailSubject = "Tu invitación al evento";
     let emailMessage = "Te invitamos a nuestro evento especial.";
@@ -87,7 +85,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Fallback a event_config general si no hay event_id
     if (!reg.event_id) {
       const { data: config } = await supabase
         .from("event_config")
@@ -117,7 +114,7 @@ Deno.serve(async (req) => {
     const appUrl      = Deno.env.get("APP_URL") || "https://cmgeventos.lovable.app";
     const downloadUrl = reg.pdf_url || `${appUrl}/descargar/${registrationId}`;
 
-    // ── HTML Premium Oscuro con Configuración por Evento ─────────────
+    // ── HTML Blanco Elegante con Acentos Verdes y Dorados ────────────
     const htmlContent = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -125,77 +122,78 @@ Deno.serve(async (req) => {
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>${emailSubject}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#0a1628;font-family:'Segoe UI',Arial,sans-serif;">
+<body style="margin:0;padding:0;background-color:#f4f7f4;font-family:'Segoe UI',Arial,sans-serif;">
 
-<table width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#0a1628 0%,#0d2940 50%,#0a1628 100%);padding:40px 16px;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f7f4;padding:40px 16px;">
   <tr><td align="center">
-    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(8,62,48,0.12);">
 
-      <!-- HEADER HERO -->
+      <!-- HEADER VERDE CLARO ELEGANTE -->
       <tr>
-        <td style="background:linear-gradient(135deg,#083E30 0%,#0D5E45 50%,#083E30 100%);border-radius:24px 24px 0 0;padding:48px 40px 36px;text-align:center;">
-          ${logoUrl ? `<img src="${logoUrl}" alt="${eventName}" style="max-height:90px;max-width:220px;margin-bottom:20px;display:block;margin-left:auto;margin-right:auto;border-radius:10px;">` : ""}
-          <div style="display:inline-block;background:rgba(207,170,55,0.18);border:1px solid rgba(207,170,55,0.5);border-radius:100px;padding:6px 22px;margin-bottom:18px;">
-            <span style="color:#CFAA37;font-size:10px;font-weight:800;letter-spacing:3px;text-transform:uppercase;">✦ INVITACIÓN OFICIAL ✦</span>
+        <td style="background:linear-gradient(135deg,#083E30 0%,#0D5E45 60%,#126649 100%);padding:44px 40px 36px;text-align:center;">
+          ${logoUrl ? `<img src="${logoUrl}" alt="${eventName}" style="max-height:90px;max-width:220px;margin-bottom:20px;display:block;margin-left:auto;margin-right:auto;border-radius:10px;background:#ffffff;padding:8px;">` : ""}
+          <div style="display:inline-block;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:100px;padding:5px 20px;margin-bottom:16px;">
+            <span style="color:#ffffff;font-size:10px;font-weight:700;letter-spacing:3px;">✦ INVITACIÓN OFICIAL ✦</span>
           </div>
-          <h1 style="color:#ffffff;margin:0 0 10px;font-size:28px;font-weight:800;letter-spacing:1px;line-height:1.2;">${eventName.toUpperCase()}</h1>
-          <div style="width:80px;height:3px;background:linear-gradient(90deg,transparent,#CFAA37,transparent);margin:0 auto 12px;border-radius:2px;"></div>
-          <p style="color:rgba(255,255,255,0.55);margin:0;font-size:13px;letter-spacing:1px;">Centro Mundial de Gloria</p>
+          <h1 style="color:#ffffff;margin:0 0 8px;font-size:28px;font-weight:800;letter-spacing:1px;line-height:1.2;">${eventName.toUpperCase()}</h1>
+          <div style="width:70px;height:3px;background:linear-gradient(90deg,rgba(255,255,255,0.3),#ffffff,rgba(255,255,255,0.3));margin:10px auto;border-radius:2px;"></div>
+          <p style="color:rgba(255,255,255,0.75);margin:0;font-size:13px;letter-spacing:1px;">Centro Mundial de Gloria</p>
         </td>
       </tr>
 
       <!-- FRANJA DORADA -->
       <tr>
-        <td style="background:linear-gradient(90deg,#b8922e,#CFAA37,#e8c84a,#CFAA37,#b8922e);padding:11px 40px;text-align:center;">
-          <p style="margin:0;font-size:10px;font-weight:800;color:#083E30;letter-spacing:4px;">CONFIRMACIÓN PERSONAL DE ASISTENCIA</p>
+        <td style="background:linear-gradient(90deg,#b8922e,#CFAA37,#e8c84a,#CFAA37,#b8922e);padding:10px 40px;text-align:center;">
+          <p style="margin:0;font-size:10px;font-weight:800;color:#ffffff;letter-spacing:4px;text-shadow:0 1px 2px rgba(0,0,0,0.2);">CONFIRMACIÓN PERSONAL DE ASISTENCIA</p>
         </td>
       </tr>
 
-      <!-- CUERPO PRINCIPAL -->
+      <!-- CUERPO BLANCO -->
       <tr>
-        <td style="background:linear-gradient(180deg,#0f2035 0%,#0d1c30 100%);padding:40px;border-left:1px solid rgba(207,170,55,0.12);border-right:1px solid rgba(207,170,55,0.12);">
-          <p style="color:rgba(255,255,255,0.45);margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:2px;">Estimado(a)</p>
-          <h2 style="color:#ffffff;margin:0 0 20px;font-size:26px;font-weight:800;line-height:1.15;">${reg.nombres} ${reg.apellidos}</h2>
-          <div style="height:1px;background:linear-gradient(90deg,#CFAA37,rgba(207,170,55,0.1),transparent);margin-bottom:24px;"></div>
-          <p style="color:rgba(255,255,255,0.78);line-height:1.85;margin:0 0 28px;font-size:15px;">${emailMessage}</p>
+        <td style="background:#ffffff;padding:40px 44px;">
+          <p style="color:#888;margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:2px;">Estimado(a)</p>
+          <h2 style="color:#083E30;margin:0 0 6px;font-size:26px;font-weight:800;">${reg.nombres} ${reg.apellidos}</h2>
+          <div style="height:2px;width:60px;background:#CFAA37;margin-bottom:22px;border-radius:2px;"></div>
+
+          <p style="color:#444;line-height:1.85;margin:0 0 28px;font-size:15px;">${emailMessage}</p>
 
           ${eventDate || eventPlace ? `
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:rgba(8,62,48,0.4);border:1px solid rgba(207,170,55,0.22);border-radius:16px;margin-bottom:28px;">
-            <tr><td style="padding:20px 24px;">
-              <p style="color:#CFAA37;font-weight:800;margin:0 0 14px;font-size:11px;letter-spacing:2px;text-transform:uppercase;">📋 DETALLES DEL EVENTO</p>
-              ${eventDate ? `<p style="color:#e8f4ef;margin:0 0 10px;font-size:14px;"><span style="color:#CFAA37;">📅</span>&nbsp;<strong>Fecha:</strong> ${eventDate}${eventTime ? " · " + eventTime : ""}</p>` : ""}
-              ${eventPlace ? `<p style="color:#e8f4ef;margin:0;font-size:14px;"><span style="color:#CFAA37;">📍</span>&nbsp;<strong>Lugar:</strong> ${eventPlace}</p>` : ""}
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f6fbf8;border:1px solid #d4ece3;border-left:4px solid #083E30;border-radius:8px;margin-bottom:28px;">
+            <tr><td style="padding:18px 22px;">
+              <p style="color:#083E30;font-weight:800;margin:0 0 12px;font-size:11px;letter-spacing:2px;text-transform:uppercase;">DETALLES DEL EVENTO</p>
+              ${eventDate ? `<p style="color:#222;margin:0 0 8px;font-size:14px;"><strong style="color:#083E30;">📅 Fecha:</strong>&nbsp; ${eventDate}${eventTime ? " · " + eventTime : ""}</p>` : ""}
+              ${eventPlace ? `<p style="color:#222;margin:0;font-size:14px;"><strong style="color:#083E30;">📍 Lugar:</strong>&nbsp; ${eventPlace}</p>` : ""}
             </td></tr>
           </table>` : ""}
 
           <table width="100%" cellpadding="0" cellspacing="0">
-            <tr><td align="center" style="padding:4px 0 28px;">
-              <a href="${downloadUrl}" style="display:inline-block;background:linear-gradient(135deg,#CFAA37,#e8c84a);color:#083E30;text-decoration:none;padding:16px 52px;border-radius:100px;font-size:15px;font-weight:800;letter-spacing:0.5px;">
-                📄&nbsp; Descargar mi Invitación PDF
+            <tr><td align="center" style="padding:6px 0 28px;">
+              <a href="${downloadUrl}" style="display:inline-block;background:linear-gradient(135deg,#083E30,#0D5E45);color:#ffffff;text-decoration:none;padding:16px 52px;border-radius:100px;font-size:15px;font-weight:700;letter-spacing:0.5px;box-shadow:0 6px 20px rgba(8,62,48,0.25);">
+                📄 &nbsp;Descargar mi Invitación PDF
               </a>
             </td></tr>
           </table>
 
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f9f6ee;border:1px solid #e8d88a;border-radius:12px;">
             <tr><td style="padding:14px 20px;text-align:center;">
-              <p style="color:rgba(255,255,255,0.28);margin:0;font-size:10px;letter-spacing:1px;">Código de registro</p>
-              <p style="color:rgba(207,170,55,0.75);margin:5px 0 0;font-size:13px;font-weight:700;letter-spacing:3px;font-family:monospace;">${registrationId.slice(0,8).toUpperCase()}</p>
+              <p style="color:#888;margin:0;font-size:10px;letter-spacing:1px;text-transform:uppercase;">Código de registro</p>
+              <p style="color:#9a7a20;margin:5px 0 0;font-size:13px;font-weight:700;letter-spacing:3px;font-family:monospace;">${registrationId.slice(0,8).toUpperCase()}</p>
             </td></tr>
           </table>
 
-          <p style="color:rgba(255,255,255,0.25);font-size:11px;text-align:center;margin:20px 0 0;line-height:1.65;">
+          <p style="color:#aaa;font-size:11px;text-align:center;margin:20px 0 0;line-height:1.65;">
             Si el botón no funciona, copia este enlace:<br>
-            <a href="${downloadUrl}" style="color:#CFAA37;word-break:break-all;">${downloadUrl}</a>
+            <a href="${downloadUrl}" style="color:#083E30;word-break:break-all;">${downloadUrl}</a>
           </p>
         </td>
       </tr>
 
-      <!-- FOOTER -->
+      <!-- FOOTER VERDE OSCURO -->
       <tr>
-        <td style="background:#060f1c;border-radius:0 0 24px 24px;padding:24px 40px;text-align:center;border:1px solid rgba(207,170,55,0.1);border-top:none;">
-          <p style="color:rgba(207,170,55,0.5);margin:0 0 6px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Centro Mundial de Gloria</p>
-          <p style="color:rgba(255,255,255,0.18);margin:0;font-size:11px;">Correo enviado automáticamente · Por favor no responder directamente</p>
-          <div style="width:40px;height:2px;background:rgba(207,170,55,0.25);margin:16px auto 0;border-radius:2px;"></div>
+        <td style="background:linear-gradient(135deg,#083E30,#0D5E45);padding:22px 40px;text-align:center;">
+          <p style="color:rgba(255,255,255,0.7);margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">Centro Mundial de Gloria</p>
+          <p style="color:rgba(255,255,255,0.4);margin:0;font-size:11px;">Correo enviado automáticamente · No responder directamente</p>
+          <div style="width:40px;height:2px;background:rgba(207,170,55,0.5);margin:14px auto 0;border-radius:2px;"></div>
         </td>
       </tr>
 
@@ -205,7 +203,6 @@ Deno.serve(async (req) => {
 </body>
 </html>`;
 
-    // Enviar vía Brevo API
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
@@ -228,7 +225,7 @@ Deno.serve(async (req) => {
       throw new Error(`Brevo: ${result.message || JSON.stringify(result)}`);
     }
 
-    console.log("✅ Email enviado a:", reg.correo, "para el evento:", eventName);
+    console.log("✅ Email enviado a:", reg.correo, "evento:", eventName);
     return new Response(
       JSON.stringify({ success: true, messageId: result.messageId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

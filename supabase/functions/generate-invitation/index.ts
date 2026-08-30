@@ -43,11 +43,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ── Datos del Evento (por event_id o fallback a event_config) ──────
-    let eventName  = "Evento CMG";
-    let eventPlace = "";
-    let eventDate  = "";
-    let eventTime  = "";
+    // ── Datos del Evento ─────────────────────────────────────────────
+    let eventName    = "Evento CMG";
+    let eventPlace   = "";
+    let eventDate    = "";
+    let eventTime    = "";
     let logoUrl: string | null = null;
     let emailMessage = "Te invitamos cordialmente a este evento especial.";
 
@@ -58,7 +58,6 @@ Deno.serve(async (req) => {
         eventPlace   = evt.lugar_evento || "";
         logoUrl      = evt.logo_url || null;
         emailMessage = evt.mensaje_correo || emailMessage;
-
         if (evt.fecha_evento) {
           const d = new Date(evt.fecha_evento);
           eventDate = d.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
@@ -82,57 +81,72 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── QR Code ─────────────────────────────────────────────────────────
+    // ── QR Code ──────────────────────────────────────────────────────
     const qrDataUrl = await QRCode.toDataURL(registrationId, {
       width: 500,
       margin: 1,
       color: { dark: "#083E30", light: "#ffffff" },
     });
 
-    // ── PDF — A4 Vertical (Diseño tipo Ticket Premium) ──────────────────
+    // ── PDF A4 Vertical — Blanco elegante ──────────────────────────
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const W = doc.internal.pageSize.getWidth();   // 210
     const H = doc.internal.pageSize.getHeight();  // 297
 
-    // ── Paleta ──────────────────────────────────────────────────────────
-    const DARK        = [5,   18,  40];    // #05122A
-    const GREEN_DEEP  = [8,   62,  48];    // #083E30
-    const GREEN_MID   = [13,  79,  60];    // #0D4F3C
-    const GREEN_LIGHT = [24, 110,  82];    // #186E52
-    const GOLD        = [207, 170, 55];    // #CFAA37
-    const GOLD_LIGHT  = [232, 200, 90];    // #E8C85A
-    const WHITE       = [255, 255, 255];
-    const CREAM       = [252, 250, 244];   // #FCFAF4
-    const GRAY        = [170, 170, 170];
+    // ── Paleta clara ────────────────────────────────────────────────
+    const WHITE       = [255, 255, 255] as [number,number,number];
+    const CREAM       = [252, 250, 244] as [number,number,number];
+    const GRAY_LIGHT  = [245, 247, 245] as [number,number,number];
+    const GRAY_MID    = [220, 225, 222] as [number,number,number];
+    const GRAY_TEXT   = [110, 120, 115] as [number,number,number];
+    const GREEN_DEEP  = [8,   62,  48]  as [number,number,number];
+    const GREEN_MID   = [13,  94,  69]  as [number,number,number];
+    const GREEN_LIGHT = [230, 246, 239] as [number,number,number];
+    const GOLD        = [180, 140, 30]  as [number,number,number];  // dorado sobre blanco (oscurecido)
+    const GOLD_FILL   = [207, 170, 55]  as [number,number,number];  // dorado para fondos verdes
+    const GOLD_BG     = [255, 247, 215] as [number,number,number];  // crema dorada
 
-    const CX = W / 2; // Centro horizontal
+    const CX = W / 2;
 
-    // ══════════════════════════════════════════════════════════════════
-    // FONDO OSCURO COMPLETO
-    // ══════════════════════════════════════════════════════════════════
-    doc.setFillColor(DARK[0], DARK[1], DARK[2]);
+    // ── FONDO CREMA ─────────────────────────────────────────────────
+    doc.setFillColor(...CREAM);
     doc.rect(0, 0, W, H, "F");
 
-    // Cuadrícula de puntos decorativos (sutil)
-    doc.setFillColor(20, 50, 90);
-    for (let x = 8; x < W; x += 10) {
-      for (let y = 8; y < H; y += 10) {
-        doc.circle(x, y, 0.35, "F");
-      }
+    // Patrón de líneas diagonales muy suaves
+    doc.setDrawColor(235, 235, 230);
+    doc.setLineWidth(0.15);
+    for (let i = -H; i < W + H; i += 8) {
+      doc.line(i, 0, i + H, H);
     }
 
-    // ── CABECERA VERDE ESMERALDA ──────────────────────────────────────
-    const headerH = 85;
-    doc.setFillColor(GREEN_DEEP[0], GREEN_DEEP[1], GREEN_DEEP[2]);
-    rr(doc, 8, 8, W - 16, headerH, 8, "F");
+    // ══════════════════════════════════════════════════════════════
+    // CABECERA VERDE CON BORDES REDONDEADOS
+    // ══════════════════════════════════════════════════════════════
+    const headerH = 88;
+    doc.setFillColor(...GREEN_DEEP);
+    rr(doc, 10, 10, W - 20, headerH, 10, "F");
 
-    // Triángulo decorativo en header
-    doc.setFillColor(GREEN_LIGHT[0], GREEN_LIGHT[1], GREEN_LIGHT[2]);
-    doc.triangle(W - 16, 8, W - 8, 8, W - 8, 38, "F");
-    doc.triangle(8, 8, 40, 8, 8, 30, "F");
+    // Ornamento esquinas (círculos blancos semitransparentes)
+    doc.setFillColor(255, 255, 255);
+    doc.setGState(new (doc as any).GState({ opacity: 0.06 }));
+    doc.circle(22, 22, 18, "F");
+    doc.circle(W - 22, 22, 18, "F");
+    doc.circle(22, 10 + headerH - 12, 14, "F");
+    doc.circle(W - 22, 10 + headerH - 12, 14, "F");
+    doc.setGState(new (doc as any).GState({ opacity: 1 }));
 
-    // ── LOGO ─────────────────────────────────────────────────────────
-    let logoBottomY = 28;
+    // Badge "INVITACIÓN OFICIAL"
+    const badgeW = 68, badgeH = 7;
+    const badgeY = 20;
+    doc.setFillColor(...GOLD_FILL);
+    rr(doc, CX - badgeW / 2, badgeY, badgeW, badgeH, 3.5, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6);
+    doc.setTextColor(...GREEN_DEEP);
+    doc.text("✦   INVITACIÓN OFICIAL   ✦", CX, badgeY + 5, { align: "center" });
+
+    // Logo
+    let logoBottomY = badgeY + badgeH + 4;
     if (logoUrl) {
       try {
         const logoRes = await fetch(logoUrl);
@@ -141,192 +155,187 @@ Deno.serve(async (req) => {
           const logoBytes  = new Uint8Array(logoBuffer);
           const ct  = logoRes.headers.get("content-type") || "image/png";
           const fmt = ct.includes("png") ? "PNG" : "JPEG";
-          const logoW = 50, logoH = 28;
-          doc.addImage(logoBytes, fmt, CX - logoW / 2, 16, logoW, logoH);
-          logoBottomY = 16 + logoH + 4;
+          const lW = 48, lH = 26;
+          doc.addImage(logoBytes, fmt, CX - lW / 2, logoBottomY, lW, lH);
+          logoBottomY += lH + 4;
         }
       } catch (_) {}
     }
 
-    // Badge INVITACIÓN OFICIAL
-    const badgeY = logoBottomY + 2;
-    const badgeW = 70, badgeH = 7;
-    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
-    rr(doc, CX - badgeW / 2, badgeY, badgeW, badgeH, 3.5, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(6);
-    doc.setTextColor(GREEN_DEEP[0], GREEN_DEEP[1], GREEN_DEEP[2]);
-    doc.text("✦   INVITACIÓN OFICIAL   ✦", CX, badgeY + 5, { align: "center" });
-
     // Nombre del Evento
-    const evNameY = badgeY + badgeH + 8;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
-    doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
-    const evLines = doc.splitTextToSize(eventName.toUpperCase(), W - 40);
-    doc.text(evLines, CX, evNameY, { align: "center" });
+    doc.setTextColor(...WHITE);
+    const evLines = doc.splitTextToSize(eventName.toUpperCase(), W - 44);
+    doc.text(evLines, CX, logoBottomY + 6, { align: "center" });
 
-    // ── LÍNEA DORADA ──────────────────────────────────────────────────
-    const dividerY = headerH + 14;
-    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.setLineWidth(1.5);
-    doc.line(16, dividerY, W - 16, dividerY);
-    // Diamante central
-    doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
-    const ds = 3;
-    doc.triangle(CX, dividerY - ds, CX + ds, dividerY, CX, dividerY + ds, "F");
-    doc.triangle(CX, dividerY - ds, CX - ds, dividerY, CX, dividerY + ds, "F");
-    // Puntos dorados en extremos
-    doc.circle(18, dividerY, 1.5, "F");
-    doc.circle(W - 18, dividerY, 1.5, "F");
+    // Línea blanca decorativa bajo nombre
+    const lineAfterNameY = logoBottomY + 6 + evLines.length * 9 + 3;
+    doc.setDrawColor(...GOLD_FILL);
+    doc.setLineWidth(0.8);
+    doc.line(CX - 30, lineAfterNameY, CX + 30, lineAfterNameY);
 
-    // ── NOMBRE DEL ASISTENTE ──────────────────────────────────────────
-    const nameY = dividerY + 16;
+    // Texto CMG
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.text("SE INVITA CORDIALMENTE A:", CX, nameY, { align: "center" });
+    doc.setFontSize(7);
+    doc.setTextColor(255, 255, 255);
+    doc.setGState(new (doc as any).GState({ opacity: 0.65 }));
+    doc.text("Centro Mundial de Gloria", CX, lineAfterNameY + 6, { align: "center" });
+    doc.setGState(new (doc as any).GState({ opacity: 1 }));
 
+    // ══════════════════════════════════════════════════════════════
+    // TARJETA BLANCA CENTRAL (contenedor principal)
+    // ══════════════════════════════════════════════════════════════
+    const cardY = 10 + headerH + 6;
+    const cardH = H - cardY - 22;
+    doc.setFillColor(...WHITE);
+    rr(doc, 10, cardY, W - 20, cardH, 8, "F");
+    doc.setDrawColor(...GRAY_MID);
+    doc.setLineWidth(0.3);
+    rr(doc, 10, cardY, W - 20, cardH, 8, "S");
+
+    // ── INVITADO ─────────────────────────────────────────────────
+    let curY = cardY + 16;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...GRAY_TEXT);
+    doc.text("SE INVITA CORDIALMENTE A:", CX, curY, { align: "center" });
+
+    curY += 8;
     const fullName = `${reg.nombres} ${reg.apellidos}`;
     doc.setFont("helvetica", "bold");
-    let fontSize = 28;
-    doc.setFontSize(fontSize);
-    doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
-    let nameLines = doc.splitTextToSize(fullName, W - 32);
-    while (nameLines.length > 2 && fontSize > 18) {
-      fontSize -= 2;
-      doc.setFontSize(fontSize);
-      nameLines = doc.splitTextToSize(fullName, W - 32);
+    let fs = 26;
+    doc.setFontSize(fs);
+    doc.setTextColor(...GREEN_DEEP);
+    let nameLines = doc.splitTextToSize(fullName, W - 44);
+    while (nameLines.length > 2 && fs > 17) {
+      fs -= 2;
+      doc.setFontSize(fs);
+      nameLines = doc.splitTextToSize(fullName, W - 44);
     }
-    const personNameY = nameY + 10;
-    doc.text(nameLines, CX, personNameY, { align: "center" });
+    doc.text(nameLines, CX, curY, { align: "center" });
+    curY += nameLines.length * (fs * 0.38) + 6;
 
-    // ── CONTENEDOR FECHA/LUGAR ─────────────────────────────────────────
-    let infoY = personNameY + (nameLines.length * (fontSize * 0.4)) + 14;
+    // Línea dorada bajo el nombre
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(1);
+    doc.line(CX - 35, curY, CX + 35, curY);
+    // Pequeño diamante
+    doc.setFillColor(...GOLD);
+    doc.circle(CX, curY, 1.5, "F");
+    curY += 8;
 
+    // ── BLOQUE FECHA / LUGAR ─────────────────────────────────────
     if (eventDate || eventPlace) {
-      const infoBoxH = (eventDate ? 14 : 0) + (eventPlace ? 14 : 0) + 16;
-      doc.setFillColor(GREEN_DEEP[0], GREEN_DEEP[1], GREEN_DEEP[2]);
-      rr(doc, 14, infoY, W - 28, infoBoxH, 6, "F");
-      doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
-      doc.setLineWidth(0.4);
-      rr(doc, 14, infoY, W - 28, infoBoxH, 6, "S");
+      const infoH = (eventDate ? 12 : 0) + (eventPlace ? 12 : 0) + 14;
+      doc.setFillColor(...GREEN_LIGHT);
+      rr(doc, 18, curY, W - 36, infoH, 6, "F");
+      doc.setFillColor(...GREEN_DEEP);
+      doc.rect(18, curY, 3.5, infoH, "F");
 
-      // Franja izquierda dorada
-      doc.setFillColor(GOLD[0], GOLD[1], GOLD[2]);
-      doc.rect(14, infoY, 3, infoBoxH, "F");
-
-      let lineY = infoY + 12;
+      let iy = curY + 10;
       if (eventDate) {
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
-        doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
-        doc.text("📅  Fecha:", 24, lineY);
+        doc.setFontSize(7.5);
+        doc.setTextColor(...GREEN_DEEP);
+        doc.text("📅  Fecha:", 27, iy);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
-        const dateStr = eventDate.charAt(0).toUpperCase() + eventDate.slice(1);
-        doc.text(`${dateStr}${eventTime ? "  ·  " + eventTime : ""}`, 54, lineY);
-        lineY += 14;
+        doc.setTextColor(40, 40, 40);
+        const ds = eventDate.charAt(0).toUpperCase() + eventDate.slice(1);
+        doc.text(`${ds}${eventTime ? "  ·  " + eventTime : ""}`, 58, iy);
+        iy += 12;
       }
       if (eventPlace) {
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
-        doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
-        doc.text("📍  Lugar:", 24, lineY);
+        doc.setFontSize(7.5);
+        doc.setTextColor(...GREEN_DEEP);
+        doc.text("📍  Lugar:", 27, iy);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
-        doc.text(eventPlace, 54, lineY);
+        doc.setTextColor(40, 40, 40);
+        doc.text(eventPlace, 58, iy);
       }
-
-      infoY += infoBoxH + 14;
+      curY += infoH + 8;
     }
 
-    // ── PERFORACIÓN HORIZONTAL (Separador Ticket) ─────────────────────
-    const perfY = infoY + 4;
-    doc.setDrawColor(30, 65, 95);
-    doc.setLineWidth(0.5);
+    // ── SEPARADOR TIPO TICKET (perforado) ────────────────────────
+    doc.setDrawColor(...GRAY_MID);
+    doc.setLineWidth(0.4);
     doc.setLineDashPattern([3, 3], 0);
-    doc.line(24, perfY, W - 24, perfY);
+    doc.line(24, curY + 4, W - 24, curY + 4);
     doc.setLineDashPattern([], 0);
-    // Semicírculos a los lados
-    doc.setFillColor(DARK[0], DARK[1], DARK[2]);
-    doc.circle(8, perfY, 5, "F");
-    doc.circle(W - 8, perfY, 5, "F");
+    // Muescas en lados
+    doc.setFillColor(...CREAM);
+    doc.circle(10, curY + 4, 5, "F");
+    doc.circle(W - 10, curY + 4, 5, "F");
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6);
-    doc.setTextColor(50, 90, 120);
-    doc.text("PRESENTAR ESTE DOCUMENTO AL INGRESAR", CX, perfY - 2, { align: "center" });
+    doc.setTextColor(...GRAY_TEXT);
+    doc.text("CÓDIGO DE ACCESO AL EVENTO", CX, curY + 2.5, { align: "center" });
+    curY += 12;
 
-    // ── SECCIÓN QR ────────────────────────────────────────────────────
-    const qrSectionY = perfY + 10;
-
+    // ── QR ───────────────────────────────────────────────────────
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.text("CÓDIGO DE ACCESO", CX, qrSectionY + 7, { align: "center" });
+    doc.setFontSize(8);
+    doc.setTextColor(...GREEN_DEEP);
+    doc.text("Presenta este código en la entrada", CX, curY + 5, { align: "center" });
 
-    const qrSize = 55;
+    const qrSize = 52;
     const qrX = CX - qrSize / 2;
-    const qrY = qrSectionY + 12;
+    const qrY2 = curY + 10;
 
-    // Sombra del QR
-    doc.setFillColor(2, 10, 22);
-    rr(doc, qrX + 2, qrY + 2, qrSize, qrSize, 5, "F");
+    // Sombra suave
+    doc.setFillColor(200, 210, 205);
+    rr(doc, qrX + 2, qrY2 + 2, qrSize, qrSize, 5, "F");
     // Marco verde
-    doc.setFillColor(GREEN_MID[0], GREEN_MID[1], GREEN_MID[2]);
-    rr(doc, qrX - 5, qrY - 5, qrSize + 10, qrSize + 10, 5, "F");
+    doc.setFillColor(...GREEN_MID);
+    rr(doc, qrX - 5, qrY2 - 5, qrSize + 10, qrSize + 10, 6, "F");
     // Borde dorado
-    doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.setDrawColor(...GOLD_FILL);
     doc.setLineWidth(0.8);
-    rr(doc, qrX - 3.5, qrY - 3.5, qrSize + 7, qrSize + 7, 4, "S");
+    rr(doc, qrX - 3, qrY2 - 3, qrSize + 6, qrSize + 6, 5, "S");
     // Fondo blanco para QR
-    doc.setFillColor(WHITE[0], WHITE[1], WHITE[2]);
-    doc.rect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, "F");
-    // QR
-    doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+    doc.setFillColor(...WHITE);
+    doc.rect(qrX - 1, qrY2 - 1, qrSize + 2, qrSize + 2, "F");
+    doc.addImage(qrDataUrl, "PNG", qrX, qrY2, qrSize, qrSize);
+    curY = qrY2 + qrSize + 6;
 
-    // Texto bajo QR
-    const qrEndY = qrY + qrSize + 8;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(GRAY[0], GRAY[1], GRAY[2]);
-    doc.text("Escanea este código en la entrada del evento", CX, qrEndY + 3, { align: "center" });
-
-    // ID corto
+    // ID en crema dorada
+    doc.setFillColor(...GOLD_BG);
+    rr(doc, CX - 28, curY, 56, 8, 4, "F");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
-    doc.text(registrationId.slice(0, 8).toUpperCase(), CX, qrEndY + 10, { align: "center" });
+    doc.setFontSize(8);
+    doc.setTextColor(...GOLD);
+    doc.text(registrationId.slice(0, 8).toUpperCase(), CX, curY + 5.8, { align: "center" });
+    curY += 12;
 
-    // ── MENSAJE FINAL ─────────────────────────────────────────────────
-    const msgY = qrEndY + 18;
-    const msgW = W - 40;
+    // ── MENSAJE DEL EVENTO ───────────────────────────────────────
+    if (emailMessage && curY + 20 < cardY + cardH - 8) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(8);
+      doc.setTextColor(...GRAY_TEXT);
+      const msgLines = doc.splitTextToSize(`"${emailMessage}"`, W - 52);
+      doc.text(msgLines.slice(0, 2), CX, curY + 6, { align: "center" });
+    }
 
-    // Fondo contenedor mensaje
-    doc.setFillColor(GREEN_DEEP[0], GREEN_DEEP[1], GREEN_DEEP[2]);
-    rr(doc, 14, msgY - 6, msgW + 12, 30, 5, "F");
-
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(8.5);
-    doc.setTextColor(CREAM[0], CREAM[1], CREAM[2]);
-    const msgLines = doc.splitTextToSize(`"${emailMessage}"`, msgW);
-    doc.text(msgLines.slice(0, 2), CX, msgY + 4, { align: "center" });
-
-    // ── FOOTER ───────────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════
+    // FOOTER
+    // ══════════════════════════════════════════════════════════════
     const footerY = H - 18;
-    doc.setFillColor(GREEN_DEEP[0], GREEN_DEEP[1], GREEN_DEEP[2]);
-    rr(doc, 8, footerY - 4, W - 16, 14, 6, "F");
+    doc.setFillColor(...GREEN_DEEP);
+    rr(doc, 10, footerY - 4, W - 20, 14, 6, "F");
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
-    doc.setTextColor(GOLD[0], GOLD[1], GOLD[2]);
+    doc.setTextColor(...GOLD_FILL);
     doc.text("Centro Mundial de Gloria  ·  CMG Eventos", CX, footerY + 3, { align: "center" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6);
-    doc.setTextColor(WHITE[0], WHITE[1], WHITE[2]);
-    doc.text("Documento personal e intransferible  ·  Conserva esta invitación", CX, footerY + 8, { align: "center" });
+    doc.setTextColor(255, 255, 255);
+    doc.setGState(new (doc as any).GState({ opacity: 0.6 }));
+    doc.text("Documento personal e intransferible", CX, footerY + 8, { align: "center" });
+    doc.setGState(new (doc as any).GState({ opacity: 1 }));
 
-    // ── Subir PDF ─────────────────────────────────────────────────────
+    // ── Subir PDF ─────────────────────────────────────────────────
     const pdfBytes = new Uint8Array(doc.output("arraybuffer"));
     const fileName = `invitation_${registrationId}.pdf`;
 

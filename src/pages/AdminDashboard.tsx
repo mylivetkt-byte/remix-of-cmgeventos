@@ -16,6 +16,7 @@ import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
 import { DashboardStats } from "@/components/admin/DashboardStats";
+import { WhatsAppCrm } from "@/components/admin/WhatsAppCrm";
 import { WhatsAppManager } from "@/components/admin/WhatsAppManager";
 import { EventManager } from "@/components/admin/EventManager";
 import { UserManager } from "@/components/admin/UserManager";
@@ -77,6 +78,7 @@ const AdminDashboard = () => {
     { id: "catalogos", label: "Catálogos", icon: <List className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "usuarios", label: "Usuarios & Roles", icon: <ShieldCheck className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "whatsapp", label: "WhatsApp & Brevo", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
+    { id: "crm", label: "CRM WhatsApp", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
   ];
 
   // Sincronizar rol según usuario logueado
@@ -764,6 +766,7 @@ const AdminDashboard = () => {
         {tab === "catalogos" && <CatalogManager />}
         {tab === "usuarios" && <div className="animate-fade-in pb-8"><UserManager /></div>}
         {tab === "whatsapp" && <div className="animate-fade-in pb-8"><WhatsAppManager /></div>}
+        {tab === "crm" && <div className="animate-fade-in pb-8"><WhatsAppCrm /></div>}
         </main>
       </div>
 
