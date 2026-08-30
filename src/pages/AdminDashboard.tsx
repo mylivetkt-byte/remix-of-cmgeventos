@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, Menu, UserPlus } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, Menu, UserPlus, Send } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
@@ -83,7 +83,7 @@ const AdminDashboard = () => {
     { id: "usuarios", label: "Usuarios & Roles", icon: <ShieldCheck className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "whatsapp", label: "WhatsApp & Brevo", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "contactos", label: "Agenda Contactos", icon: <Users className="w-5 h-5" />, roles: ["super_admin"] },
-    { id: "crm", label: "CRM WhatsApp", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
+    { id: "crm", label: "Envío Masivo", icon: <Send className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "chat", label: "Chat WhatsApp", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
   ];
 

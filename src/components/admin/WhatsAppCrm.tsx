@@ -263,7 +263,7 @@ export function WhatsAppCrm({ initialContacts }: WhatsAppCrmProps) {
           <div>
             <h2 className="text-xl font-black text-slate-900 flex items-center gap-2.5">
               <MessageCircle className="w-6 h-6 text-teal-600" />
-              CRM WhatsApp — Envío Masivo Personalizado
+              Envío Masivo Personalizado de WhatsApp
             </h2>
             <p className="text-sm text-slate-600 font-medium leading-relaxed mt-1">
               Carga tu lista por Excel/CSV o importa desde tu Agenda. Mensajes 100% personalizados con protección Anti-Baneo.
