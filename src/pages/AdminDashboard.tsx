@@ -56,6 +56,8 @@ const AdminDashboard = () => {
   const { user, signOut } = useAuth();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>("super_admin");
   const [search, setSearch] = useState("");
   const [filterEvent, setFilterEvent] = useState<string>("all");
@@ -140,7 +142,6 @@ const AdminDashboard = () => {
   const permissions = ROLE_PERMISSIONS_MAP[currentRole];
 
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
 
   const tabs = allTabs.filter((t) => t.roles.includes(currentRole));
   const activeTabObj = allTabs.find((t) => t.id === tab);
@@ -361,12 +362,20 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <div className="min-h-screen text-slate-900 font-sans bg-slate-50 selection:bg-teal-200 flex">
-      {/* SIDEBAR LATERAL COLAPSABLE (Estilo iglesiacmg.lovable.app) */}
+    <div className="min-h-screen text-slate-900 font-sans bg-slate-50 selection:bg-teal-200 flex flex-col md:flex-row relative">
+      {/* TELÓN DE FONDO (BACKDROP) MÓVIL */}
+      {mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 md:hidden transition-opacity duration-300"
+        />
+      )}
+
+      {/* SIDEBAR LATERAL COLAPSABLE (Móvil + Desktop) */}
       <aside
-        className={`fixed left-0 top-0 bottom-0 z-40 bg-white border-r border-slate-200/80 flex flex-col justify-between shadow-xs transition-all duration-300 ${
-          collapsed ? "w-20" : "w-64"
-        }`}
+        className={`fixed left-0 top-0 bottom-0 z-50 bg-white border-r border-slate-200/80 flex flex-col justify-between shadow-lg md:shadow-xs transition-transform md:transition-all duration-300 ${
+          mobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        } ${collapsed ? "md:w-20" : "md:w-64"} w-72`}
       >
         {/* Cabecera del Sidebar */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
@@ -374,7 +383,7 @@ const AdminDashboard = () => {
             <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center shrink-0 shadow-xs">
               <Sparkles className="w-5 h-5 text-teal-700" />
             </div>
-            {!collapsed && (
+            {(!collapsed || mobileMenuOpen) && (
               <div className="truncate">
                 <div className="flex items-center gap-1.5">
                   <h1 className="font-heading font-black text-sm text-slate-900 tracking-tight truncate">
@@ -386,11 +395,17 @@ const AdminDashboard = () => {
             )}
           </div>
 
-          {/* Botón Colapsar / Expandir */}
+          {/* Botón Colapsar / Expandir (O Cerrar en Móvil) */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => {
+              if (window.innerWidth < 768) {
+                setMobileMenuOpen(false);
+              } else {
+                setCollapsed(!collapsed);
+              }
+            }}
             className="h-8 w-8 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg shrink-0"
             title={collapsed ? "Expandir menú" : "Colapsar menú"}
           >
@@ -398,9 +413,9 @@ const AdminDashboard = () => {
           </Button>
         </div>
 
-        {/* Lista de Navegación de Pestañas (Fuente Clara text-sm 14px como iglesiacmg.lovable.app) */}
+        {/* Lista de Navegación de Pestañas */}
         <div className="p-3 space-y-1 flex-1 overflow-y-auto">
-          {!collapsed && (
+          {(!collapsed || mobileMenuOpen) && (
             <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider px-3.5 mb-2.5">
               Comunidad / Admin
             </p>
@@ -411,47 +426,56 @@ const AdminDashboard = () => {
             return (
               <button
                 key={t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => {
+                  setTab(t.id);
+                  setMobileMenuOpen(false);
+                }}
                 title={collapsed ? t.label : undefined}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                   isActive
                     ? "bg-teal-100/90 text-teal-950 shadow-xs border border-teal-200/80 font-extrabold"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                } ${collapsed ? "justify-center px-0" : ""}`}
+                } ${collapsed && !mobileMenuOpen ? "justify-center px-0" : ""}`}
               >
                 <div className={`${isActive ? "text-teal-900" : "text-slate-500"}`}>{t.icon}</div>
-                {!collapsed && <span className="truncate">{t.label}</span>}
+                {(!collapsed || mobileMenuOpen) && <span className="truncate">{t.label}</span>}
               </button>
             );
           })}
 
           <div className="pt-4 my-2 border-t border-slate-100">
-            {!collapsed && (
+            {(!collapsed || mobileMenuOpen) && (
               <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider px-3.5 mb-2.5">
                 Accesos Rápidos
               </p>
             )}
 
             <button
-              onClick={() => navigate("/")}
+              onClick={() => {
+                navigate("/");
+                setMobileMenuOpen(false);
+              }}
               title={collapsed ? "Sitio Público" : undefined}
               className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all ${
-                collapsed ? "justify-center px-0" : ""
+                collapsed && !mobileMenuOpen ? "justify-center px-0" : ""
               }`}
             >
               <Globe className="w-5 h-5 text-teal-600 shrink-0" />
-              {!collapsed && <span className="truncate">Sitio Público</span>}
+              {(!collapsed || mobileMenuOpen) && <span className="truncate">Sitio Público</span>}
             </button>
 
             <button
-              onClick={() => navigate("/checkin")}
+              onClick={() => {
+                navigate("/checkin");
+                setMobileMenuOpen(false);
+              }}
               title={collapsed ? "Escáner Puerta" : undefined}
               className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-all mt-1 ${
-                collapsed ? "justify-center px-0" : ""
+                collapsed && !mobileMenuOpen ? "justify-center px-0" : ""
               }`}
             >
               <QrCode className="w-5 h-5 text-teal-600 shrink-0" />
-              {!collapsed && <span className="truncate">Escáner Puerta</span>}
+              {(!collapsed || mobileMenuOpen) && <span className="truncate">Escáner Puerta</span>}
             </button>
           </div>
         </div>
@@ -462,33 +486,44 @@ const AdminDashboard = () => {
             onClick={signOut}
             title={collapsed ? "Cerrar Sesión" : undefined}
             className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 transition-all ${
-              collapsed ? "justify-center px-0" : ""
+              collapsed && !mobileMenuOpen ? "justify-center px-0" : ""
             }`}
           >
             <LogOut className="w-5 h-5 shrink-0 text-red-500" />
-            {!collapsed && <span className="truncate">Cerrar Sesión</span>}
+            {(!collapsed || mobileMenuOpen) && <span className="truncate">Cerrar Sesión</span>}
           </button>
         </div>
       </aside>
 
-      {/* ÁREA DE CONTENIDO PRINCIPAL (Alineada dinámicamente según estado colapsado) */}
-      <div className={`flex-1 transition-all duration-300 ${collapsed ? "ml-20" : "ml-64"}`}>
-        {/* Cabecera Superior del Área de Contenido con Título Destacado en Grande */}
-        <header className="border-b border-slate-200/80 bg-white sticky top-0 z-30 shadow-xs h-16 px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h2 className="font-heading font-extrabold text-xl text-slate-900 flex items-center gap-2.5">
+      {/* ÁREA DE CONTENIDO PRINCIPAL */}
+      <div className={`flex-1 transition-all duration-300 w-full ${collapsed ? "md:ml-20" : "md:ml-64"} ml-0`}>
+        {/* Cabecera Superior del Área de Contenido */}
+        <header className="border-b border-slate-200/80 bg-white sticky top-0 z-30 shadow-xs h-16 px-4 sm:px-6 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            {/* Botón Menú Hamburguesa para Celulares */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden h-10 w-10 text-slate-700 hover:bg-slate-100 rounded-xl shrink-0"
+              title="Abrir Menú"
+            >
+              <Menu className="w-5 h-5 text-teal-700" />
+            </Button>
+
+            <h2 className="font-heading font-extrabold text-base sm:text-xl text-slate-900 flex items-center gap-2 truncate">
               {activeTabObj?.icon}
-              <span>{activeTabObj?.label}</span>
+              <span className="truncate">{activeTabObj?.label}</span>
             </h2>
-            <Badge className="bg-teal-50 text-teal-900 border-teal-200 text-xs font-bold px-2.5 py-0.5">
-              Panel Admin
+            <Badge className="bg-teal-50 text-teal-900 border-teal-200 text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 shrink-0">
+              Admin
             </Badge>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            {/* Distintivo de Usuario Logueado (Estilo DOXA) */}
-            <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200/80 px-3 py-1.5 rounded-2xl shadow-xs">
-              <div className="w-8 h-8 rounded-full bg-teal-600 text-white font-extrabold text-xs flex items-center justify-center shadow-xs shrink-0 select-none">
+          <div className="flex items-center gap-2">
+            {/* Distintivo de Usuario Logueado */}
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 px-2.5 py-1 rounded-2xl shadow-xs">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-teal-600 text-white font-extrabold text-xs flex items-center justify-center shadow-xs shrink-0 select-none">
                 {currentUserObj.nombre_completo.substring(0, 2).toUpperCase()}
               </div>
               <div className="hidden sm:block text-left">
@@ -505,23 +540,36 @@ const AdminDashboard = () => {
               variant="outline"
               size="sm"
               onClick={() => navigate("/")}
-              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-sm font-semibold rounded-xl hidden md:flex items-center gap-2 px-3.5 py-2"
+              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-xs sm:text-sm font-semibold rounded-xl hidden md:flex items-center gap-1.5 px-3 py-2"
             >
               <Globe className="w-4 h-4 text-teal-600" /> Ver Sitio
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate("/checkin")}
-              className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-sm font-semibold rounded-xl hidden md:flex items-center gap-2 px-3.5 py-2"
-            >
-              <QrCode className="w-4 h-4 text-teal-600" /> Escáner
             </Button>
           </div>
         </header>
 
+        {/* Barra de Pestañas Deslizable Horizontal en Móviles */}
+        <div className="flex md:hidden overflow-x-auto p-2.5 bg-white border-b border-slate-200 gap-1.5 scrollbar-none shadow-2xs">
+          {tabs.map((t) => {
+            const isActive = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all ${
+                  isActive
+                    ? "bg-teal-700 text-white shadow-xs"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                {t.icon}
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Vista del Módulo Seleccionado */}
-        <main className="p-6 max-w-7xl mx-auto">
+        <main className="p-3 sm:p-6 max-w-7xl mx-auto space-y-6">
 
         {tab === "eventos" && <div className="animate-fade-in pb-8"><EventManager /></div>}
         {tab === "asistencia" && <div className="animate-fade-in pb-8"><AttendanceReport /></div>}

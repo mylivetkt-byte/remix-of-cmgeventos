@@ -36,6 +36,7 @@ import {
   Bot,
   Sparkles,
   Trash2,
+  ArrowLeft,
 } from "lucide-react";
 
 interface Message {
@@ -738,7 +739,7 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
       {/* Interfaz principal del Chat */}
       <div className="flex flex-col md:flex-row h-[650px] bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
         {/* Panel lateral de chats */}
-        <div className="w-full md:w-80 lg:w-96 border-r border-slate-200 flex flex-col bg-slate-50/50">
+        <div className={`w-full md:w-80 lg:w-96 border-r border-slate-200 flex-col bg-slate-50/50 ${activeChat ? "hidden md:flex" : "flex"}`}>
           <div className="p-4 border-b border-slate-200/80 space-y-3 bg-white">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-3.5 text-slate-400" />
@@ -822,26 +823,35 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
         </div>
 
         {/* Panel principal de conversación */}
-        <div className="flex-1 flex flex-col bg-slate-50/30">
+        <div className={`flex-1 flex-col bg-slate-50/30 ${!activeChat ? "hidden md:flex" : "flex"}`}>
           {activeChat ? (
             <>
               {/* Encabezado del chat activo */}
-              <div className="px-6 py-4 bg-white border-b border-slate-200/80 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-teal-600 text-white font-black flex items-center justify-center text-base">
-                    {activeChat.name ? activeChat.name[0].toUpperCase() : <User className="w-5 h-5" />}
+              <div className="px-4 sm:px-6 py-3.5 bg-white border-b border-slate-200/80 flex items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveChat(null)}
+                    className="md:hidden text-teal-800 font-extrabold text-xs px-2.5 h-8 rounded-xl bg-teal-50 border border-teal-200 shrink-0"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-1 text-teal-700" /> Volver
+                  </Button>
+
+                  <div className="w-9 h-9 rounded-2xl bg-teal-600 text-white font-black flex items-center justify-center text-sm shrink-0">
+                    {activeChat.name ? activeChat.name[0].toUpperCase() : <User className="w-4 h-4" />}
                   </div>
-                  <div>
-                    <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
-                      {activeChat.name}
+                  <div className="min-w-0">
+                    <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-1.5 truncate">
+                      <span className="truncate">{activeChat.name}</span>
                       {typingState && (
-                        <span className="text-xs font-semibold text-teal-600 animate-pulse italic">
+                        <span className="text-[11px] font-semibold text-teal-600 animate-pulse italic shrink-0">
                           (Escribiendo...)
                         </span>
                       )}
                     </h3>
-                    <p className="text-xs font-mono text-slate-500 flex items-center gap-1">
-                      <Phone className="w-3 h-3 text-teal-600" /> {activeChat.id}
+                    <p className="text-[11px] font-mono text-slate-500 flex items-center gap-1 truncate">
+                      <Phone className="w-3 h-3 text-teal-600 shrink-0" /> {activeChat.id}
                     </p>
                   </div>
                 </div>
