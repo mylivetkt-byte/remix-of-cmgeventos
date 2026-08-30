@@ -3,7 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { loadStoredContacts, saveStoredContacts, StoredContact } from "../WhatsAppContacts";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -16,6 +19,8 @@ import {
   User,
   Phone,
   CheckCheck,
+  ShieldCheck,
+  UserPlus,
 } from "lucide-react";
 
 interface Message {
@@ -33,7 +38,13 @@ interface Chat {
   timestamp?: number;
 }
 
-export function WhatsAppChat() {
+interface WhatsAppChatProps {
+  selectedContact?: { name: string; phone: string } | null;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -42,11 +53,12 @@ export function WhatsAppChat() {
   const [loadingChats, setLoadingChats] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [typingState, setTypingState] = useState(false);
+  const [antiBanMode, setAntiBanMode] = useState(true);
   const [waConfig, setWaConfig] = useState({ url: "", token: "" });
   const [status, setStatus] = useState<"connected" | "qr" | "disconnected" | "checking">("checking");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll al final de la lista de mensajes
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -82,6 +94,19 @@ export function WhatsAppChat() {
   useEffect(() => {
     loadConfig();
   }, []);
+
+  // Manejar contacto preseleccionado si viene desde el módulo de Contactos
+  useEffect(() => {
+    if (selectedContact && selectedContact.phone) {
+      const cleanPhone = selectedContact.phone.replace(/[^\d]/g, "");
+      const chatObj: Chat = {
+        id: cleanPhone,
+        name: selectedContact.name || cleanPhone,
+      };
+      setActiveChat(chatObj);
+      if (waConfig.url) fetchMessages(cleanPhone);
+    }
+  }, [selectedContact, waConfig.url]);
 
   const checkServerStatus = async (url = waConfig.url) => {
     if (!url) return;
@@ -125,9 +150,7 @@ export function WhatsAppChat() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) {
-          setMessages(data);
-        }
+        if (Array.isArray(data)) setMessages(data);
       } else {
         toast.error("No se pudieron cargar los mensajes");
       }
@@ -138,6 +161,22 @@ export function WhatsAppChat() {
     }
   };
 
+  // Simulación de presencia "escribiendo..." (Anti-Ban)
+  const sendPresenceTyping = async (phone: string) => {
+    if (!waConfig.url) return;
+    try {
+      const cleanUrl = waConfig.url.replace(/\/$/, "");
+      await fetch(`${cleanUrl}/presence`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${waConfig.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ phone, state: "composing" }),
+      }).catch(() => {});
+    } catch (_) {}
+  };
+
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !activeChat || !waConfig.url) return;
 
@@ -146,6 +185,17 @@ export function WhatsAppChat() {
 
     try {
       const cleanUrl = waConfig.url.replace(/\/$/, "");
+
+      // 🛡️ SEGURIDAD ANTI-BAN: Simular estado "Escribiendo..." y retardo humano
+      if (antiBanMode) {
+        setTypingState(true);
+        await sendPresenceTyping(activeChat.id);
+        // Duración simulada según longitud del texto (1.5s - 3s)
+        const typingDuration = Math.min(3200, Math.max(1500, messageText.length * 40));
+        await sleep(typingDuration);
+        setTypingState(false);
+      }
+
       const res = await fetch(`${cleanUrl}/send`, {
         method: "POST",
         headers: {
@@ -160,7 +210,6 @@ export function WhatsAppChat() {
 
       if (res.ok) {
         setNewMessage("");
-        // Añadir mensaje localmente para feedback inmediato
         const localMsg: Message = {
           id: `temp-${Date.now()}`,
           fromMe: true,
@@ -168,7 +217,6 @@ export function WhatsAppChat() {
           timestamp: Math.floor(Date.now() / 1000),
         };
         setMessages((prev) => [...prev, localMsg]);
-        // Refrescar mensajes reales
         setTimeout(() => fetchMessages(activeChat.id), 800);
       } else {
         toast.error("Error al enviar el mensaje de WhatsApp");
@@ -177,7 +225,29 @@ export function WhatsAppChat() {
       toast.error("Error de conexión al enviar mensaje");
     } finally {
       setSending(false);
+      setTypingState(false);
     }
+  };
+
+  const handleAddActiveChatToContacts = () => {
+    if (!activeChat) return;
+    const existing = loadStoredContacts();
+    const cleanPhone = activeChat.id.replace(/[^\d]/g, "");
+    if (existing.some((c) => c.telefono === cleanPhone)) {
+      toast.info("El contacto ya se encuentra en tu agenda");
+      return;
+    }
+
+    const newC: StoredContact = {
+      id: `manual-${Date.now()}`,
+      nombre: activeChat.name || cleanPhone,
+      telefono: cleanPhone,
+      categoria: "Chat WhatsApp",
+      createdAt: new Date().toISOString(),
+    };
+
+    saveStoredContacts([newC, ...existing]);
+    toast.success(`Contacto ${newC.nombre} guardado en tu libreta de contactos`);
   };
 
   const filteredChats = chats.filter(
@@ -195,7 +265,7 @@ export function WhatsAppChat() {
 
   return (
     <div className="space-y-4 animate-fade-in font-sans text-slate-900">
-      {/* Cabecera de estado */}
+      {/* Cabecera de estado y Anti-Ban */}
       <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-teal-50 rounded-2xl border border-teal-100 text-teal-700">
@@ -204,12 +274,26 @@ export function WhatsAppChat() {
           <div>
             <h2 className="text-lg font-black text-slate-900">Chat Interactivo de WhatsApp</h2>
             <p className="text-xs text-slate-500 font-medium">
-              Gestión de conversaciones 1 a 1 con tus asistentes y registrados
+              Gestión de conversaciones 1 a 1 con tus contactos y registrados
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Toggle Anti-Baneo */}
+          <div className="flex items-center gap-2 bg-emerald-50/80 border border-emerald-200 px-3 py-1.5 rounded-full">
+            <ShieldCheck className="w-4 h-4 text-emerald-700" />
+            <Label htmlFor="anti-ban-chat" className="text-xs font-extrabold text-emerald-900 cursor-pointer">
+              Protección Anti-Baneo
+            </Label>
+            <Switch
+              id="anti-ban-chat"
+              checked={antiBanMode}
+              onCheckedChange={setAntiBanMode}
+              className="data-[state=checked]:bg-emerald-600"
+            />
+          </div>
+
           <Badge
             className={`px-3 py-1.5 rounded-full font-bold flex items-center gap-1.5 text-xs border ${
               status === "connected"
@@ -267,7 +351,7 @@ export function WhatsAppChat() {
                 <MessageCircle className="w-8 h-8 mx-auto text-slate-300" />
                 <p>No se encontraron conversaciones activas.</p>
                 <p className="text-[11px] text-slate-400">
-                  Asegúrate de tener mensajes entrantes o haber enviado campañas desde el CRM.
+                  Usa el módulo de Contactos para abrir conversaciones directas.
                 </p>
               </div>
             ) : (
@@ -325,23 +409,41 @@ export function WhatsAppChat() {
                     {activeChat.name ? activeChat.name[0].toUpperCase() : <User className="w-5 h-5" />}
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-slate-900 text-base">{activeChat.name}</h3>
+                    <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                      {activeChat.name}
+                      {typingState && (
+                        <span className="text-xs font-semibold text-teal-600 animate-pulse italic">
+                          (Escribiendo...)
+                        </span>
+                      )}
+                    </h3>
                     <p className="text-xs font-mono text-slate-500 flex items-center gap-1">
                       <Phone className="w-3 h-3 text-teal-600" /> {activeChat.id}
                     </p>
                   </div>
                 </div>
 
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fetchMessages(activeChat.id)}
-                  disabled={loadingMessages}
-                  className="rounded-xl border border-slate-200 text-slate-600 text-xs font-bold"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loadingMessages ? "animate-spin" : ""}`} />
-                  Actualizar
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddActiveChatToContacts}
+                    className="rounded-xl border-slate-200 text-teal-800 font-extrabold text-xs"
+                  >
+                    <UserPlus className="w-3.5 h-3.5 mr-1 text-teal-600" /> Guardar Contacto
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fetchMessages(activeChat.id)}
+                    disabled={loadingMessages}
+                    className="rounded-xl border border-slate-200 text-slate-600 text-xs font-bold"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loadingMessages ? "animate-spin" : ""}`} />
+                    Actualizar
+                  </Button>
+                </div>
               </div>
 
               {/* Área de mensajes scrollable */}
@@ -354,7 +456,7 @@ export function WhatsAppChat() {
                 ) : messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-2">
                     <MessageCircle className="w-10 h-10 text-slate-300" />
-                    <p className="text-xs font-semibold">No hay mensajes cargados en este chat.</p>
+                    <p className="text-xs font-semibold">No hay mensajes en este chat. Escribe abajo para iniciar conversacion.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -398,7 +500,7 @@ export function WhatsAppChat() {
                       handleSendMessage();
                     }
                   }}
-                  placeholder="Escribe un mensaje de WhatsApp..."
+                  placeholder={typingState ? "Simulando tipeo..." : "Escribe un mensaje de WhatsApp..."}
                   disabled={sending || status !== "connected"}
                   className="flex-1 h-12 rounded-2xl border-slate-300 text-sm font-semibold bg-slate-50 focus:bg-white"
                 />
@@ -424,7 +526,7 @@ export function WhatsAppChat() {
               </div>
               <h4 className="text-base font-extrabold text-slate-700">Selecciona una conversación</h4>
               <p className="text-xs text-slate-500 max-w-sm font-medium">
-                Elige un contacto de la lista izquierda para ver el historial de chat y responder mensajes directamente.
+                Elige un contacto de la lista izquierda o ve al módulo de Contactos para escribir directamente.
               </p>
             </div>
           )}
