@@ -1,12 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { loadStoredContacts, saveStoredContacts, StoredContact } from "../WhatsAppContacts";
+import {
+  loadStoredContacts,
+  saveStoredContacts,
+  loadStoredFolders,
+  StoredContact,
+  BroadcastFolder,
+} from "../WhatsAppContacts";
+import { personalizeMessage, CrmContact } from "@/lib/whatsapp-crm";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -21,6 +30,8 @@ import {
   CheckCheck,
   ShieldCheck,
   UserPlus,
+  Radio,
+  Folder,
 } from "lucide-react";
 
 interface Message {
@@ -44,6 +55,12 @@ interface WhatsAppChatProps {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const DEFAULT_BROADCAST_TEMPLATE = `Hola {{nombre}} 👋
+
+Te enviamos este mensaje para recordarte la información importante del evento.
+
+¡Contamos con tu asistencia!`;
+
 export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
@@ -59,6 +76,17 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
   const [status, setStatus] = useState<"connected" | "qr" | "disconnected" | "checking">("checking");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Estados para Difusión por Carpeta
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [storedFolders, setStoredFolders] = useState<BroadcastFolder[]>([]);
+  const [storedContacts, setStoredContacts] = useState<StoredContact[]>([]);
+  const [selectedFolderId, setSelectedFolderId] = useState<string>("");
+  const [broadcastTemplate, setBroadcastTemplate] = useState(DEFAULT_BROADCAST_TEMPLATE);
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
+  const [broadcastProgress, setBroadcastProgress] = useState({ current: 0, total: 0 });
+  const [broadcastStatusText, setBroadcastStatusText] = useState("");
+  const abortBroadcastRef = useRef(false);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -67,7 +95,6 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
     scrollToBottom();
   }, [messages]);
 
-  // Cargar configuración de WhatsApp desde Supabase secrets
   const loadConfig = async () => {
     try {
       const { data } = await supabase
@@ -93,9 +120,10 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
 
   useEffect(() => {
     loadConfig();
+    setStoredFolders(loadStoredFolders());
+    setStoredContacts(loadStoredContacts());
   }, []);
 
-  // Manejar contacto preseleccionado si viene desde el módulo de Contactos
   useEffect(() => {
     if (selectedContact && selectedContact.phone) {
       const cleanPhone = selectedContact.phone.replace(/[^\d]/g, "");
@@ -161,7 +189,6 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
     }
   };
 
-  // Simulación de presencia "escribiendo..." (Anti-Ban)
   const sendPresenceTyping = async (phone: string) => {
     if (!waConfig.url) return;
     try {
@@ -186,11 +213,9 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
     try {
       const cleanUrl = waConfig.url.replace(/\/$/, "");
 
-      // 🛡️ SEGURIDAD ANTI-BAN: Simular estado "Escribiendo..." y retardo humano
       if (antiBanMode) {
         setTypingState(true);
         await sendPresenceTyping(activeChat.id);
-        // Duración simulada según longitud del texto (1.5s - 3s)
         const typingDuration = Math.min(3200, Math.max(1500, messageText.length * 40));
         await sleep(typingDuration);
         setTypingState(false);
@@ -226,6 +251,130 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
     } finally {
       setSending(false);
       setTypingState(false);
+    }
+  };
+
+  const handleOpenBroadcastModal = () => {
+    setStoredFolders(loadStoredFolders());
+    setStoredContacts(loadStoredContacts());
+    setIsBroadcastModalOpen(true);
+  };
+
+  // Obtener contactos pertenecientes a la carpeta seleccionada en el modal
+  const targetFolderContacts = React.useMemo(() => {
+    if (!selectedFolderId) return [];
+    const folder = storedFolders.find((f) => f.id === selectedFolderId);
+    if (!folder) return [];
+    return storedContacts.filter(
+      (c) => folder.contactIds.includes(c.id) || (c.folderIds || []).includes(selectedFolderId)
+    );
+  }, [selectedFolderId, storedFolders, storedContacts]);
+
+  // Vista previa personalizada del 1er contacto
+  const broadcastPreview = React.useMemo(() => {
+    const sample = targetFolderContacts[0] || {
+      id: "preview",
+      nombre: "Juan Pérez",
+      telefono: "573001234567",
+      categoria: "Servidores",
+      createdAt: "",
+    };
+    const crmC: CrmContact = {
+      id: sample.id,
+      nombre: sample.nombre,
+      telefono: sample.telefono,
+      telefonoRaw: sample.telefono,
+      extra: { categoria: sample.categoria || "" },
+      status: "pending",
+    };
+    return personalizeMessage(broadcastTemplate, crmC);
+  }, [selectedFolderId, targetFolderContacts, broadcastTemplate]);
+
+  // Lanzar Difusión por Carpeta
+  const handleStartFolderBroadcast = async () => {
+    if (!selectedFolderId || targetFolderContacts.length === 0) {
+      toast.error("Selecciona una carpeta con al menos 1 contacto");
+      return;
+    }
+    if (!broadcastTemplate.trim()) {
+      toast.error("Escribe el mensaje de difusión");
+      return;
+    }
+    if (!waConfig.url) {
+      toast.error("WhatsApp no está configurado. Conecta el servidor primero.");
+      return;
+    }
+
+    const cleanUrl = waConfig.url.replace(/\/$/, "");
+    abortBroadcastRef.current = false;
+    setSendingBroadcast(true);
+    setBroadcastProgress({ current: 0, total: targetFolderContacts.length });
+
+    let sent = 0;
+    let failed = 0;
+
+    for (let i = 0; i < targetFolderContacts.length; i++) {
+      if (abortBroadcastRef.current) break;
+      const contact = targetFolderContacts[i];
+
+      const crmC: CrmContact = {
+        id: contact.id,
+        nombre: contact.nombre,
+        telefono: contact.telefono,
+        telefonoRaw: contact.telefono,
+        extra: { categoria: contact.categoria || "" },
+        status: "pending",
+      };
+
+      const personalizedText = personalizeMessage(broadcastTemplate, crmC);
+
+      // Anti-Ban 1: Simular Tipeo
+      if (antiBanMode) {
+        setBroadcastStatusText(`Simulando tipeo para ${contact.nombre}...`);
+        await sendPresenceTyping(contact.telefono);
+        const typingDuration = Math.min(2500, Math.max(1200, personalizedText.length * 30));
+        await sleep(typingDuration);
+      }
+
+      setBroadcastStatusText(`Enviando a ${contact.nombre}...`);
+
+      try {
+        const res = await fetch(`${cleanUrl}/send`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${waConfig.token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            phone: contact.telefono,
+            message: personalizedText,
+          }),
+        });
+
+        if (res.ok) sent++;
+        else failed++;
+      } catch (err) {
+        failed++;
+      }
+
+      setBroadcastProgress({ current: i + 1, total: targetFolderContacts.length });
+
+      // Anti-Ban 2: Retardo aleatorio
+      if (!abortBroadcastRef.current && i < targetFolderContacts.length - 1) {
+        const jitter = antiBanMode ? 1200 + Math.floor(Math.random() * 1500) : 800;
+        setBroadcastStatusText(`Pausa de seguridad (${(jitter / 1000).toFixed(1)}s)...`);
+        await sleep(jitter);
+      }
+    }
+
+    setSendingBroadcast(false);
+    setBroadcastStatusText("");
+    if (abortBroadcastRef.current) {
+      toast.message("Difusión cancelada");
+    } else {
+      toast.success(`Difusión por carpeta finalizada: ${sent} enviados, ${failed} fallidos`);
+      setIsBroadcastModalOpen(false);
+      fetchChats();
     }
   };
 
@@ -265,7 +414,7 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
 
   return (
     <div className="space-y-4 animate-fade-in font-sans text-slate-900">
-      {/* Cabecera de estado y Anti-Ban */}
+      {/* Cabecera de estado y Difusión */}
       <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 flex flex-wrap items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-teal-50 rounded-2xl border border-teal-100 text-teal-700">
@@ -274,17 +423,25 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
           <div>
             <h2 className="text-lg font-black text-slate-900">Chat Interactivo de WhatsApp</h2>
             <p className="text-xs text-slate-500 font-medium">
-              Gestión de conversaciones 1 a 1 con tus contactos y registrados
+              Mensajería 1 a 1 y difusiones grupales personalizadas por carpetas
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Botón Difusión por Carpeta */}
+          <Button
+            onClick={handleOpenBroadcastModal}
+            className="h-10 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-extrabold text-xs shadow-xs"
+          >
+            <Radio className="w-4 h-4 mr-1.5 animate-pulse" /> 📢 Difusión por Carpeta
+          </Button>
+
           {/* Toggle Anti-Baneo */}
           <div className="flex items-center gap-2 bg-emerald-50/80 border border-emerald-200 px-3 py-1.5 rounded-full">
             <ShieldCheck className="w-4 h-4 text-emerald-700" />
             <Label htmlFor="anti-ban-chat" className="text-xs font-extrabold text-emerald-900 cursor-pointer">
-              Protección Anti-Baneo
+              Anti-Baneo
             </Label>
             <Switch
               id="anti-ban-chat"
@@ -307,10 +464,10 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
             {status === "checking" && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />}
             {status === "disconnected" && <WifiOff className="w-3.5 h-3.5 text-red-500" />}
             {status === "connected"
-              ? "WhatsApp Conectado"
+              ? "Conectado"
               : status === "checking"
               ? "Verificando..."
-              : "WhatsApp Desconectado"}
+              : "Desconectado"}
           </Badge>
 
           <Button
@@ -351,7 +508,7 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                 <MessageCircle className="w-8 h-8 mx-auto text-slate-300" />
                 <p>No se encontraron conversaciones activas.</p>
                 <p className="text-[11px] text-slate-400">
-                  Usa el módulo de Contactos para abrir conversaciones directas.
+                  Usa el botón "📢 Difusión por Carpeta" para escribirle a grupos.
                 </p>
               </div>
             ) : (
@@ -456,7 +613,7 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                 ) : messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-2">
                     <MessageCircle className="w-10 h-10 text-slate-300" />
-                    <p className="text-xs font-semibold">No hay mensajes en este chat. Escribe abajo para iniciar conversacion.</p>
+                    <p className="text-xs font-semibold">No hay mensajes en este chat. Escribe abajo para iniciar conversación.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -524,14 +681,125 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
               <div className="w-16 h-16 rounded-full bg-teal-50 border border-teal-100 flex items-center justify-center text-teal-600">
                 <MessageCircle className="w-8 h-8" />
               </div>
-              <h4 className="text-base font-extrabold text-slate-700">Selecciona una conversación</h4>
+              <h4 className="text-base font-extrabold text-slate-700">Selecciona una conversación o lanza una difusión</h4>
               <p className="text-xs text-slate-500 max-w-sm font-medium">
-                Elige un contacto de la lista izquierda o ve al módulo de Contactos para escribir directamente.
+                Elige un contacto de la izquierda o haz clic en "📢 Difusión por Carpeta" para enviarle a todo un grupo con su nombre personalizado.
               </p>
             </div>
           )}
         </div>
       </div>
+
+      {/* Modal de Difusión Personalizada por Carpeta */}
+      <Dialog open={isBroadcastModalOpen} onOpenChange={setIsBroadcastModalOpen}>
+        <DialogContent className="max-w-xl bg-white border border-slate-200 text-slate-900 rounded-3xl p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <Radio className="w-5 h-5 text-teal-600" /> Difusión Personalizada por Carpeta
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label className="text-xs font-bold text-slate-900 mb-1.5 block">Seleccionar Carpeta / Grupo *</Label>
+              <select
+                value={selectedFolderId}
+                onChange={(e) => setSelectedFolderId(e.target.value)}
+                disabled={sendingBroadcast}
+                className="w-full h-11 rounded-xl border border-slate-300 px-3 text-sm font-semibold bg-white"
+              >
+                <option value="">-- Elige una carpeta de contactos --</option>
+                {storedFolders.map((folder) => {
+                  const count = storedContacts.filter(
+                    (c) => folder.contactIds.includes(c.id) || (c.folderIds || []).includes(folder.id)
+                  ).length;
+                  return (
+                    <option key={folder.id} value={folder.id}>
+                      📂 {folder.nombre} ({count} integrantes)
+                    </option>
+                  );
+                })}
+              </select>
+              {storedFolders.length === 0 && (
+                <p className="text-xs text-amber-700 mt-1 font-semibold">
+                  No hay carpetas creadas. Ve al módulo "Agenda Contactos" para crear grupos.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-slate-900 mb-1.5 block">Mensaje de Difusión (Personalizado)</Label>
+              <Textarea
+                value={broadcastTemplate}
+                onChange={(e) => setBroadcastTemplate(e.target.value)}
+                disabled={sendingBroadcast}
+                rows={5}
+                className="rounded-xl border-slate-300 text-sm font-medium"
+                placeholder="Hola {{nombre}}, ..."
+              />
+              <p className="text-[11px] text-slate-500 mt-1 font-medium">
+                Usa <span className="font-bold text-teal-700">{"{{nombre}}"}</span> para reemplazar dinámicamente el nombre de cada destinatario.
+              </p>
+            </div>
+
+            {selectedFolderId && targetFolderContacts.length > 0 && (
+              <div className="p-3.5 bg-teal-50/70 border border-teal-200 rounded-2xl space-y-1 text-xs">
+                <p className="font-bold text-teal-950 uppercase text-[10px]">Vista previa para: {targetFolderContacts[0].nombre}</p>
+                <p className="whitespace-pre-wrap text-slate-800 font-medium">{broadcastPreview}</p>
+              </div>
+            )}
+
+            {sendingBroadcast && (
+              <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div className="flex items-center justify-between text-xs font-bold">
+                  <span>Enviando difusión con Anti-Baneo...</span>
+                  <span>{broadcastProgress.current} de {broadcastProgress.total}</span>
+                </div>
+                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-teal-600 h-full transition-all duration-300"
+                    style={{ width: `${(broadcastProgress.current / broadcastProgress.total) * 100}%` }}
+                  />
+                </div>
+                {broadcastStatusText && (
+                  <p className="text-xs text-teal-700 font-semibold animate-pulse">{broadcastStatusText}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="pt-4 flex items-center justify-between gap-3">
+            {sendingBroadcast ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { abortBroadcastRef.current = true; }}
+                className="rounded-xl border-slate-300 font-bold"
+              >
+                Cancelar Difusión
+              </Button>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsBroadcastModalOpen(false)}
+                  className="rounded-xl border-slate-300 font-bold"
+                >
+                  Cerrar
+                </Button>
+                <Button
+                  onClick={handleStartFolderBroadcast}
+                  disabled={!selectedFolderId || targetFolderContacts.length === 0 || !broadcastTemplate.trim()}
+                  className="rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-extrabold"
+                >
+                  <Send className="w-4 h-4 mr-2" /> Lanzar Difusión ({targetFolderContacts.length} destinatarios)
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
