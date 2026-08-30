@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { parseSpreadsheetFile, rowsToContacts, sampleCsv, normalizePhone } from "@/lib/whatsapp-crm";
 import {
@@ -24,6 +25,9 @@ import {
   FolderPlus,
   Folder,
   Check,
+  Pencil,
+  Cloud,
+  CloudCheck,
 } from "lucide-react";
 
 export interface StoredContact {
@@ -60,8 +64,18 @@ export function loadStoredContacts(): StoredContact[] {
 export function saveStoredContacts(list: StoredContact[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    // Sincronizar en la nube en app_secrets de Supabase
+    supabase
+      .from("app_secrets")
+      .upsert(
+        { key: "WA_CLOUD_CONTACTS", value: JSON.stringify(list), updated_at: new Date().toISOString() },
+        { onConflict: "key" }
+      )
+      .then(({ error }) => {
+        if (error) console.warn("Sync warning (contacts):", error);
+      });
   } catch (err) {
-    console.error("Error al guardar contactos en localStorage:", err);
+    console.error("Error al guardar contactos:", err);
   }
 }
 
@@ -77,8 +91,18 @@ export function loadStoredFolders(): BroadcastFolder[] {
 export function saveStoredFolders(folders: BroadcastFolder[]) {
   try {
     localStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
+    // Sincronizar en la nube en app_secrets de Supabase
+    supabase
+      .from("app_secrets")
+      .upsert(
+        { key: "WA_CLOUD_FOLDERS", value: JSON.stringify(folders), updated_at: new Date().toISOString() },
+        { onConflict: "key" }
+      )
+      .then(({ error }) => {
+        if (error) console.warn("Sync warning (folders):", error);
+      });
   } catch (err) {
-    console.error("Error al guardar carpetas en localStorage:", err);
+    console.error("Error al guardar carpetas:", err);
   }
 }
 
@@ -93,11 +117,19 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
   const [search, setSearch] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string>("all");
   const [loadingFile, setLoadingFile] = useState(false);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
+  const [cloudSyncing, setCloudSyncing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Formulario nuevo contacto
+  // Modales CRUD
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<StoredContact | null>(null);
+
+  const [isFolderDialogOpen, setIsFolderDialogOpen] = useState(false);
+  const [isEditFolderOpen, setIsEditFolderOpen] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<BroadcastFolder | null>(null);
+
+  // Formulario nuevo / editar contacto
   const [manualName, setManualName] = useState("");
   const [manualPhone, setManualPhone] = useState("");
   const [manualEmail, setManualEmail] = useState("");
@@ -105,49 +137,59 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
   const [manualNotes, setManualNotes] = useState("");
   const [selectedFolderForContact, setSelectedFolderForContact] = useState<string>("");
 
-  // Formulario nueva carpeta
+  // Formulario nueva / editar carpeta
   const [folderName, setFolderName] = useState("");
   const [folderDesc, setFolderDesc] = useState("");
 
+  // Sincronización Nube desde Supabase
+  const syncFromCloud = async () => {
+    setCloudSyncing(true);
+    try {
+      const { data } = await supabase
+        .from("app_secrets")
+        .select("key, value")
+        .in("key", ["WA_CLOUD_CONTACTS", "WA_CLOUD_FOLDERS"]);
+
+      const cloudC = data?.find((d) => d.key === "WA_CLOUD_CONTACTS")?.value;
+      const cloudF = data?.find((d) => d.key === "WA_CLOUD_FOLDERS")?.value;
+
+      if (cloudC) {
+        const parsedC = JSON.parse(cloudC);
+        setContacts(parsedC);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsedC));
+      } else {
+        setContacts(loadStoredContacts());
+      }
+
+      if (cloudF) {
+        const parsedF = JSON.parse(cloudF);
+        setFolders(parsedF);
+        localStorage.setItem(FOLDERS_KEY, JSON.stringify(parsedF));
+      } else {
+        setFolders(loadStoredFolders());
+      }
+    } catch (err) {
+      console.error("Error syncing contacts from cloud:", err);
+      setContacts(loadStoredContacts());
+      setFolders(loadStoredFolders());
+    } finally {
+      setCloudSyncing(false);
+    }
+  };
+
   useEffect(() => {
-    setContacts(loadStoredContacts());
-    setFolders(loadStoredFolders());
+    syncFromCloud();
   }, []);
+
+  // --- CRUD CONTACTOS ---
 
   const handleSaveContact = (newContact: StoredContact) => {
     setContacts((prev) => {
-      const filtered = prev.filter((c) => c.telefono !== newContact.telefono);
+      const filtered = prev.filter((c) => c.id !== newContact.id && c.telefono !== newContact.telefono);
       const updated = [newContact, ...filtered];
       saveStoredContacts(updated);
       return updated;
     });
-  };
-
-  const handleCreateFolder = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!folderName.trim()) {
-      toast.error("Ingresa el nombre de la carpeta");
-      return;
-    }
-
-    const newFolder: BroadcastFolder = {
-      id: `folder-${Date.now()}`,
-      nombre: folderName.trim(),
-      descripcion: folderDesc.trim() || undefined,
-      contactIds: [],
-      createdAt: new Date().toISOString(),
-    };
-
-    setFolders((prev) => {
-      const updated = [newFolder, ...prev];
-      saveStoredFolders(updated);
-      return updated;
-    });
-
-    toast.success(`Carpeta "${newFolder.nombre}" creada`);
-    setFolderName("");
-    setFolderDesc("");
-    setIsFolderDialogOpen(false);
   };
 
   const handleAddManualSubmit = (e: React.FormEvent) => {
@@ -164,7 +206,7 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
     }
 
     const newContact: StoredContact = {
-      id: `manual-${Date.now()}`,
+      id: `contact-${Date.now()}`,
       nombre: manualName.trim(),
       telefono: cleanPhone,
       correo: manualEmail.trim() || undefined,
@@ -176,7 +218,6 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
 
     handleSaveContact(newContact);
 
-    // Si se asignó a una carpeta, actualizar la carpeta también
     if (selectedFolderForContact) {
       setFolders((prev) => {
         const updated = prev.map((f) =>
@@ -200,67 +241,114 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
     setIsAddDialogOpen(false);
   };
 
-  const handleImportFile = async (file?: File) => {
-    if (!file) return;
-    setLoadingFile(true);
-    try {
-      const rows = await parseSpreadsheetFile(file);
-      const parsed = rowsToContacts(rows);
+  // Abrir Modal de Edición de Contacto
+  const handleOpenEditContact = (contact: StoredContact) => {
+    setEditingContact(contact);
+    setManualName(contact.nombre);
+    setManualPhone(contact.telefono);
+    setManualEmail(contact.correo || "");
+    setManualCategory(contact.categoria || "General");
+    setManualNotes(contact.notas || "");
+    setSelectedFolderForContact(contact.folderIds?.[0] || "");
+    setIsEditDialogOpen(true);
+  };
 
-      if (parsed.length === 0) {
-        toast.error("No se encontraron contactos válidos en el archivo");
-        return;
-      }
+  // Guardar Cambios de Edición de Contacto (UPDATE)
+  const handleEditContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingContact || !manualName.trim() || !manualPhone.trim()) return;
 
-      let addedCount = 0;
+    const cleanPhone = normalizePhone(manualPhone);
+
+    const updatedC: StoredContact = {
+      ...editingContact,
+      nombre: manualName.trim(),
+      telefono: cleanPhone,
+      correo: manualEmail.trim() || undefined,
+      categoria: manualCategory.trim() || "General",
+      notas: manualNotes.trim() || undefined,
+      folderIds: selectedFolderForContact ? [selectedFolderForContact] : editingContact.folderIds || [],
+    };
+
+    handleSaveContact(updatedC);
+    toast.success(`Contacto ${updatedC.nombre} modificado correctamente`);
+    setIsEditDialogOpen(false);
+    setEditingContact(null);
+  };
+
+  const handleDeleteContact = (id: string) => {
+    if (window.confirm("¿Seguro que deseas eliminar este contacto?")) {
       setContacts((prev) => {
-        const phoneMap = new Map<string, StoredContact>();
-        prev.forEach((c) => phoneMap.set(c.telefono, c));
-
-        parsed.forEach((p, idx) => {
-          const newC: StoredContact = {
-            id: `import-${Date.now()}-${idx}`,
-            nombre: p.nombre,
-            telefono: p.telefono,
-            categoria: p.extra?.["categoria"] || p.extra?.["red"] || "Importado Excel",
-            correo: p.extra?.["correo"] || p.extra?.["email"] || undefined,
-            createdAt: new Date().toISOString(),
-          };
-          if (!phoneMap.has(p.telefono)) addedCount++;
-          phoneMap.set(p.telefono, newC);
-        });
-
-        const updated = Array.from(phoneMap.values());
+        const updated = prev.filter((c) => c.id !== id);
         saveStoredContacts(updated);
         return updated;
       });
 
-      toast.success(`${addedCount} contactos procesados correctamente`);
-    } catch (err: any) {
-      toast.error(err.message || "Error al leer el archivo de contactos");
-    } finally {
-      setLoadingFile(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      setFolders((prev) => {
+        const updated = prev.map((f) => ({
+          ...f,
+          contactIds: f.contactIds.filter((cId) => cId !== id),
+        }));
+        saveStoredFolders(updated);
+        return updated;
+      });
+
+      toast.info("Contacto eliminado correctamente");
     }
   };
 
-  const handleDeleteContact = (id: string) => {
-    setContacts((prev) => {
-      const updated = prev.filter((c) => c.id !== id);
-      saveStoredContacts(updated);
-      return updated;
-    });
+  // --- CRUD CARPETAS ---
+
+  const handleCreateFolder = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!folderName.trim()) return;
+
+    const newFolder: BroadcastFolder = {
+      id: `folder-${Date.now()}`,
+      nombre: folderName.trim(),
+      descripcion: folderDesc.trim() || undefined,
+      contactIds: [],
+      createdAt: new Date().toISOString(),
+    };
 
     setFolders((prev) => {
-      const updated = prev.map((f) => ({
-        ...f,
-        contactIds: f.contactIds.filter((cId) => cId !== id),
-      }));
+      const updated = [newFolder, ...prev];
       saveStoredFolders(updated);
       return updated;
     });
 
-    toast.info("Contacto eliminado");
+    toast.success(`Carpeta "${newFolder.nombre}" creada`);
+    setFolderName("");
+    setFolderDesc("");
+    setIsFolderDialogOpen(false);
+  };
+
+  const handleOpenEditFolder = (folder: BroadcastFolder) => {
+    setEditingFolder(folder);
+    setFolderName(folder.nombre);
+    setFolderDesc(folder.descripcion || "");
+    setIsEditFolderOpen(true);
+  };
+
+  const handleEditFolderSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFolder || !folderName.trim()) return;
+
+    const updatedF: BroadcastFolder = {
+      ...editingFolder,
+      nombre: folderName.trim(),
+      descripcion: folderDesc.trim() || undefined,
+    };
+
+    setFolders((prev) => {
+      const updated = prev.map((f) => (f.id === editingFolder.id ? updatedF : f));
+      saveStoredFolders(updated);
+      return updated;
+    });
+
+    toast.success(`Carpeta "${updatedF.nombre}" modificada`);
+    setIsEditFolderOpen(false);
+    setEditingFolder(null);
   };
 
   const handleDeleteFolder = (folderId: string) => {
@@ -302,6 +390,50 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
       saveStoredContacts(updated);
       return updated;
     });
+  };
+
+  const handleImportFile = async (file?: File) => {
+    if (!file) return;
+    setLoadingFile(true);
+    try {
+      const rows = await parseSpreadsheetFile(file);
+      const parsed = rowsToContacts(rows);
+
+      if (parsed.length === 0) {
+        toast.error("No se encontraron contactos válidos en el archivo");
+        return;
+      }
+
+      let addedCount = 0;
+      setContacts((prev) => {
+        const phoneMap = new Map<string, StoredContact>();
+        prev.forEach((c) => phoneMap.set(c.telefono, c));
+
+        parsed.forEach((p, idx) => {
+          const newC: StoredContact = {
+            id: `import-${Date.now()}-${idx}`,
+            nombre: p.nombre,
+            telefono: p.telefono,
+            categoria: p.extra?.["categoria"] || p.extra?.["red"] || "Importado Excel",
+            correo: p.extra?.["correo"] || p.extra?.["email"] || undefined,
+            createdAt: new Date().toISOString(),
+          };
+          if (!phoneMap.has(p.telefono)) addedCount++;
+          phoneMap.set(p.telefono, newC);
+        });
+
+        const updated = Array.from(phoneMap.values());
+        saveStoredContacts(updated);
+        return updated;
+      });
+
+      toast.success(`${addedCount} contactos procesados e integrados`);
+    } catch (err: any) {
+      toast.error(err.message || "Error al leer el archivo de contactos");
+    } finally {
+      setLoadingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleExportCsv = () => {
@@ -349,9 +481,18 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
               <Users className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-900">Agenda y Carpetas de Difusión</h2>
+              <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                Agenda de Contactos & Grupos en la Nube
+                {cloudSyncing ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
+                ) : (
+                  <Badge className="bg-teal-50 text-teal-800 border-teal-200 font-bold text-[10px]">
+                    <Cloud className="w-3 h-3 mr-1 text-teal-600" /> Sincronizado en Nube
+                  </Badge>
+                )}
+              </h2>
               <p className="text-sm text-slate-500 font-medium">
-                Agrupa tus contactos en carpetas y envía difusiones personalizadas
+                Gestión CRUD completa (Crear, Leer, Modificar y Eliminar) sincronizada con Supabase
               </p>
             </div>
           </div>
@@ -366,7 +507,15 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
             </Button>
 
             <Button
-              onClick={() => setIsAddDialogOpen(true)}
+              onClick={() => {
+                setManualName("");
+                setManualPhone("");
+                setManualEmail("");
+                setManualCategory("General");
+                setManualNotes("");
+                setSelectedFolderForContact("");
+                setIsAddDialogOpen(true);
+              }}
               className="h-11 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-extrabold px-4"
             >
               <UserPlus className="w-4 h-4 mr-2" /> Agregar Contacto
@@ -402,19 +551,31 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
         </div>
       </div>
 
-      {/* Selector de Carpetas de Grupo */}
+      {/* Selector de Carpetas con opción de Edición */}
       <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200/80 space-y-3 shadow-xs">
         <div className="flex items-center justify-between">
           <p className="text-xs font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
             <Folder className="w-4 h-4 text-teal-600" /> Carpetas / Grupos de Difusión
           </p>
           {selectedFolderId !== "all" && (
-            <button
-              onClick={() => handleDeleteFolder(selectedFolderId)}
-              className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1"
-            >
-              <Trash2 className="w-3.5 h-3.5" /> Eliminar carpeta seleccionada
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  const target = folders.find((f) => f.id === selectedFolderId);
+                  if (target) handleOpenEditFolder(target);
+                }}
+                className="text-xs font-bold text-teal-800 hover:underline flex items-center gap-1"
+              >
+                <Pencil className="w-3.5 h-3.5" /> Modificar Nombre/Descripción
+              </button>
+
+              <button
+                onClick={() => handleDeleteFolder(selectedFolderId)}
+                className="text-xs font-bold text-red-600 hover:underline flex items-center gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Eliminar Carpeta
+              </button>
+            </div>
           )}
         </div>
 
@@ -466,17 +627,17 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar contacto en esta vista por nombre, WhatsApp o correo..."
+            placeholder="Buscar contacto por nombre, WhatsApp o correo..."
             className="pl-10 h-11 rounded-xl border-slate-200 text-sm font-semibold"
           />
         </div>
       </div>
 
-      {/* Tabla de Contactos */}
+      {/* Tabla de Contactos con Acciones de Edición (UPDATE) y Borrado (DELETE) */}
       <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <p className="font-extrabold text-slate-900 flex items-center gap-2">
-            <Users className="w-4 h-4 text-teal-600" /> Contactos en vista ({filteredContacts.length})
+            <Users className="w-4 h-4 text-teal-600" /> Contactos en la Nube ({filteredContacts.length})
           </p>
 
           {contacts.length > 0 && onSendContactsToCrm && (
@@ -494,9 +655,9 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
         {filteredContacts.length === 0 ? (
           <div className="p-12 text-center text-slate-500 space-y-3">
             <Users className="w-12 h-12 mx-auto text-slate-300" />
-            <p className="font-bold text-slate-700">No hay contactos en esta carpeta/vista</p>
+            <p className="font-bold text-slate-700">No hay contactos en esta vista</p>
             <p className="text-xs text-slate-400 max-w-sm mx-auto font-medium">
-              Agrega contactos nuevos o asígnalos a esta carpeta para difusiones grupales.
+              Agrega nuevos contactos o edita los existentes para asignarlos a esta carpeta.
             </p>
           </div>
         ) : (
@@ -508,7 +669,7 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
                   <TableHead className="font-extrabold">WhatsApp</TableHead>
                   <TableHead className="font-extrabold">Carpetas Asignadas</TableHead>
                   <TableHead className="font-extrabold">Categoría</TableHead>
-                  <TableHead className="font-extrabold text-right">Acciones</TableHead>
+                  <TableHead className="font-extrabold text-right">Acciones (CRUD)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -539,7 +700,6 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
                             </button>
                           );
                         })}
-                        {folders.length === 0 && <span className="text-xs text-slate-400 italic">Crea carpetas arriba</span>}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -548,7 +708,7 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         {onOpenChatWithContact && (
                           <Button
                             size="sm"
@@ -561,11 +721,22 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
                           </Button>
                         )}
 
+                        {/* Botón MODIFICAR (EDIT) */}
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleOpenEditContact(contact)}
+                          className="h-8 w-8 text-slate-600 hover:text-teal-700 hover:bg-teal-50 rounded-lg"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+
+                        {/* Botón ELIMINAR (DELETE) */}
                         <Button
                           size="icon"
                           variant="ghost"
                           onClick={() => handleDeleteContact(contact.id)}
-                          className="h-8 w-8 text-slate-400 hover:text-red-600 rounded-lg"
+                          className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -579,50 +750,118 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
         )}
       </div>
 
-      {/* Modal Nueva Carpeta de Difusión */}
-      <Dialog open={isFolderDialogOpen} onOpenChange={setIsFolderDialogOpen}>
+      {/* Modal MODIFICAR CONTACTO (UPDATE) */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-md bg-white border border-slate-200 text-slate-900 rounded-3xl p-6 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
-              <FolderPlus className="w-5 h-5 text-teal-600" /> Crear Carpeta / Grupo de Difusión
+              <Pencil className="w-5 h-5 text-teal-600" /> Modificar Contacto
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleCreateFolder} className="space-y-4 pt-2">
+          <form onSubmit={handleEditContactSubmit} className="space-y-4 pt-2">
             <div>
-              <Label className="text-xs font-bold text-slate-900 mb-1 block">Nombre de la Carpeta *</Label>
+              <Label className="text-xs font-bold text-slate-900 mb-1 block">Nombre Completo *</Label>
               <Input
-                value={folderName}
-                onChange={(e) => setFolderName(e.target.value)}
-                placeholder="Ej. Líderes de Red, Servidores VIP..."
+                value={manualName}
+                onChange={(e) => setManualName(e.target.value)}
                 required
                 className="h-11 rounded-xl border-slate-300 font-semibold"
               />
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-slate-900 mb-1 block">Descripción (Opcional)</Label>
+              <Label className="text-xs font-bold text-slate-900 mb-1 block">Número WhatsApp *</Label>
               <Input
-                value={folderDesc}
-                onChange={(e) => setFolderDesc(e.target.value)}
-                placeholder="Ej. Equipo encargado de logística de eventos"
+                value={manualPhone}
+                onChange={(e) => setManualPhone(e.target.value)}
+                required
+                className="h-11 rounded-xl border-slate-300 font-semibold font-mono"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-slate-900 mb-1 block">Categoría / Red</Label>
+              <Input
+                value={manualCategory}
+                onChange={(e) => setManualCategory(e.target.value)}
+                className="h-11 rounded-xl border-slate-300 font-semibold"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-slate-900 mb-1 block">Correo Electrónico</Label>
+              <Input
+                type="email"
+                value={manualEmail}
+                onChange={(e) => setManualEmail(e.target.value)}
+                className="h-11 rounded-xl border-slate-300 font-semibold"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-slate-900 mb-1 block">Notas</Label>
+              <Input
+                value={manualNotes}
+                onChange={(e) => setManualNotes(e.target.value)}
                 className="h-11 rounded-xl border-slate-300 font-semibold"
               />
             </div>
 
             <DialogFooter className="pt-3">
-              <Button type="button" variant="outline" onClick={() => setIsFolderDialogOpen(false)} className="rounded-xl border-slate-300 font-bold">
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)} className="rounded-xl border-slate-300 font-bold">
                 Cancelar
               </Button>
               <Button type="submit" className="rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-extrabold">
-                Crear Carpeta
+                Guardar Cambios
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Modal Agregar Contacto Manual */}
+      {/* Modal MODIFICAR CARPETA */}
+      <Dialog open={isEditFolderOpen} onOpenChange={setIsEditFolderOpen}>
+        <DialogContent className="max-w-md bg-white border border-slate-200 text-slate-900 rounded-3xl p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-teal-600" /> Modificar Carpeta de Difusión
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleEditFolderSubmit} className="space-y-4 pt-2">
+            <div>
+              <Label className="text-xs font-bold text-slate-900 mb-1 block">Nombre de la Carpeta *</Label>
+              <Input
+                value={folderName}
+                onChange={(e) => setFolderName(e.target.value)}
+                required
+                className="h-11 rounded-xl border-slate-300 font-semibold"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-slate-900 mb-1 block">Descripción</Label>
+              <Input
+                value={folderDesc}
+                onChange={(e) => setFolderDesc(e.target.value)}
+                className="h-11 rounded-xl border-slate-300 font-semibold"
+              />
+            </div>
+
+            <DialogFooter className="pt-3">
+              <Button type="button" variant="outline" onClick={() => setIsEditFolderOpen(false)} className="rounded-xl border-slate-300 font-bold">
+                Cancelar
+              </Button>
+              <Button type="submit" className="rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-extrabold">
+                Guardar Carpeta
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal AGREGAR CONTACTO */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="max-w-md bg-white border border-slate-200 text-slate-900 rounded-3xl p-6 shadow-2xl">
           <DialogHeader>
@@ -656,7 +895,7 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
 
             {folders.length > 0 && (
               <div>
-                <Label className="text-xs font-bold text-slate-900 mb-1 block">Asignar a Carpeta de Grupo</Label>
+                <Label className="text-xs font-bold text-slate-900 mb-1 block">Asignar a Carpeta</Label>
                 <select
                   value={selectedFolderForContact}
                   onChange={(e) => setSelectedFolderForContact(e.target.value)}
@@ -699,6 +938,49 @@ export function WhatsAppContacts({ onOpenChatWithContact, onSendContactsToCrm }:
               </Button>
               <Button type="submit" className="rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-extrabold">
                 Guardar Contacto
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal CREAR CARPETA */}
+      <Dialog open={isFolderDialogOpen} onOpenChange={setIsFolderDialogOpen}>
+        <DialogContent className="max-w-md bg-white border border-slate-200 text-slate-900 rounded-3xl p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
+              <FolderPlus className="w-5 h-5 text-teal-600" /> Crear Carpeta / Grupo de Difusión
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handleCreateFolder} className="space-y-4 pt-2">
+            <div>
+              <Label className="text-xs font-bold text-slate-900 mb-1 block">Nombre de la Carpeta *</Label>
+              <Input
+                value={folderName}
+                onChange={(e) => setFolderName(e.target.value)}
+                placeholder="Ej. Líderes de Red, Servidores VIP..."
+                required
+                className="h-11 rounded-xl border-slate-300 font-semibold"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-bold text-slate-900 mb-1 block">Descripción (Opcional)</Label>
+              <Input
+                value={folderDesc}
+                onChange={(e) => setFolderDesc(e.target.value)}
+                placeholder="Ej. Equipo encargado de logística de eventos"
+                className="h-11 rounded-xl border-slate-300 font-semibold"
+              />
+            </div>
+
+            <DialogFooter className="pt-3">
+              <Button type="button" variant="outline" onClick={() => setIsFolderDialogOpen(false)} className="rounded-xl border-slate-300 font-bold">
+                Cancelar
+              </Button>
+              <Button type="submit" className="rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-extrabold">
+                Crear Carpeta
               </Button>
             </DialogFooter>
           </form>
