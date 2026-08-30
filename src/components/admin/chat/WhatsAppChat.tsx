@@ -35,6 +35,7 @@ import {
   Folder,
   Bot,
   Sparkles,
+  Trash2,
 } from "lucide-react";
 
 interface Message {
@@ -50,6 +51,61 @@ interface Chat {
   unreadCount?: number;
   lastMessage?: string;
   timestamp?: number;
+}
+
+const CHATS_STORAGE_KEY = "cmg_whatsapp_chats_v2";
+const MESSAGES_STORAGE_KEY = "cmg_whatsapp_messages_v2";
+
+export function loadStoredChats(): Chat[] {
+  try {
+    const raw = localStorage.getItem(CHATS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredChats(chatsList: Chat[]) {
+  try {
+    localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(chatsList));
+    supabase
+      .from("app_secrets")
+      .upsert(
+        { key: "WA_CLOUD_CHATS", value: JSON.stringify(chatsList), updated_at: new Date().toISOString() },
+        { onConflict: "key" }
+      )
+      .then(({ error }) => {
+        if (error) console.warn("Cloud sync warning (chats):", error);
+      });
+  } catch (err) {
+    console.error("Error saving chats:", err);
+  }
+}
+
+export function loadStoredMessagesMap(): Record<string, Message[]> {
+  try {
+    const raw = localStorage.getItem(MESSAGES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveStoredMessagesMap(map: Record<string, Message[]>) {
+  try {
+    localStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify(map));
+    supabase
+      .from("app_secrets")
+      .upsert(
+        { key: "WA_CLOUD_MESSAGES", value: JSON.stringify(map), updated_at: new Date().toISOString() },
+        { onConflict: "key" }
+      )
+      .then(({ error }) => {
+        if (error) console.warn("Cloud sync warning (messages):", error);
+      });
+  } catch (err) {
+    console.error("Error saving messages map:", err);
+  }
 }
 
 interface WhatsAppChatProps {
@@ -124,6 +180,7 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
 
   useEffect(() => {
     loadConfig();
+    syncChatsFromCloud();
     setStoredFolders(loadStoredFolders());
     setStoredContacts(loadStoredContacts());
   }, []);
@@ -136,9 +193,17 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
         name: selectedContact.name || cleanPhone,
       };
       setActiveChat(chatObj);
-      if (waConfig.url) fetchMessages(cleanPhone);
+
+      setChats((prev) => {
+        const exists = prev.some((c) => c.id === cleanPhone);
+        const updated = exists ? prev : [chatObj, ...prev];
+        saveStoredChats(updated);
+        return updated;
+      });
+
+      fetchMessages(cleanPhone);
     }
-  }, [selectedContact, waConfig.url]);
+  }, [selectedContact]);
 
   // 🔄 RECEPTOR EN TIEMPO REAL: Auto-polling de mensajes entrantes cada 3.5 segundos
   useEffect(() => {
@@ -193,6 +258,27 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
     return () => clearInterval(interval);
   }, [status, waConfig.url, waConfig.token, activeChat?.id, aiBotActive]);
 
+  const syncChatsFromCloud = async () => {
+    try {
+      const { data } = await supabase
+        .from("app_secrets")
+        .select("key, value")
+        .in("key", ["WA_CLOUD_CHATS", "WA_CLOUD_MESSAGES"]);
+
+      const cloudChatsRaw = data?.find((d) => d.key === "WA_CLOUD_CHATS")?.value;
+
+      if (cloudChatsRaw) {
+        const parsed = JSON.parse(cloudChatsRaw);
+        setChats(parsed);
+        localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(parsed));
+      } else {
+        setChats(loadStoredChats());
+      }
+    } catch {
+      setChats(loadStoredChats());
+    }
+  };
+
   const checkServerStatus = async (url = waConfig.url) => {
     if (!url) return;
     setStatus("checking");
@@ -215,17 +301,30 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          setChats(data);
+          setChats((prev) => {
+            const map = new Map<string, Chat>();
+            prev.forEach((c) => map.set(c.id, c));
+            data.forEach((c) => map.set(c.id, { ...map.get(c.id), ...c }));
+            const merged = Array.from(map.values());
+            saveStoredChats(merged);
+            return merged;
+          });
         }
       }
     } catch (err) {
-      console.error("Error al obtener chats de WhatsApp:", err);
+      console.warn("Uso de conversaciones almacenadas previamente");
     } finally {
       setLoadingChats(false);
     }
   };
 
   const fetchMessages = async (chatId: string) => {
+    // Primero cargar historial persistente guardado localmente o en nube
+    const map = loadStoredMessagesMap();
+    if (map[chatId] && map[chatId].length > 0) {
+      setMessages(map[chatId]);
+    }
+
     if (!waConfig.url) return;
     setLoadingMessages(true);
     try {
@@ -235,14 +334,38 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) setMessages(data);
-      } else {
-        toast.error("No se pudieron cargar los mensajes");
+        if (Array.isArray(data)) {
+          setMessages(data);
+          const updatedMap = { ...loadStoredMessagesMap(), [chatId]: data };
+          saveStoredMessagesMap(updatedMap);
+        }
       }
     } catch (err) {
-      toast.error("Error de conexión al obtener mensajes");
+      console.warn("Uso de caché local para mensajes de", chatId);
     } finally {
       setLoadingMessages(false);
+    }
+  };
+
+  const handleDeleteChat = (chatId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (window.confirm("¿Seguro que deseas eliminar esta conversación y todo su historial de mensajes?")) {
+      setChats((prev) => {
+        const updated = prev.filter((c) => c.id !== chatId);
+        saveStoredChats(updated);
+        return updated;
+      });
+
+      const currentMap = loadStoredMessagesMap();
+      delete currentMap[chatId];
+      saveStoredMessagesMap(currentMap);
+
+      if (activeChat?.id === chatId) {
+        setActiveChat(null);
+        setMessages([]);
+      }
+
+      toast.info("Conversación eliminada correctamente");
     }
   };
 
@@ -292,13 +415,34 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
 
       if (res.ok) {
         setNewMessage("");
+        const nowTs = Math.floor(Date.now() / 1000);
         const localMsg: Message = {
           id: `temp-${Date.now()}`,
           fromMe: true,
           body: messageText,
-          timestamp: Math.floor(Date.now() / 1000),
+          timestamp: nowTs,
         };
-        setMessages((prev) => [...prev, localMsg]);
+
+        setMessages((prev) => {
+          const updatedMsgs = [...prev, localMsg];
+          const map = loadStoredMessagesMap();
+          saveStoredMessagesMap({ ...map, [activeChat.id]: updatedMsgs });
+          return updatedMsgs;
+        });
+
+        setChats((prev) => {
+          const exists = prev.some((c) => c.id === activeChat.id);
+          let updated: Chat[];
+          if (exists) {
+            updated = prev.map((c) =>
+              c.id === activeChat.id ? { ...c, lastMessage: messageText, timestamp: nowTs } : c
+            );
+          } else {
+            updated = [{ id: activeChat.id, name: activeChat.name, lastMessage: messageText, timestamp: nowTs }, ...prev];
+          }
+          saveStoredChats(updated);
+          return updated;
+        });
 
         // 🤖 Si el Chatbot IA está activo y se envía una pregunta o confirmación 1/2, generar respuesta IA
         if (aiBotActive) {
@@ -626,38 +770,50 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                 {filteredChats.map((chat) => {
                   const isSelected = activeChat?.id === chat.id;
                   return (
-                    <button
+                    <div
                       key={chat.id}
                       onClick={() => {
                         setActiveChat(chat);
                         fetchMessages(chat.id);
                       }}
-                      className={`w-full p-3.5 text-left transition-colors flex items-start gap-3 ${
+                      className={`w-full p-3.5 text-left transition-colors flex items-start justify-between gap-3 cursor-pointer group ${
                         isSelected
                           ? "bg-teal-50/80 border-l-4 border-teal-600"
                           : "hover:bg-slate-100/70 bg-white"
                       }`}
                     >
-                      <div className="w-10 h-10 rounded-2xl bg-teal-100 text-teal-800 font-extrabold flex items-center justify-center shrink-0 text-sm">
-                        {chat.name ? chat.name[0].toUpperCase() : <User className="w-5 h-5" />}
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-2xl bg-teal-100 text-teal-800 font-extrabold flex items-center justify-center shrink-0 text-sm">
+                          {chat.name ? chat.name[0].toUpperCase() : <User className="w-5 h-5" />}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <p className="font-extrabold text-sm text-slate-900 truncate">
+                              {chat.name || chat.id}
+                            </p>
+                            {chat.timestamp && (
+                              <span className="text-[10px] font-semibold text-slate-400 shrink-0">
+                                {formatTime(chat.timestamp)}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 truncate font-medium">
+                            {chat.lastMessage || "Sin mensajes previos"}
+                          </p>
+                        </div>
                       </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <p className="font-extrabold text-sm text-slate-900 truncate">
-                            {chat.name || chat.id}
-                          </p>
-                          {chat.timestamp && (
-                            <span className="text-[10px] font-semibold text-slate-400 shrink-0">
-                              {formatTime(chat.timestamp)}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-slate-500 truncate font-medium">
-                          {chat.lastMessage || "Sin mensajes previos"}
-                        </p>
-                      </div>
-                    </button>
+                      {/* Botón Eliminar Chat */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteChat(chat.id, e)}
+                        title="Eliminar conversación"
+                        className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all shrink-0 mt-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -709,6 +865,16 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                   >
                     <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loadingMessages ? "animate-spin" : ""}`} />
                     Actualizar
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteChat(activeChat.id)}
+                    className="rounded-xl border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                    Eliminar Chat
                   </Button>
                 </div>
               </div>
