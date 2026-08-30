@@ -140,6 +140,59 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
     }
   }, [selectedContact, waConfig.url]);
 
+  // 🔄 RECEPTOR EN TIEMPO REAL: Auto-polling de mensajes entrantes cada 3.5 segundos
+  useEffect(() => {
+    if (status !== "connected" || !waConfig.url) return;
+
+    const interval = setInterval(async () => {
+      fetchChats(waConfig.url, waConfig.token);
+
+      if (activeChat) {
+        try {
+          const cleanUrl = waConfig.url.replace(/\/$/, "");
+          const res = await fetch(`${cleanUrl}/chats/${encodeURIComponent(activeChat.id)}/messages`, {
+            headers: { Authorization: `Bearer ${waConfig.token}` },
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (Array.isArray(data)) {
+              setMessages((prevMsgs) => {
+                if (data.length > prevMsgs.length) {
+                  const lastIncoming = data[data.length - 1];
+                  if (lastIncoming && !lastIncoming.fromMe && prevMsgs.length > 0) {
+                    toast.info(`💬 Nuevo mensaje de ${activeChat.name || activeChat.id}: "${lastIncoming.body.slice(0, 35)}..."`);
+                    
+                    if (aiBotActive) {
+                      processWhatsAppMessageIntent(lastIncoming.body, activeChat.id).then(({ replyText, rsvpStatus }) => {
+                        if (replyText) {
+                          const botMsg: Message = {
+                            id: `bot-reply-${Date.now()}`,
+                            fromMe: false,
+                            body: replyText,
+                            timestamp: Math.floor(Date.now() / 1000),
+                          };
+                          setMessages((curr) => [...curr, botMsg]);
+                          if (rsvpStatus) {
+                            toast.success(`RSVP auto-registrado: ${rsvpStatus.toUpperCase()}`);
+                          }
+                        }
+                      });
+                    }
+                  }
+                  return data;
+                }
+                return prevMsgs;
+              });
+            }
+          }
+        } catch (_) {}
+      }
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [status, waConfig.url, waConfig.token, activeChat?.id, aiBotActive]);
+
   const checkServerStatus = async (url = waConfig.url) => {
     if (!url) return;
     setStatus("checking");
