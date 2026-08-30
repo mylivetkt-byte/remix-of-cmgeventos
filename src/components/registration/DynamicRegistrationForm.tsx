@@ -138,10 +138,47 @@ export function DynamicRegistrationForm({ eventId, onSuccess }: Props) {
 
       if (error) {
         if (error.code === "23505" || error.message?.includes("duplicate key") || error.message?.includes("unique constraint")) {
-          toast.error("⚠️ Ya te encuentras registrado en este evento con este número de documento.");
-        } else {
-          toast.error("Error al registrar: " + error.message);
+          // Verificar si ya está registrado en ESTE mismo evento
+          const { data: existingSameEvent } = await supabase
+            .from("registrations")
+            .select("id, event_id")
+            .eq("numero_documento", payload.numero_documento)
+            .eq("tipo_documento_id", payload.tipo_documento_id)
+            .eq("event_id", eventId)
+            .maybeSingle();
+
+          if (existingSameEvent) {
+            toast.error("⚠️ Ya te encuentras registrado en ESTE evento con este número de documento.");
+            return;
+          }
+
+          // Si proviene de un evento diferente, actualizar la fila para este nuevo evento
+          const { data: updatedReg, error: updateErr } = await supabase
+            .from("registrations")
+            .update(payload)
+            .eq("numero_documento", payload.numero_documento)
+            .eq("tipo_documento_id", payload.tipo_documento_id)
+            .select()
+            .single();
+
+          if (!updateErr && updatedReg) {
+            toast.success("¡Registro exitoso a este nuevo evento!");
+            sendInstantWhatsAppTicket({
+              phone: payload.telefono,
+              name: `${payload.nombres} ${payload.apellidos}`.trim(),
+              registrationId: updatedReg.id,
+              eventId,
+            }).catch(() => {});
+            onSuccess({
+              nombres: `${payload.nombres} ${payload.apellidos}`.trim(),
+              pdfUrl: null,
+              registrationId: updatedReg.id,
+            });
+            return;
+          }
         }
+
+        toast.error("Error al registrar: " + error.message);
         return;
       }
 
