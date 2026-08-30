@@ -18,14 +18,13 @@ import { AttendanceReport } from "@/components/admin/AttendanceReport";
 import { DashboardStats } from "@/components/admin/DashboardStats";
 import { WhatsAppCrm } from "@/components/admin/WhatsAppCrm";
 import { WhatsAppManager } from "@/components/admin/WhatsAppManager";
-import { WhatsAppChat } from "@/components/admin/chat/WhatsAppChat";
 import { EventManager } from "@/components/admin/EventManager";
 import { UserManager } from "@/components/admin/UserManager";
 import { UserRole, ROLE_LABELS, ROLE_PERMISSIONS_MAP } from "@/integrations/supabase/user-role-types";
 import { useCatalog } from "@/hooks/useCatalogs";
 import { toast } from "sonner";
 
-type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "whatsapp" | "usuarios" | "crm" | "chat";
+type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "whatsapp" | "usuarios";
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
@@ -80,7 +79,6 @@ const AdminDashboard = () => {
     { id: "usuarios", label: "Usuarios & Roles", icon: <ShieldCheck className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "whatsapp", label: "WhatsApp & Brevo", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "crm", label: "CRM WhatsApp", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
-    { id: "chat", label: "Chat WhatsApp", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
   ];
 
   // Sincronizar rol según usuario logueado
@@ -144,7 +142,7 @@ const AdminDashboard = () => {
   const eventsList = useQuery({
     queryKey: ["admin_events_filter_list"],
     queryFn: async () => {
-      const { data } = await supabase.from("events" as any).select("id, nombre, slug").order("created_at", { ascending: false });
+      const { data } = await supabase.from("events").select("id, nombre, slug").order("created_at", { ascending: false });
       return data || [];
     },
   });
@@ -152,7 +150,7 @@ const AdminDashboard = () => {
   const registrations = useQuery({
     queryKey: ["admin_registrations", search, filterEvent, filterRed, filterCdp],
     queryFn: async () => {
-      let q = (supabase.from("registrations") as any).select(`
+      let q = supabase.from("registrations").select(`
         *, catalog_tipo_documento(nombre), catalog_estado_civil(nombre),
         catalog_sexo(nombre), catalog_cdp(nombre), catalog_red(nombre)
       `).order("created_at", { ascending: false });
@@ -166,7 +164,7 @@ const AdminDashboard = () => {
     },
   });
 
-  const data: any[] = registrations.data ?? [];
+  const data = registrations.data ?? [];
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["admin_registrations"] });
 
@@ -352,7 +350,7 @@ const AdminDashboard = () => {
     (r as any).catalog_red?.nombre ?? "",
     (r as any).catalog_cdp?.nombre ?? "",
     r.nombre_invitador ?? "",
-    (r as any).asistio ? "SÍ" : "NO",
+    r.asistio ? "SÍ" : "NO",
     new Date(r.created_at).toLocaleString("es-CO"),
   ];
 
@@ -537,7 +535,7 @@ const AdminDashboard = () => {
                 </SelectTrigger>
                 <SelectContent className="bg-white border-emerald-200">
                   <SelectItem value="all">📊 Todos los Eventos</SelectItem>
-                  {(eventsList.data as any[])?.map((evt: any) => (
+                  {eventsList.data?.map((evt) => (
                     <SelectItem key={evt.id} value={evt.id}>{evt.nombre}</SelectItem>
                   ))}
                 </SelectContent>
@@ -616,7 +614,7 @@ const AdminDashboard = () => {
 
             {/* Tarjetas de registros */}
             <div className="space-y-3">
-              {data.map((r: any) => {
+              {data.map((r) => {
                 const initials = `${r.nombres?.[0] ?? ""}${r.apellidos?.[0] ?? ""}`.toUpperCase();
                 const cdp      = (r as any).catalog_cdp?.nombre;
                 const red      = (r as any).catalog_red?.nombre;
@@ -653,7 +651,7 @@ const AdminDashboard = () => {
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span className="font-bold text-base text-white">{r.nombres} {r.apellidos}</span>
                             <span className="bg-amber-400/90 text-slate-950 font-extrabold text-[11px] px-2.5 py-0.5 rounded-full shadow-sm">
-                              {(eventsList.data as any[])?.find((e: any) => e.id === r.event_id)?.nombre ?? "Evento General"}
+                              {eventsList.data?.find((e) => e.id === r.event_id)?.nombre ?? "Evento General"}
                             </span>
                             {r.asistio
                               ? <span className="inline-flex items-center gap-1 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold shadow">
@@ -769,7 +767,6 @@ const AdminDashboard = () => {
         {tab === "usuarios" && <div className="animate-fade-in pb-8"><UserManager /></div>}
         {tab === "whatsapp" && <div className="animate-fade-in pb-8"><WhatsAppManager /></div>}
         {tab === "crm" && <div className="animate-fade-in pb-8"><WhatsAppCrm /></div>}
-        {tab === "chat" && <div className="animate-fade-in pb-8"><WhatsAppChat /></div>}
         </main>
       </div>
 

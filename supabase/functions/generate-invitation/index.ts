@@ -1,7 +1,6 @@
-/// <reference lib="deno.ns" />
-import { createClient } from "@supabase/supabase-js";
-import { jsPDF } from "jspdf";
-import QRCode from "qrcode";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { jsPDF } from "https://esm.sh/jspdf@2.5.2";
+import QRCode from "https://esm.sh/qrcode@1.5.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,7 +12,7 @@ function rr(doc: any, x: number, y: number, w: number, h: number, r: number, sty
   doc.roundedRect(x, y, w, h, r, r, style);
 }
 
-Deno.serve(async (req: Request) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
