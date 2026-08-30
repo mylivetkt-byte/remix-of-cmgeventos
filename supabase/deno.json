@@ -1,7 +1,0 @@
-{
-  " imports\: {
- \@supabase/supabase-js\: \https://esm.sh/@supabase/supabase-js@2.49.1\,
- \jspdf\: \https://esm.sh/jspdf@2.5.2\,
- \qrcode\: \https://esm.sh/qrcode@1.5.4\
- }
-}
