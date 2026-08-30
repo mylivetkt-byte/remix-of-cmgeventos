@@ -219,7 +219,7 @@ export function DynamicRegistrationForm({ eventId, onSuccess }: Props) {
   return (
     <div className="space-y-4 text-emerald-950 font-sans">
       {fieldConfigs && fieldConfigs.length > 0 ? (
-        fieldConfigs.map((config) => {
+        [...fieldConfigs].sort((a, b) => a.orden - b.orden).map((config) => {
           if (config.field_key === "fecha_nacimiento") {
             return (
               <DateOfBirthPicker
