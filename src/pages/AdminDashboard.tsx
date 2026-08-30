@@ -372,7 +372,7 @@ const AdminDashboard = () => {
               <div className="truncate">
                 <div className="flex items-center gap-1.5">
                   <h1 className="font-heading font-black text-sm text-slate-900 tracking-tight truncate">
-                    CMG Eventos
+                    Doxa Eventos
                   </h1>
                 </div>
                 <p className="text-[10px] text-slate-500 font-medium truncate">Centro Mundial de Gloria</p>

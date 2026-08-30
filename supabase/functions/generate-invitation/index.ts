@@ -327,7 +327,7 @@ Deno.serve(async (req) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
     doc.setTextColor(...GOLD_FILL);
-    doc.text("Centro Mundial de Gloria  ·  CMG Eventos", CX, footerY + 3, { align: "center" });
+    doc.text("Centro Mundial de Gloria  ·  Doxa Eventos", CX, footerY + 3, { align: "center" });
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6);
     doc.setTextColor(255, 255, 255);
