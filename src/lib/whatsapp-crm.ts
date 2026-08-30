@@ -138,10 +138,10 @@ export function personalizeMessage(template: string, contact: CrmContact): strin
 
 export function sampleCsv(): string {
   return [
-    "nombre,whatsapp",
-    "Juan Pérez,3001234567",
-    "María Gómez,3109876543",
-    "Carlos Delgado,3205551122",
+    "nombre;whatsapp",
+    "Juan Pérez;3001234567",
+    "María Gómez;3109876543",
+    "Carlos Delgado;3205551122",
   ].join("\n");
 }
 
