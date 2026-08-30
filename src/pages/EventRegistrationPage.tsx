@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useEventBySlug } from "@/hooks/useEvents";
+import { useEventBySlug, useEventFields } from "@/hooks/useEvents";
 import { RegistrationForm } from "@/components/registration/RegistrationForm";
 import { DynamicRegistrationForm } from "@/components/registration/DynamicRegistrationForm";
 import { RetiroSanidadForm } from "@/components/registration/RetiroSanidadForm";
@@ -18,6 +18,7 @@ interface SuccessData {
 export const EventRegistrationPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const { data: event, isLoading, isError } = useEventBySlug(slug);
+  const { data: fieldConfigs } = useEventFields(event?.id);
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
 
   const formatDate = (dateStr?: string | null) => {
@@ -184,10 +185,10 @@ export const EventRegistrationPage = () => {
               onReset={() => setSuccessData(null)}
               registrationId={successData.registrationId}
             />
+          ) : (fieldConfigs && fieldConfigs.length > 0) ? (
+            <DynamicRegistrationForm eventId={event.id} onSuccess={setSuccessData} />
           ) : isRetiroSanidad ? (
             <RetiroSanidadForm eventId={event.id} onSuccess={setSuccessData} />
-          ) : isDefaultEvent ? (
-            <RegistrationForm eventId={event.id} onSuccess={setSuccessData} />
           ) : (
             <DynamicRegistrationForm eventId={event.id} onSuccess={setSuccessData} />
           )}
