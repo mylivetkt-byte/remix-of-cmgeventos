@@ -137,11 +137,63 @@ export function RegistrationForm({ eventId, onSuccess }: Props) {
 
       if (error) {
         if (error.code === "23505" || error.message?.includes("duplicate key") || error.message?.includes("unique constraint")) {
-          toast.error("⚠️ Ya existe un registro con este tipo y número de documento para este evento.");
-          setErrors({ numero_documento: "Documento ya registrado" });
-        } else {
-          toast.error("Error al registrar: " + error.message);
+          // Verificar si ya está registrado en ESTE mismo evento
+          const { data: existingSameEvent } = await supabase
+            .from("registrations")
+            .select("id, event_id")
+            .eq("numero_documento", form.numero_documento.trim())
+            .eq("tipo_documento_id", form.tipo_documento_id)
+            .eq("event_id", eventId)
+            .maybeSingle();
+
+          if (existingSameEvent) {
+            toast.error("⚠️ Ya te encuentras registrado en ESTE evento con este número de documento.");
+            setErrors({ numero_documento: "Ya estás registrado en este evento" });
+            return;
+          }
+
+          // Si proviene de un evento diferente, actualizar los datos para este nuevo evento
+          const { data: updatedReg, error: updateErr } = await supabase
+            .from("registrations")
+            .update({
+              event_id: eventId,
+              nombres: form.nombres.trim(),
+              apellidos: form.apellidos.trim(),
+              fecha_nacimiento: fechaNacimiento,
+              edad: age!,
+              telefono: form.telefono.trim(),
+              direccion: form.direccion.trim(),
+              barrio: form.barrio.trim(),
+              correo: form.correo.trim().toLowerCase(),
+              estado_civil_id: form.estado_civil_id,
+              sexo_id: form.sexo_id,
+              cdp_id: form.cdp_id,
+              red_id: form.red_id,
+              nombre_invitador: form.nombre_invitador.trim() || null,
+            })
+            .eq("numero_documento", form.numero_documento.trim())
+            .eq("tipo_documento_id", form.tipo_documento_id)
+            .select()
+            .single();
+
+          if (!updateErr && updatedReg) {
+            toast.success("¡Registro exitoso a este nuevo evento!");
+            sendInstantWhatsAppTicket({
+              phone: form.telefono,
+              name: `${form.nombres} ${form.apellidos}`.trim(),
+              registrationId: updatedReg.id,
+              eventId,
+            }).catch(() => {});
+            onSuccess({
+              nombres: `${form.nombres} ${form.apellidos}`,
+              pdfUrl: null,
+              registrationId: updatedReg.id,
+            });
+            return;
+          }
         }
+
+        toast.error("Error al registrar: " + error.message);
         return;
       }
 
