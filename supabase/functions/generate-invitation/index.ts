@@ -235,7 +235,37 @@ Deno.serve(async (req) => {
     doc.line(CX - 38, curY, CX + 38, curY);
     doc.setFillColor(...COLOR_SECONDARY);
     doc.circle(CX, curY, 1.6, "F");
-    curY += 8;
+    curY += 7;
+
+    // Badge Estado de Pago
+    const payState = reg.estado_pago || "Pendiente";
+    let payText = "🔴 PAGO PENDIENTE";
+    let payBg = [254, 242, 242] as [number, number, number];
+    let payFg = [220, 38, 38] as [number, number, number];
+
+    if (payState === "Pagado Completo") {
+      payText = "🟢 PAGO COMPLETO (100%)";
+      payBg = [236, 253, 245];
+      payFg = [5, 150, 105];
+    } else if (payState === "Abonado") {
+      const pend = Number(reg.monto_pendiente || 0);
+      payText = `🟡 ABONO PARCIAL ${pend > 0 ? "· SALDO: $" + pend.toLocaleString("es-CO") : ""}`;
+      payBg = [254, 243, 199];
+      payFg = [217, 119, 6];
+    } else if (payState === "Becado") {
+      payText = "🎓 ENTRADA BECADA / EXENTA";
+      payBg = [243, 232, 255];
+      payFg = [147, 51, 234];
+    }
+
+    const payW = 68, payH = 6;
+    doc.setFillColor(...payBg);
+    rr(doc, CX - payW / 2, curY, payW, payH, 3, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.5);
+    doc.setTextColor(...payFg);
+    doc.text(payText, CX, curY + 4.2, { align: "center" });
+    curY += payH + 5;
 
     // ── BLOQUE FECHA & LUGAR ──────────────────────────────────────
     if (eventDate || eventPlace) {
