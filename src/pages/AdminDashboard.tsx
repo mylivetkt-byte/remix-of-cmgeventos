@@ -63,12 +63,24 @@ const AdminDashboard = () => {
   const [filterEvent, setFilterEvent] = useState<string>("all");
   const [filterRed, setFilterRed] = useState<string>("all");
   const [filterCdp, setFilterCdp] = useState<string>("all");
+  const [filterPayment, setFilterPayment] = useState<string>("all");
+
   const [editReg, setEditReg] = useState<any>(null);
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [selectedChatContact, setSelectedChatContact] = useState<{ name: string; phone: string } | null>(null);
   const [crmContacts, setCrmContacts] = useState<any[]>([]);
+
+  // Estados para Modal de Control de Pagos
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentReg, setPaymentReg] = useState<any>(null);
+  const [paymentState, setPaymentState] = useState<string>("Pendiente");
+  const [montoPagado, setMontoPagado] = useState<number>(0);
+  const [montoPendiente, setMontoPendiente] = useState<number>(0);
+  const [notasPago, setNotasPago] = useState<string>("");
+  const [comprobanteUrl, setComprobanteUrl] = useState<string>("");
+  const [savingPayment, setSavingPayment] = useState(false);
 
   const reds      = useCatalog("catalog_red");
   const cdps      = useCatalog("catalog_cdp");
@@ -155,7 +167,7 @@ const AdminDashboard = () => {
   });
 
   const registrations = useQuery({
-    queryKey: ["admin_registrations", search, filterEvent, filterRed, filterCdp],
+    queryKey: ["admin_registrations", search, filterEvent, filterRed, filterCdp, filterPayment],
     queryFn: async () => {
       let q = supabase.from("registrations").select(`
         *, catalog_tipo_documento(nombre), catalog_estado_civil(nombre),
@@ -165,6 +177,7 @@ const AdminDashboard = () => {
       if (filterEvent !== "all") q = q.eq("event_id", filterEvent);
       if (filterRed !== "all") q = q.eq("red_id", filterRed);
       if (filterCdp !== "all") q = q.eq("cdp_id", filterCdp);
+      if (filterPayment !== "all") q = q.eq("estado_pago", filterPayment);
       const { data, error } = await q;
       if (error) throw error;
       return data;
@@ -231,9 +244,54 @@ const AdminDashboard = () => {
         body: { registrationId: r.id },
       });
       if (error) toast.error("Error al reenviar: " + error.message);
-      else toast.success(`Email reenviado a ${r.correo}`);
     } catch (err: any) {
       toast.error("Error: " + err.message);
+    }
+  };
+
+  // Abrir Modal de Pagos
+  const openPaymentModal = (r: any) => {
+    setPaymentReg(r);
+    const evtObj = eventsList.data?.find((e: any) => e.id === r.event_id);
+    const evtPrice = evtObj?.precio || 0;
+    const initialPaid = Number(r.monto_pagado || 0);
+    const initialPend = Number(r.monto_pendiente ?? Math.max(0, evtPrice - initialPaid));
+    
+    setPaymentState(
+      r.estado_pago || (initialPaid >= evtPrice && evtPrice > 0 ? "Pagado Completo" : initialPaid > 0 ? "Abonado" : "Pendiente")
+    );
+    setMontoPagado(initialPaid);
+    setMontoPendiente(initialPend);
+    setNotasPago(r.notas_pago || "");
+    setComprobanteUrl(r.comprobante_pago_url || "");
+    setIsPaymentModalOpen(true);
+  };
+
+  // Guardar Pago
+  const handleSavePayment = async () => {
+    if (!paymentReg) return;
+    setSavingPayment(true);
+    try {
+      const { error } = await supabase
+        .from("registrations")
+        .update({
+          estado_pago: paymentState,
+          monto_pagado: Number(montoPagado),
+          monto_pendiente: Number(montoPendiente),
+          notas_pago: notasPago,
+          comprobante_pago_url: comprobanteUrl || null,
+        })
+        .eq("id", paymentReg.id);
+
+      if (error) throw error;
+
+      toast.success(`Pago actualizado para ${paymentReg.nombres}`);
+      setIsPaymentModalOpen(false);
+      refresh();
+    } catch (err: any) {
+      toast.error("Error al guardar pago: " + err.message);
+    } finally {
+      setSavingPayment(false);
     }
   };
 
@@ -608,6 +666,18 @@ const AdminDashboard = () => {
                   {cdps.data?.map((c) => <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <Select value={filterPayment} onValueChange={setFilterPayment}>
+                <SelectTrigger className="w-48 bg-white border-amber-400 font-bold text-amber-950">
+                  <SelectValue placeholder="Estado de Pago" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-amber-200">
+                  <SelectItem value="all">💰 Todas las Finanzas</SelectItem>
+                  <SelectItem value="Pagado Completo">🟢 Pagados Completo</SelectItem>
+                  <SelectItem value="Abonado">🟡 Abonados (Parcial)</SelectItem>
+                  <SelectItem value="Pendiente">🔴 Pendientes de Pago</SelectItem>
+                  <SelectItem value="Becado">🎓 Becados / Exentos</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Stats, exports y eliminar todos */}
@@ -715,6 +785,26 @@ const AdminDashboard = () => {
                                   Pendiente
                                 </span>
                             }
+                            {r.estado_pago === "Pagado Completo" && (
+                              <span className="inline-flex items-center gap-1 bg-emerald-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow">
+                                🟢 Pagado Completo
+                              </span>
+                            )}
+                            {r.estado_pago === "Abonado" && (
+                              <span className="inline-flex items-center gap-1 bg-amber-400 text-slate-950 text-xs px-2.5 py-0.5 rounded-full font-black shadow">
+                                🟡 Abonado (${Number(r.monto_pagado || 0).toLocaleString("es-CO")})
+                              </span>
+                            )}
+                            {r.estado_pago === "Becado" && (
+                              <span className="inline-flex items-center gap-1 bg-purple-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow">
+                                🎓 Becado / Exento
+                              </span>
+                            )}
+                            {(!r.estado_pago || r.estado_pago === "Pendiente") && (
+                              <span className="inline-flex items-center gap-1 bg-slate-700/80 text-slate-300 text-xs px-2 py-0.5 rounded-full">
+                                🔴 Pendiente Pago
+                              </span>
+                            )}
                             <span className="text-xs text-slate-400 ml-auto">{new Date(r.created_at).toLocaleDateString("es-CO")}</span>
                           </div>
 
@@ -755,6 +845,10 @@ const AdminDashboard = () => {
                             )}
                             {/* Botones al final de la fila */}
                             <div className="ml-auto flex gap-1.5 flex-shrink-0">
+                              <button onClick={() => openPaymentModal(r)} title="Registrar / Editar Pago"
+                                className="h-8 px-2.5 rounded-lg flex items-center gap-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow transition-colors">
+                                💰 Pago
+                              </button>
                               <button onClick={() => openEdit(r)} title="Editar"
                                 className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white shadow transition-colors">
                                 <Pencil className="w-3.5 h-3.5" />
@@ -929,6 +1023,117 @@ const AdminDashboard = () => {
             </Button>
             <Button onClick={saveEdit} disabled={saving} className="bg-teal-700 hover:bg-teal-800 text-white font-extrabold px-8 py-2.5 text-sm sm:text-base rounded-xl shadow-md">
               {saving ? "Guardando..." : "Guardar Cambios"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Registro y Control de Pagos */}
+      <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+        <DialogContent className="max-w-lg w-[95vw] bg-white border border-slate-200 text-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl sm:text-2xl font-black font-heading text-slate-900 flex items-center gap-2">
+              💰 Control de Pago — {paymentReg?.nombres} {paymentReg?.apellidos}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            {/* Estado de Pago */}
+            <div>
+              <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Estado Financiero de Inscripción</Label>
+              <select
+                value={paymentState}
+                onChange={(e) => {
+                  const newState = e.target.value;
+                  setPaymentState(newState);
+                  const evtPrice = eventsList.data?.find((ev: any) => ev.id === paymentReg?.event_id)?.precio || 0;
+                  if (newState === "Pagado Completo" && evtPrice > 0) {
+                    setMontoPagado(evtPrice);
+                    setMontoPendiente(0);
+                  } else if (newState === "Becado") {
+                    setMontoPagado(0);
+                    setMontoPendiente(0);
+                  } else if (newState === "Pendiente") {
+                    setMontoPagado(0);
+                    setMontoPendiente(evtPrice);
+                  }
+                }}
+                className="w-full h-11 text-sm font-bold rounded-xl border border-amber-300 bg-amber-50/50 px-3 text-slate-900"
+              >
+                <option value="Pendiente">🔴 Pendiente (Sin Pago)</option>
+                <option value="Abonado">🟡 Abonado (Pago Parcial)</option>
+                <option value="Pagado Completo">🟢 Pagado Completo (100%)</option>
+                <option value="Becado">🎓 Becado / Exento de Pago</option>
+              </select>
+            </div>
+
+            {/* Monto Abonado / Pagado */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Monto Abonado ($ COP)</Label>
+                <Input
+                  type="number"
+                  value={montoPagado}
+                  onChange={(e) => {
+                    const paid = Number(e.target.value);
+                    setMontoPagado(paid);
+                    const evtPrice = eventsList.data?.find((ev: any) => ev.id === paymentReg?.event_id)?.precio || 0;
+                    setMontoPendiente(Math.max(0, evtPrice - paid));
+                  }}
+                  className="h-11 text-sm font-bold border-slate-300 rounded-xl bg-white text-slate-900"
+                />
+              </div>
+
+              <div>
+                <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Saldo Pendiente ($ COP)</Label>
+                <Input
+                  type="number"
+                  value={montoPendiente}
+                  onChange={(e) => setMontoPendiente(Number(e.target.value))}
+                  className="h-11 text-sm font-bold border-slate-300 rounded-xl bg-slate-50 text-slate-900"
+                />
+              </div>
+            </div>
+
+            {/* Observaciones / Notas de Pago */}
+            <div>
+              <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Notas de Pago / Transferencia</Label>
+              <Input
+                placeholder="Ej. Transferencia Nequi #98421, Pago en efectivo presencial..."
+                value={notasPago}
+                onChange={(e) => setNotasPago(e.target.value)}
+                className="h-11 text-sm font-semibold border-slate-300 rounded-xl bg-white text-slate-900"
+              />
+            </div>
+
+            {/* URL o Enlace del Comprobante */}
+            <div>
+              <Label className="text-sm font-bold text-slate-900 mb-1.5 block">URL o Link del Comprobante / Recibo</Label>
+              <Input
+                placeholder="https://... URL de la imagen del comprobante"
+                value={comprobanteUrl}
+                onChange={(e) => setComprobanteUrl(e.target.value)}
+                className="h-11 text-sm font-semibold border-slate-300 rounded-xl bg-white text-slate-900"
+              />
+              {comprobanteUrl && (
+                <a
+                  href={comprobanteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-bold text-teal-700 underline mt-1.5 inline-block"
+                >
+                  🔗 Ver Comprobante de Pago Cargado
+                </a>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+            <Button variant="outline" onClick={() => setIsPaymentModalOpen(false)} className="border-slate-300 text-slate-700 font-bold px-6 py-2.5 text-sm rounded-xl">
+              Cancelar
+            </Button>
+            <Button onClick={handleSavePayment} disabled={savingPayment} className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-8 py-2.5 text-sm sm:text-base rounded-xl shadow-md">
+              {savingPayment ? "Guardando..." : "Guardar Estado de Pago"}
             </Button>
           </div>
         </DialogContent>
