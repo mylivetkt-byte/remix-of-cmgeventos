@@ -7,6 +7,7 @@ import { useCatalog, useEventConfig, useCdpWithRed } from "@/hooks/useCatalogs";
 import { supabase } from "@/integrations/supabase/client";
 import { sendInstantWhatsAppTicket } from "@/lib/whatsapp-bot";
 import { Loader2, UserPlus } from "lucide-react";
+import { toast } from "sonner";
 
 interface FormData {
   nombres: string;

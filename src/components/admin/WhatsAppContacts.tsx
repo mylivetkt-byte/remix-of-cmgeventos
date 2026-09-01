@@ -27,7 +27,7 @@ import {
   Check,
   Pencil,
   Cloud,
-  CloudCheck,
+  CloudUpload as CloudCheck,
 } from "lucide-react";
 
 export interface StoredContact {
