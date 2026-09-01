@@ -13,13 +13,14 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare, ListChecks, DollarSign, CreditCard, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
+import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare, ListChecks, DollarSign, CreditCard, ArrowUp, ArrowDown, GripVertical, X, Check, ListPlus } from "lucide-react";
 
 interface CustomField {
   key: string;
   label: string;
   type: string;
   required: boolean;
+  options?: string[];
 }
 
 const AVAILABLE_SYSTEM_FIELDS = [
@@ -83,6 +84,16 @@ export const EventManager = () => {
   const [newCustomLabel, setNewCustomLabel] = useState("");
   const [newCustomType, setNewCustomType] = useState("text");
   const [newCustomReq, setNewCustomReq] = useState(false);
+  const [newCustomOptions, setNewCustomOptions] = useState<string[]>([]);
+  const [newCustomOptionInput, setNewCustomOptionInput] = useState("");
+
+  // Estado para modificar campos personalizados existentes
+  const [editingCustomKey, setEditingCustomKey] = useState<string | null>(null);
+  const [editCustomLabel, setEditCustomLabel] = useState("");
+  const [editCustomType, setEditCustomType] = useState("text");
+  const [editCustomReq, setEditCustomReq] = useState(false);
+  const [editCustomOptions, setEditCustomOptions] = useState<string[]>([]);
+  const [editCustomOptionInput, setEditCustomOptionInput] = useState("");
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
@@ -108,6 +119,11 @@ export const EventManager = () => {
       "nombres", "apellidos", "tipo_documento_id", "numero_documento", "telefono", "correo", "fecha_nacimiento", "red_id", "cdp_id"
     ]);
     setCustomFields([]);
+    setEditingCustomKey(null);
+    setNewCustomOptions([]);
+    setNewCustomOptionInput("");
+    setEditCustomOptions([]);
+    setEditCustomOptionInput("");
     setFormData({
       nombre: "",
       slug: "",
@@ -193,12 +209,48 @@ export const EventManager = () => {
     const { data: savedFields } = await supabase
       .from("event_field_configs")
       .select("*")
-      .eq("event_id", evt.id);
+      .eq("event_id", evt.id)
+      .order("orden");
 
     if (savedFields && savedFields.length > 0) {
       const keys = savedFields.map((f: any) => f.field_key);
       setSelectedFields(keys);
+
+      const systemKeys = AVAILABLE_SYSTEM_FIELDS.map((f) => f.key);
+      const loadedCustomFields: CustomField[] = savedFields
+        .filter((f: any) => !systemKeys.includes(f.field_key))
+        .map((f: any) => {
+          let parsedOpts: string[] = [];
+          if (Array.isArray(f.options)) {
+            parsedOpts = f.options.map((o: any) => (typeof o === "string" ? o : o.label || o.value || String(o)));
+          } else if (typeof f.options === "string" && f.options.trim()) {
+            try {
+              const p = JSON.parse(f.options);
+              if (Array.isArray(p)) {
+                parsedOpts = p.map((o: any) => (typeof o === "string" ? o : o.label || o.value || String(o)));
+              } else {
+                parsedOpts = [f.options];
+              }
+            } catch {
+              parsedOpts = [f.options];
+            }
+          }
+          return {
+            key: f.field_key,
+            label: f.label,
+            type: f.field_type || "text",
+            required: f.required ?? false,
+            options: parsedOpts.length > 0 ? parsedOpts : undefined,
+          };
+        });
+
+      setCustomFields(loadedCustomFields);
+    } else {
+      setCustomFields([]);
     }
+    setEditingCustomKey(null);
+    setNewCustomOptions([]);
+    setNewCustomOptionInput("");
 
     setIsDialogOpen(true);
   };
@@ -255,19 +307,118 @@ export const EventManager = () => {
     });
   };
 
+  const handleAddNewCustomOption = () => {
+    if (!newCustomOptionInput.trim()) return;
+    const val = newCustomOptionInput.trim();
+    if (!newCustomOptions.includes(val)) {
+      setNewCustomOptions((prev) => [...prev, val]);
+    }
+    setNewCustomOptionInput("");
+  };
+
+  const handleRemoveNewCustomOption = (index: number) => {
+    setNewCustomOptions((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const addCustomField = () => {
     if (!newCustomLabel.trim()) {
       toast.error("Ingresa el nombre del campo personalizado");
       return;
     }
-    const key = "custom_" + generateSlug(newCustomLabel).replace(/-/g, "_");
+    const cleanSlug = generateSlug(newCustomLabel).replace(/-/g, "_");
+    const key = `custom_${cleanSlug}_${Date.now().toString().slice(-4)}`;
+    const hasOptions = ["select", "radio", "checkbox"].includes(newCustomType) || newCustomOptions.length > 0;
+
     setCustomFields((prev) => [
       ...prev,
-      { key, label: newCustomLabel.trim(), type: newCustomType, required: newCustomReq }
+      {
+        key,
+        label: newCustomLabel.trim(),
+        type: newCustomType,
+        required: newCustomReq,
+        options: hasOptions && newCustomOptions.length > 0 ? [...newCustomOptions] : undefined,
+      },
     ]);
     setSelectedFields((prev) => [...prev, key]);
     setNewCustomLabel("");
+    setNewCustomType("text");
+    setNewCustomReq(false);
+    setNewCustomOptions([]);
+    setNewCustomOptionInput("");
     toast.success("Campo personalizado agregado");
+  };
+
+  const startEditCustomField = (field: CustomField) => {
+    setEditingCustomKey(field.key);
+    setEditCustomLabel(field.label);
+    setEditCustomType(field.type || "text");
+    setEditCustomReq(field.required ?? false);
+    setEditCustomOptions(field.options ? [...field.options] : []);
+    setEditCustomOptionInput("");
+  };
+
+  const cancelEditCustomField = () => {
+    setEditingCustomKey(null);
+    setEditCustomLabel("");
+    setEditCustomType("text");
+    setEditCustomReq(false);
+    setEditCustomOptions([]);
+    setEditCustomOptionInput("");
+  };
+
+  const saveEditCustomField = () => {
+    if (!editCustomLabel.trim()) {
+      toast.error("El nombre del campo no puede estar vacío");
+      return;
+    }
+    if (!editingCustomKey) return;
+
+    const hasOptions = ["select", "radio", "checkbox"].includes(editCustomType) || editCustomOptions.length > 0;
+
+    setCustomFields((prev) =>
+      prev.map((f) => {
+        if (f.key !== editingCustomKey) return f;
+        return {
+          ...f,
+          label: editCustomLabel.trim(),
+          type: editCustomType,
+          required: editCustomReq,
+          options: hasOptions && editCustomOptions.length > 0 ? [...editCustomOptions] : undefined,
+        };
+      })
+    );
+    setEditingCustomKey(null);
+    toast.success("Campo personalizado modificado exitosamente");
+  };
+
+  const handleAddEditCustomOption = () => {
+    if (!editCustomOptionInput.trim()) return;
+    const val = editCustomOptionInput.trim();
+    if (!editCustomOptions.includes(val)) {
+      setEditCustomOptions((prev) => [...prev, val]);
+    }
+    setEditCustomOptionInput("");
+  };
+
+  const handleRemoveEditCustomOption = (index: number) => {
+    setEditCustomOptions((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateEditCustomOptionText = (index: number, val: string) => {
+    setEditCustomOptions((prev) => {
+      const copy = [...prev];
+      copy[index] = val;
+      return copy;
+    });
+  };
+
+  const removeCustomField = (key: string) => {
+    setCustomFields((prev) => prev.filter((c) => c.key !== key));
+    setSelectedFields((prev) => prev.filter((k) => k !== key));
+    if (editingCustomKey === key) {
+      cancelEditCustomField();
+    }
+    toast.info("Campo eliminado");
   };
 
   const saveEventMutation = useMutation({
@@ -351,6 +502,7 @@ export const EventManager = () => {
             label: sys?.label || cust?.label || fieldKey,
             required: sys?.defaultRequired ?? cust?.required ?? false,
             orden: index + 1,
+            options: cust?.options && cust.options.length > 0 ? cust.options : null,
           };
         });
 
@@ -750,42 +902,357 @@ export const EventManager = () => {
                   </div>
 
                   {/* Campos Personalizados */}
-                  <div className="space-y-3 pt-3 border-t border-slate-200">
-                    <h5 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                      <Plus className="w-4 h-4 text-teal-600" /> Agregar Campo Personalizado Adicional
-                    </h5>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Input
-                        placeholder="Ej: Talla de Camiseta / Ocupación"
-                        value={newCustomLabel}
-                        onChange={(e) => setNewCustomLabel(e.target.value)}
-                        className="flex-1 min-w-[200px] bg-white border-slate-300 text-sm h-11 rounded-xl"
-                      />
-                      <select
-                        value={newCustomType}
-                        onChange={(e) => setNewCustomType(e.target.value)}
-                        className="bg-white border border-slate-300 text-sm font-semibold rounded-xl p-2.5 h-11 text-slate-900"
-                      >
-                        <option value="text">Texto corto</option>
-                        <option value="date">Fecha</option>
-                        <option value="phone">Teléfono</option>
-                        <option value="email">Correo</option>
-                      </select>
-                      <Button type="button" size="sm" onClick={addCustomField} className="bg-teal-700 hover:bg-teal-800 text-white font-bold h-11 px-5 rounded-xl">
-                        Agregar Campo
-                      </Button>
+                  <div className="space-y-4 pt-4 border-t border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <h5 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                        <Plus className="w-4 h-4 text-teal-600" /> Crear Campo Personalizado Adicional
+                      </h5>
+                      <span className="text-xs text-slate-500 font-medium">
+                        Crea preguntas personalizadas con o sin opciones de respuesta
+                      </span>
                     </div>
 
-                    {customFields.length > 0 && (
-                      <div className="space-y-2 pt-2">
-                        {customFields.map((f) => (
-                          <div key={f.key} className="flex items-center justify-between p-3 bg-teal-50 rounded-xl border border-teal-200 text-xs sm:text-sm font-semibold text-teal-950">
-                            <span>{f.label} ({f.type})</span>
-                            <Button type="button" variant="ghost" size="sm" onClick={() => setCustomFields(prev => prev.filter(c => c.key !== f.key))} className="text-red-600 hover:bg-red-50 h-8">
-                              Quitar
+                    {/* FORMULARIO DE CREACIÓN DE CAMPO */}
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                        <div className="sm:col-span-6">
+                          <Label className="text-xs font-bold text-slate-700 mb-1 block">Nombre / Pregunta del Campo</Label>
+                          <Input
+                            placeholder="Ej: Talla de Camiseta, Ocupación, etc."
+                            value={newCustomLabel}
+                            onChange={(e) => setNewCustomLabel(e.target.value)}
+                            className="bg-white border-slate-300 text-sm h-10 rounded-xl"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-4">
+                          <Label className="text-xs font-bold text-slate-700 mb-1 block">Tipo de Campo</Label>
+                          <select
+                            value={newCustomType}
+                            onChange={(e) => setNewCustomType(e.target.value)}
+                            className="w-full bg-white border border-slate-300 text-sm font-semibold rounded-xl px-3 h-10 text-slate-900 focus:ring-2 focus:ring-teal-600 focus:outline-none"
+                          >
+                            <option value="text">Texto corto</option>
+                            <option value="select">Menú Desplegable (Con Opciones)</option>
+                            <option value="radio">Selección Única (Con Opciones)</option>
+                            <option value="date">Fecha</option>
+                            <option value="phone">Teléfono / Celular</option>
+                            <option value="email">Correo Electrónico</option>
+                            <option value="number">Número</option>
+                          </select>
+                        </div>
+
+                        <div className="sm:col-span-2 flex items-center gap-2 pt-4 sm:pt-4">
+                          <Checkbox
+                            id="newCustomReq"
+                            checked={newCustomReq}
+                            onCheckedChange={(c) => setNewCustomReq(!!c)}
+                            className="w-4 h-4 border-teal-600"
+                          />
+                          <Label htmlFor="newCustomReq" className="text-xs font-bold text-slate-800 cursor-pointer">
+                            Obligatorio
+                          </Label>
+                        </div>
+                      </div>
+
+                      {/* SECCIÓN DE OPCIONES DE RESPUESTA PARA EL NUEVO CAMPO */}
+                      {(["select", "radio"].includes(newCustomType) || newCustomOptions.length > 0) && (
+                        <div className="pt-3 border-t border-slate-200/80 space-y-2 bg-teal-50/50 p-3 rounded-xl border border-teal-100">
+                          <Label className="text-xs font-bold text-teal-950 flex items-center gap-1.5">
+                            <ListPlus className="w-3.5 h-3.5 text-teal-700" />
+                            Opciones de Respuesta para este campo:
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Escribe una opción (Ej: Talla S, Invitado, etc.)"
+                              value={newCustomOptionInput}
+                              onChange={(e) => setNewCustomOptionInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handleAddNewCustomOption();
+                                }
+                              }}
+                              className="bg-white border-teal-200 text-xs h-9 rounded-lg flex-1"
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleAddNewCustomOption}
+                              className="bg-teal-700 hover:bg-teal-800 text-white font-bold h-9 px-3 text-xs rounded-lg shrink-0"
+                            >
+                              + Añadir Opción
                             </Button>
                           </div>
-                        ))}
+
+                          {newCustomOptions.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {newCustomOptions.map((opt, idx) => (
+                                <Badge
+                                  key={idx}
+                                  variant="secondary"
+                                  className="bg-white text-teal-950 border border-teal-300 font-semibold px-2.5 py-1 text-xs rounded-lg flex items-center gap-1.5 shadow-2xs"
+                                >
+                                  <span>{opt}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveNewCustomOption(idx)}
+                                    className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full p-0.5"
+                                    title="Quitar opción"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-teal-800/80 italic">
+                              Agrega al menos una opción para que el usuario pueda seleccionarla en el formulario.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex justify-end pt-1">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={addCustomField}
+                          className="bg-teal-700 hover:bg-teal-800 text-white font-bold h-10 px-5 rounded-xl text-xs sm:text-sm shadow-xs"
+                        >
+                          <Plus className="w-4 h-4 mr-1.5" /> Agregar Campo Personalizado
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* LISTADO DE CAMPOS PERSONALIZADOS CREADOS Y EDITOR INLINE */}
+                    {customFields.length > 0 && (
+                      <div className="space-y-3 pt-2">
+                        <Label className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
+                          Campos Personalizados Configurados ({customFields.length})
+                        </Label>
+
+                        <div className="space-y-2.5">
+                          {customFields.map((f) => {
+                            const isEditingThis = editingCustomKey === f.key;
+
+                            if (isEditingThis) {
+                              return (
+                                <div
+                                  key={f.key}
+                                  className="p-4 bg-teal-50/80 rounded-2xl border-2 border-teal-500 shadow-sm space-y-3.5 transition-all"
+                                >
+                                  <div className="flex items-center justify-between border-b border-teal-200 pb-2">
+                                    <span className="text-xs font-extrabold text-teal-950 flex items-center gap-1.5">
+                                      <Pencil className="w-3.5 h-3.5 text-teal-700" /> Modificando Campo: {f.label}
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={cancelEditCustomField}
+                                      className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900"
+                                    >
+                                      <X className="w-3.5 h-3.5 mr-1" /> Cancelar
+                                    </Button>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                                    <div className="sm:col-span-6">
+                                      <Label className="text-xs font-bold text-slate-800 mb-1 block">Nombre / Pregunta</Label>
+                                      <Input
+                                        value={editCustomLabel}
+                                        onChange={(e) => setEditCustomLabel(e.target.value)}
+                                        className="bg-white border-teal-300 text-sm h-9 rounded-xl"
+                                      />
+                                    </div>
+                                    <div className="sm:col-span-4">
+                                      <Label className="text-xs font-bold text-slate-800 mb-1 block">Tipo</Label>
+                                      <select
+                                        value={editCustomType}
+                                        onChange={(e) => setEditCustomType(e.target.value)}
+                                        className="w-full bg-white border border-teal-300 text-xs font-bold rounded-xl px-2.5 h-9 text-slate-900"
+                                      >
+                                        <option value="text">Texto corto</option>
+                                        <option value="select">Menú Desplegable (Con Opciones)</option>
+                                        <option value="radio">Selección Única (Con Opciones)</option>
+                                        <option value="date">Fecha</option>
+                                        <option value="phone">Teléfono / Celular</option>
+                                        <option value="email">Correo Electrónico</option>
+                                        <option value="number">Número</option>
+                                      </select>
+                                    </div>
+                                    <div className="sm:col-span-2 flex items-center gap-2 pt-4">
+                                      <Checkbox
+                                        id={`editReq_${f.key}`}
+                                        checked={editCustomReq}
+                                        onCheckedChange={(c) => setEditCustomReq(!!c)}
+                                        className="w-4 h-4 border-teal-600"
+                                      />
+                                      <Label htmlFor={`editReq_${f.key}`} className="text-xs font-bold text-slate-800 cursor-pointer">
+                                        Obligatorio
+                                      </Label>
+                                    </div>
+                                  </div>
+
+                                  {/* OPCIONES DE RESPUESTA EN LA PARTE DE ABAJO PARA MODIFICAR O QUITAR */}
+                                  <div className="p-3 bg-white rounded-xl border border-teal-200 space-y-2.5">
+                                    <div className="flex items-center justify-between">
+                                      <Label className="text-xs font-extrabold text-teal-950 flex items-center gap-1.5">
+                                        <ListPlus className="w-3.5 h-3.5 text-teal-700" />
+                                        Opciones de Respuesta del Campo
+                                      </Label>
+                                      <span className="text-[11px] font-medium text-slate-500">
+                                        Puedes cambiar el texto de cada opción o presionar 🗑️ para quitarla
+                                      </span>
+                                    </div>
+
+                                    {/* Input para agregar nueva opción a este campo */}
+                                    <div className="flex gap-2">
+                                      <Input
+                                        placeholder="Escribe una nueva opción..."
+                                        value={editCustomOptionInput}
+                                        onChange={(e) => setEditCustomOptionInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            handleAddEditCustomOption();
+                                          }
+                                        }}
+                                        className="bg-slate-50 border-slate-300 text-xs h-8 rounded-lg flex-1"
+                                      />
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={handleAddEditCustomOption}
+                                        className="bg-teal-700 hover:bg-teal-800 text-white font-bold h-8 px-3 text-xs rounded-lg shrink-0"
+                                      >
+                                        + Agregar Opción
+                                      </Button>
+                                    </div>
+
+                                    {/* Lista de opciones con modificación y eliminación */}
+                                    {editCustomOptions.length > 0 ? (
+                                      <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                                        {editCustomOptions.map((opt, oIdx) => (
+                                          <div
+                                            key={oIdx}
+                                            className="flex items-center gap-2 p-1.5 bg-slate-50 border border-slate-200 rounded-lg"
+                                          >
+                                            <span className="text-[11px] font-black text-teal-800 w-6 text-center shrink-0">
+                                              #{oIdx + 1}
+                                            </span>
+                                            <Input
+                                              value={opt}
+                                              onChange={(e) => handleUpdateEditCustomOptionText(oIdx, e.target.value)}
+                                              placeholder={`Opción ${oIdx + 1}`}
+                                              className="bg-white border-slate-300 text-xs h-7 rounded px-2 flex-1 font-medium"
+                                            />
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => handleRemoveEditCustomOption(oIdx)}
+                                              className="h-7 w-7 p-0 text-red-600 hover:bg-red-100/80 rounded-md shrink-0"
+                                              title="Eliminar opción"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-slate-500 italic py-1">
+                                        No hay opciones configuradas todavía. Agrega al menos una opción para menús desplegables o selección única.
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center justify-end gap-2 pt-1">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={cancelEditCustomField}
+                                      className="h-9 px-4 text-xs font-semibold rounded-xl"
+                                    >
+                                      Cancelar
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={saveEditCustomField}
+                                      className="bg-teal-700 hover:bg-teal-800 text-white font-bold h-9 px-4 text-xs rounded-xl shadow-xs"
+                                    >
+                                      <Check className="w-3.5 h-3.5 mr-1" /> Guardar Cambios del Campo
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            // VISTA NORMAL DEL CAMPO PERSONALIZADO
+                            return (
+                              <div
+                                key={f.key}
+                                className="p-3 bg-white rounded-xl border border-teal-200/90 shadow-2xs hover:border-teal-400 transition-all space-y-2"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs sm:text-sm font-bold text-slate-900">{f.label}</span>
+                                    <Badge variant="outline" className="bg-teal-50 text-teal-900 border-teal-300 text-[10px] font-bold px-2 py-0.5 rounded-md">
+                                      {f.type === "select" ? "Desplegable" : f.type === "radio" ? "Selección Única" : f.type === "date" ? "Fecha" : f.type === "phone" ? "Teléfono" : f.type === "email" ? "Correo" : f.type === "number" ? "Número" : "Texto"}
+                                    </Badge>
+                                    {f.required && (
+                                      <Badge className="bg-amber-100 text-amber-900 border-amber-300 text-[10px] font-bold px-1.5 py-0.2 rounded-md">
+                                        Obligatorio
+                                      </Badge>
+                                    )}
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => startEditCustomField(f)}
+                                      className="h-8 px-2.5 text-xs font-bold text-teal-800 border-teal-300 hover:bg-teal-50 rounded-lg flex items-center gap-1"
+                                      title="Modificar campo y opciones"
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" /> Modificar
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => removeCustomField(f.key)}
+                                      className="h-8 px-2.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg flex items-center gap-1"
+                                      title="Eliminar campo"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" /> Quitar
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {/* Mostrar opciones existentes si las tiene */}
+                                {f.options && f.options.length > 0 && (
+                                  <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-100">
+                                    <span className="text-[11px] font-bold text-slate-500">Opciones ({f.options.length}):</span>
+                                    {f.options.map((opt, oIdx) => (
+                                      <Badge
+                                        key={oIdx}
+                                        variant="secondary"
+                                        className="bg-slate-100 text-slate-800 border-slate-200 text-[10px] font-medium px-2 py-0.5 rounded-md"
+                                      >
+                                        {opt}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
