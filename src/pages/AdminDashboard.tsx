@@ -253,7 +253,7 @@ const AdminDashboard = () => {
   const openPaymentModal = (r: any) => {
     setPaymentReg(r);
     const evtObj = eventsList.data?.find((e: any) => e.id === r.event_id);
-    const evtPrice = evtObj?.precio || 0;
+    const evtPrice = (evtObj as any)?.precio || 0;
     const initialPaid = Number(r.monto_pagado || 0);
     const initialPend = Number(r.monto_pendiente ?? Math.max(0, evtPrice - initialPaid));
     
@@ -1046,7 +1046,7 @@ const AdminDashboard = () => {
                 onChange={(e) => {
                   const newState = e.target.value;
                   setPaymentState(newState);
-                  const evtPrice = eventsList.data?.find((ev: any) => ev.id === paymentReg?.event_id)?.precio || 0;
+                  const evtPrice = (eventsList.data?.find((ev: any) => ev.id === paymentReg?.event_id) as any)?.precio || 0;
                   if (newState === "Pagado Completo" && evtPrice > 0) {
                     setMontoPagado(evtPrice);
                     setMontoPendiente(0);
@@ -1077,7 +1077,7 @@ const AdminDashboard = () => {
                   onChange={(e) => {
                     const paid = Number(e.target.value);
                     setMontoPagado(paid);
-                    const evtPrice = eventsList.data?.find((ev: any) => ev.id === paymentReg?.event_id)?.precio || 0;
+                    const evtPrice = (eventsList.data?.find((ev: any) => ev.id === paymentReg?.event_id) as any)?.precio || 0;
                     setMontoPendiente(Math.max(0, evtPrice - paid));
                   }}
                   className="h-11 text-sm font-bold border-slate-300 rounded-xl bg-white text-slate-900"

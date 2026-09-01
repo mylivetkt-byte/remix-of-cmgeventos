@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(6.5);
     doc.setTextColor(...COLOR_PRIMARY);
-    doc.text("✦   ENTRADA OFICIAL • PASE VIP   ✦", CX, badgeY + 5.2, { align: "center" });
+    doc.text("ENTRADA OFICIAL  ·  PASE VIP", CX, badgeY + 5.2, { align: "center" });
 
     // Imagen del Evento (Logo / Banner)
     let currentY = badgeY + badgeH + 5;
@@ -239,21 +239,21 @@ Deno.serve(async (req) => {
 
     // Badge Estado de Pago
     const payState = reg.estado_pago || "Pendiente";
-    let payText = "🔴 PAGO PENDIENTE";
+    let payText = "PAGO PENDIENTE";
     let payBg = [254, 242, 242] as [number, number, number];
     let payFg = [220, 38, 38] as [number, number, number];
 
     if (payState === "Pagado Completo") {
-      payText = "🟢 PAGO COMPLETO (100%)";
+      payText = "PAGO COMPLETO (100%)";
       payBg = [236, 253, 245];
       payFg = [5, 150, 105];
     } else if (payState === "Abonado") {
       const pend = Number(reg.monto_pendiente || 0);
-      payText = `🟡 ABONO PARCIAL ${pend > 0 ? "· SALDO: $" + pend.toLocaleString("es-CO") : ""}`;
+      payText = `ABONO PARCIAL ${pend > 0 ? "· SALDO: $" + pend.toLocaleString("es-CO") : ""}`;
       payBg = [254, 243, 199];
       payFg = [217, 119, 6];
     } else if (payState === "Becado") {
-      payText = "🎓 ENTRADA BECADA / EXENTA";
+      payText = "ENTRADA BECADA / EXENTA";
       payBg = [243, 232, 255];
       payFg = [147, 51, 234];
     }
@@ -282,7 +282,7 @@ Deno.serve(async (req) => {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
         doc.setTextColor(...COLOR_PRIMARY);
-        doc.text("📅  FECHA:", 27, iy);
+        doc.text("FECHA:", 27, iy);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(40, 40, 40);
         const formattedDate = eventDate.charAt(0).toUpperCase() + eventDate.slice(1);
@@ -293,7 +293,7 @@ Deno.serve(async (req) => {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
         doc.setTextColor(...COLOR_PRIMARY);
-        doc.text("📍  LUGAR:", 27, iy);
+        doc.text("LUGAR:", 27, iy);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(40, 40, 40);
         doc.text(eventPlace, 56, iy);
@@ -322,11 +322,11 @@ Deno.serve(async (req) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8);
     doc.setTextColor(...COLOR_PRIMARY);
-    doc.text("Presenta este código QR desde tu celular al ingresar", CX, curY + 4, { align: "center" });
+    doc.text("Presenta este código QR desde tu celular al ingresar", CX, curY + 2, { align: "center" });
 
     const qrSize = 52;
     const qrX = CX - qrSize / 2;
-    const qrY = curY + 8;
+    const qrY = curY + 12;
 
     // Sombra del QR
     doc.setFillColor(210, 215, 212);

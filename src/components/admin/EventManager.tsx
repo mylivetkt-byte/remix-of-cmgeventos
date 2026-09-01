@@ -507,7 +507,7 @@ export const EventManager = () => {
         });
 
         if (configsToInsert.length > 0) {
-          await supabase.from("event_field_configs").insert(configsToInsert);
+          await supabase.from("event_field_configs").insert(configsToInsert as any);
         }
       }
 
