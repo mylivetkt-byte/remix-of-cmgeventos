@@ -371,12 +371,78 @@ export function DynamicRegistrationForm({ eventId, onSuccess }: Props) {
             );
           }
 
+          const parsedOptions: string[] = Array.isArray(config.options)
+            ? config.options.map((o: any) => (typeof o === "string" ? o : o.label || o.value || String(o)))
+            : typeof config.options === "string" && config.options.trim()
+            ? (() => {
+                try {
+                  const p = JSON.parse(config.options);
+                  return Array.isArray(p) ? p.map((o: any) => (typeof o === "string" ? o : o.label || o.value || String(o))) : [config.options];
+                } catch {
+                  return [config.options];
+                }
+              })()
+            : [];
+
+          if (config.field_type === "select" && parsedOptions.length > 0) {
+            return (
+              <div key={config.id} className="space-y-1.5">
+                <Label className="text-sm font-semibold text-slate-800">
+                  {config.label} {config.required && <span className="text-red-500">*</span>}
+                </Label>
+                <select
+                  value={values[config.field_key] || ""}
+                  onChange={(e) => handleChange(config.field_key, e.target.value)}
+                  className="w-full h-11 px-3.5 bg-white border border-slate-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-emerald-600 focus:outline-none text-slate-900"
+                >
+                  <option value="">Selecciona una opción...</option>
+                  {parsedOptions.map((opt, idx) => (
+                    <option key={idx} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+                {errors[config.field_key] && (
+                  <p className="text-xs text-red-600 font-medium">{errors[config.field_key]}</p>
+                )}
+              </div>
+            );
+          }
+
+          if (config.field_type === "radio" && parsedOptions.length > 0) {
+            return (
+              <div key={config.id} className="space-y-2 bg-white/70 p-4 rounded-xl border border-emerald-200 shadow-sm">
+                <Label className="text-sm font-semibold text-emerald-950">
+                  {config.label} {config.required && <span className="text-red-500">*</span>}
+                </Label>
+                <div className="space-y-2 text-sm text-emerald-900 pt-1">
+                  {parsedOptions.map((opt, idx) => (
+                    <label key={idx} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-emerald-50">
+                      <input
+                        type="radio"
+                        name={config.field_key}
+                        value={opt}
+                        checked={values[config.field_key] === opt}
+                        onChange={(e) => handleChange(config.field_key, e.target.value)}
+                        className="w-4 h-4 text-emerald-700 accent-emerald-700"
+                      />
+                      <span>{opt}</span>
+                    </label>
+                  ))}
+                </div>
+                {errors[config.field_key] && (
+                  <p className="text-xs text-red-600 font-medium">{errors[config.field_key]}</p>
+                )}
+              </div>
+            );
+          }
+
           return (
             <FormField
               key={config.id}
               label={config.label}
               required={config.required}
-              type={config.field_type === "phone" ? "tel" : config.field_type === "email" ? "email" : config.field_type === "date" ? "date" : "text"}
+              type={config.field_type === "phone" ? "tel" : config.field_type === "email" ? "email" : config.field_type === "date" ? "date" : config.field_type === "number" ? "number" : "text"}
               placeholder={config.placeholder || "Tu respuesta"}
               value={values[config.field_key] || ""}
               onChange={(val) => handleChange(config.field_key, val)}
