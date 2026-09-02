@@ -503,6 +503,9 @@ export const EventManager = () => {
         moneda: data.moneda,
         instrucciones_pago: data.es_de_pago ? data.instrucciones_pago : null,
         requiere_comprobante: data.es_de_pago ? data.requiere_comprobante : false,
+        enviar_whatsapp_checkin: data.enviar_whatsapp_checkin,
+        mensaje_whatsapp_checkin: data.mensaje_whatsapp_checkin,
+        pdf_whatsapp_checkin_url: data.pdf_whatsapp_checkin_url,
       };
 
       let targetEventId = editingEventId;
