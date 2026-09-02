@@ -102,41 +102,20 @@ export function AttendanceReport() {
 
   return (
     <div className="space-y-6 animate-fade-in pb-8 text-emerald-950 font-sans">
-      {/* Sub-Módulos de Navegación por Evento */}
-      <div className="glass-card p-3 rounded-2xl border border-white/80 space-y-2 shadow-xs">
-        <p className="text-xs font-extrabold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-amber-600" /> Reportes de Asistencia por Evento:
-        </p>
-        <div className="flex overflow-x-auto pb-1 gap-2 scrollbar-none">
-          <button
-            onClick={() => setFilterEvent("all")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black whitespace-nowrap transition-all shadow-xs ${
-              filterEvent === "all"
-                ? "bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600"
-                : "bg-white text-emerald-900 hover:bg-emerald-50 border border-emerald-200"
-            }`}
-          >
-            📊 Todos los Eventos
-          </button>
-
-          {events?.map((evt) => {
-            const isActive = filterEvent === evt.id;
-            return (
-              <button
-                key={evt.id}
-                onClick={() => setFilterEvent(evt.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black whitespace-nowrap transition-all shadow-xs ${
-                  isActive
-                    ? "bg-teal-700 text-white shadow-md ring-2 ring-teal-500"
-                    : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
-                }`}
-              >
-                <span>{evt.nombre}</span>
-              </button>
-            );
-          })}
+      {/* Cabecera del Modo Evento Aislado si aplica */}
+      {filterEvent !== "all" && (
+        <div className="bg-emerald-800 text-white p-3.5 rounded-2xl flex items-center justify-between shadow-md">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+            <span className="text-xs sm:text-sm font-extrabold">
+              Reporte de Asistencia del Evento: <span className="underline underline-offset-4 font-black">{events?.find((e) => e.id === filterEvent)?.nombre}</span>
+            </span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setFilterEvent("all")} className="text-white hover:bg-emerald-900 text-xs font-bold px-3 py-1 rounded-xl">
+            ✕ Ver Toda la Asistencia
+          </Button>
         </div>
-      </div>
+      )}
 
       {/* Filtro de Evento Select */}
       <div className="glass-card p-4 rounded-2xl border border-white/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
