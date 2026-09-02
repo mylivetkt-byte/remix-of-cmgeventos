@@ -74,6 +74,9 @@ export const EventManager = () => {
     moneda: "COP",
     instrucciones_pago: "",
     requiere_comprobante: false,
+    enviar_whatsapp_checkin: false,
+    mensaje_whatsapp_checkin: "¡Hola {nombres}! 👋 Te damos la bienvenida oficial a {evento}. Tu ingreso ha sido registrado exitosamente.",
+    pdf_whatsapp_checkin_url: "",
   });
 
   const [selectedFields, setSelectedFields] = useState<string[]>([
@@ -204,6 +207,9 @@ export const EventManager = () => {
       moneda: evt.moneda || "COP",
       instrucciones_pago: evt.instrucciones_pago || "",
       requiere_comprobante: evt.requiere_comprobante ?? false,
+      enviar_whatsapp_checkin: evt.enviar_whatsapp_checkin ?? false,
+      mensaje_whatsapp_checkin: evt.mensaje_whatsapp_checkin || "¡Hola {nombres}! 👋 Te damos la bienvenida oficial a {evento}. Tu ingreso ha sido registrado exitosamente.",
+      pdf_whatsapp_checkin_url: evt.pdf_whatsapp_checkin_url || "",
     });
 
     const { data: savedFields } = await supabase
@@ -1300,7 +1306,7 @@ export const EventManager = () => {
 
                   <div>
                     <Label className="text-sm font-bold text-slate-900 mb-1.5 block flex items-center gap-1.5">
-                      <MessageSquare className="w-4 h-4 text-teal-700" /> Mensaje para WhatsApp
+                      <MessageSquare className="w-4 h-4 text-teal-700" /> Mensaje para WhatsApp (Registro Inicial)
                     </Label>
                     <Textarea
                       rows={2}
@@ -1308,6 +1314,60 @@ export const EventManager = () => {
                       onChange={(e) => setFormData((prev) => ({ ...prev, mensaje_whatsapp: e.target.value }))}
                       className="bg-white border-slate-300 text-slate-900 text-sm rounded-xl"
                     />
+                  </div>
+
+                  {/* SECCIÓN DE CHECK-IN AUTOMÁTICO POR WHATSAPP Y PDF ADJUNTO */}
+                  <div className="bg-teal-50/90 p-4.5 rounded-2xl border border-teal-300 space-y-4 shadow-2xs">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <Label className="text-sm font-extrabold text-teal-950 flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-teal-700" />
+                          Enviar WhatsApp automático al hacer Check-in en Puerta
+                        </Label>
+                        <p className="text-xs text-teal-800 font-medium mt-0.5">
+                          Envía un mensaje de bienvenida y un archivo PDF adjunto opcional cuando el escaner valida el ingreso.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={formData.enviar_whatsapp_checkin}
+                        onCheckedChange={(val) => setFormData((prev) => ({ ...prev, enviar_whatsapp_checkin: val }))}
+                      />
+                    </div>
+
+                    {formData.enviar_whatsapp_checkin && (
+                      <div className="space-y-3.5 pt-3 border-t border-teal-200/80 animate-fade-in">
+                        <div>
+                          <Label className="text-xs font-bold text-slate-800 mb-1 block">
+                            Mensaje de Bienvenida al Ingresar (Check-in)
+                          </Label>
+                          <Textarea
+                            rows={3}
+                            placeholder="Ej: ¡Hola {nombres}! 👋 Te damos la bienvenida oficial a {evento}. Tu ingreso ha sido registrado exitosamente."
+                            value={formData.mensaje_whatsapp_checkin}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, mensaje_whatsapp_checkin: e.target.value }))}
+                            className="bg-white border-teal-300 text-slate-900 text-sm rounded-xl"
+                          />
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            Puedes usar etiquetas como: <code className="font-mono font-bold text-teal-700">{`{nombres}`}</code>, <code className="font-mono font-bold text-teal-700">{`{apellidos}`}</code>, <code className="font-mono font-bold text-teal-700">{`{evento}`}</code>.
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label className="text-xs font-bold text-slate-800 mb-1 block">
+                            URL del PDF Adjunto para el Check-in (Opcional - Guía, Programa o Material)
+                          </Label>
+                          <Input
+                            placeholder="https://... o pega la URL pública del PDF"
+                            value={formData.pdf_whatsapp_checkin_url}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, pdf_whatsapp_checkin_url: e.target.value }))}
+                            className="bg-white border-teal-300 text-slate-900 font-mono text-xs h-10 rounded-xl"
+                          />
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            Si ingresas una URL de un PDF, la persona recibirá el enlace directo a su material de evento junto a su WhatsApp.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">

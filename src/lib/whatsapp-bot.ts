@@ -110,7 +110,6 @@ export async function processWhatsAppMessageIntent(
 
   // 1. Detección de RSVP Interactivo (Respuesta "1" o "2")
   if (text === "1" || text.includes("sí") || text.includes("si") || text.includes("confirmar") || text.includes("asistiré")) {
-    // Actualizar registro en Supabase como Confirmado
     try {
       await (supabase.from("registrations") as any)
         .update({ asistio: true, estado_rsvp: "confirmado" })
@@ -184,7 +183,6 @@ export async function processWhatsAppMessageIntent(
 
   // 5. Intenciones de Pase QR / Entradas
   if (text.includes("pase") || text.includes("qr") || text.includes("entrada") || text.includes("invitacion") || text.includes("invitación") || text.includes("mi pase")) {
-    // Buscar pase del participante en Supabase por teléfono
     try {
       const { data: reg } = await (supabase.from("registrations") as any)
         .select("id, nombres")
@@ -210,4 +208,74 @@ export async function processWhatsAppMessageIntent(
   return {
     replyText: `Hola 👋. Gracias por escribirnos a *Doxa Eventos / Centro Mundial de Gloria*.\n\n🤖 Puedo ayudarte con:\n• *1* para confirmar tu asistencia o *2* para declinar\n• Preguntarme por la *fecha* u *horario* del evento\n• Preguntarme por la *ubicación*\n• Pedirme tu *pase QR* de entrada`,
   };
+}
+
+export interface CheckInWhatsAppPayload {
+  phone: string;
+  nombres: string;
+  apellidos?: string;
+  eventId: string;
+  eventName: string;
+  eventDate?: string;
+  eventPlace?: string;
+}
+
+/**
+ * 📲 FEATURE: Envío automático de WhatsApp al hacer Check-in en Puerta (con PDF adjunto opcional)
+ */
+export async function sendCheckInWhatsAppNotification(payload: CheckInWhatsAppPayload): Promise<boolean> {
+  const cleanPhone = normalizePhone(payload.phone);
+  if (!cleanPhone || cleanPhone.length < 8) return false;
+
+  try {
+    // 1. Consultar configuración de Checkin WhatsApp del evento
+    const { data: eventData } = await supabase
+      .from("events")
+      .select("enviar_whatsapp_checkin, mensaje_whatsapp_checkin, pdf_whatsapp_checkin_url")
+      .eq("id", payload.eventId)
+      .maybeSingle();
+
+    if (!eventData || !eventData.enviar_whatsapp_checkin) {
+      return false; // Desactivado para este evento
+    }
+
+    const { url, token } = await getWhatsAppCredentials();
+    if (!url || !token) {
+      console.warn("Servidor de WhatsApp no configurado en app_secrets.");
+      return false;
+    }
+
+    // 2. Construir mensaje personalizado reemplazando plantillas
+    let messageText = eventData.mensaje_whatsapp_checkin || "¡Hola {nombres}! 👋 Te damos la bienvenida oficial a {evento}. Tu ingreso ha sido registrado exitosamente.";
+    messageText = messageText
+      .replace(/\{nombres\}/gi, payload.nombres || "")
+      .replace(/\{apellidos\}/gi, payload.apellidos || "")
+      .replace(/\{evento\}/gi, payload.eventName || "el evento");
+
+    if (eventData.pdf_whatsapp_checkin_url) {
+      messageText += `\n\n📄 *Material / Guía del Evento (PDF):*\n${eventData.pdf_whatsapp_checkin_url}`;
+    }
+
+    // 3. Enviar presencia tipeando y mensaje con adjunto
+    await sendPresenceTyping(cleanPhone, url, token);
+    await sleep(1000);
+
+    const res = await fetch(`${url}/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        phone: cleanPhone,
+        message: messageText,
+        mediaUrl: eventData.pdf_whatsapp_checkin_url || undefined,
+      }),
+    });
+
+    return res.ok;
+  } catch (err) {
+    console.error("Error al enviar WhatsApp de Checkin:", err);
+    return false;
+  }
 }

@@ -22,6 +22,9 @@ export interface EventItem {
   moneda?: string | null;
   instrucciones_pago?: string | null;
   requiere_comprobante?: boolean | null;
+  enviar_whatsapp_checkin?: boolean | null;
+  mensaje_whatsapp_checkin?: string | null;
+  pdf_whatsapp_checkin_url?: string | null;
   created_at?: string;
   updated_at?: string;
 }

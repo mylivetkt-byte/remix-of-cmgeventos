@@ -24,6 +24,7 @@ import { EventManager } from "@/components/admin/EventManager";
 import { UserManager } from "@/components/admin/UserManager";
 import { UserRole, ROLE_LABELS, ROLE_PERMISSIONS_MAP } from "@/integrations/supabase/user-role-types";
 import { useCatalog } from "@/hooks/useCatalogs";
+import { sendCheckInWhatsAppNotification } from "@/lib/whatsapp-bot";
 import { toast } from "sonner";
 
 type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "whatsapp" | "usuarios" | "crm" | "chat" | "contactos";
@@ -322,6 +323,17 @@ const AdminDashboard = () => {
       .eq("id", r.id);
     if (error) { toast.error("Error: " + error.message); return; }
     toast.success(!yaAsistio ? `✅ Check-in registrado para ${r.nombres}` : `↩️ Check-in revertido para ${r.nombres}`);
+
+    if (!yaAsistio && r.telefono && r.event_id) {
+      sendCheckInWhatsAppNotification({
+        phone: r.telefono,
+        nombres: r.nombres,
+        apellidos: r.apellidos,
+        eventId: r.event_id,
+        eventName: (r as any).catalog_event?.nombre || "Evento",
+      }).catch((e) => console.warn("WhatsApp checkin notification error:", e));
+    }
+
     refresh();
   };
 
