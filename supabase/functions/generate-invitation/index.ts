@@ -242,7 +242,7 @@ Deno.serve(async (req) => {
       nameLines = doc.splitTextToSize(fullName, TW - 18);
     }
     doc.text(nameLines, CX, curY, { align: "center" });
-    curY += nameLines.length * (fontSize * 0.4) + 7;
+    curY += nameLines.length * (fontSize * 0.4) + 5;
 
     // ── Lugar del evento (la fecha ya va en la cabecera) ─────────
     if (eventPlace) {
@@ -296,13 +296,16 @@ Deno.serve(async (req) => {
     // ── QR centrado con marco dorado + Badge ID debajo ───────────
     const footerH = 14;
     const footerY = TY + TH - footerH;
-    const qrSize = 40;
-    const badgeBoxW = 46, badgeBoxH = 13;
-    const stubSpaceTop = stubY + 6;
-    const stubSpaceBottom = footerY - 4;
-    const groupH = qrSize + 4 + badgeBoxH + 5; // QR + gap + badge + texto guía
+    const badgeBoxW = 46, badgeBoxH = 12;
+    const stubSpaceTop = stubY + 5;
+    const stubSpaceBottom = footerY - 3;
+    const avail = stubSpaceBottom - stubSpaceTop;
+    // QR adaptativo: garantiza que quepan QR + badge ID + texto guía
+    let qrSize = Math.min(40, avail - 3 - badgeBoxH - 5);
+    qrSize = Math.max(28, qrSize);
+    const groupH = qrSize + 3 + badgeBoxH + 5;
     const qrX = CX - qrSize / 2;
-    const qrY = stubSpaceTop + Math.max(0, (stubSpaceBottom - stubSpaceTop - groupH) / 2);
+    const qrY = stubSpaceTop + Math.max(0, (avail - groupH) / 2);
 
     // Marco dorado del QR
     doc.setFillColor(...GOLD);
@@ -313,7 +316,7 @@ Deno.serve(async (req) => {
 
     // Badge ID debajo del QR
     const badgeX = CX - badgeBoxW / 2;
-    const badgeY = qrY + qrSize + 4;
+    const badgeY = qrY + qrSize + 3;
     doc.setDrawColor(...GOLD);
     doc.setLineWidth(0.6);
     doc.setFillColor(...WHITE);
