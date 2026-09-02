@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, Menu, UserPlus, Send } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Menu, UserPlus, Send } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
@@ -729,11 +729,24 @@ const AdminDashboard = () => {
 
             <h2 className="font-heading font-extrabold text-base sm:text-xl text-slate-900 flex items-center gap-2 truncate">
               {activeTabObj?.icon}
-              <span className="truncate">{activeTabObj?.label}</span>
+              <span className="truncate">
+                {activeTabObj?.label}
+                {filterEvent !== "all" && (tab === "registros" || tab === "asistencia") && (
+                  <span className="text-teal-700 font-extrabold ml-1">
+                    · {eventsList.data?.find((e) => e.id === filterEvent)?.nombre}
+                  </span>
+                )}
+              </span>
             </h2>
-            <Badge className="bg-teal-50 text-teal-900 border-teal-200 text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 shrink-0">
-              Admin
-            </Badge>
+            {filterEvent !== "all" && (tab === "registros" || tab === "asistencia") ? (
+              <Badge className="bg-teal-700 text-white font-extrabold text-[10px] sm:text-xs px-2.5 py-0.5 shrink-0 shadow-xs">
+                {eventsList.data?.find((e) => e.id === filterEvent)?.nombre}
+              </Badge>
+            ) : (
+              <Badge className="bg-teal-50 text-teal-900 border-teal-200 text-[10px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 shrink-0">
+                Admin
+              </Badge>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -788,7 +801,11 @@ const AdminDashboard = () => {
         <main className="p-3 sm:p-6 max-w-7xl mx-auto space-y-6">
 
         {tab === "eventos" && <div className="animate-fade-in pb-8"><EventManager /></div>}
-        {tab === "asistencia" && <div className="animate-fade-in pb-8"><AttendanceReport /></div>}
+        {tab === "asistencia" && (
+          <div className="animate-fade-in pb-8">
+            <AttendanceReport filterEvent={filterEvent} onFilterEventChange={setFilterEvent} />
+          </div>
+        )}
 
         {tab === "registros" && (
           <div className="space-y-4 animate-fade-in pb-8">

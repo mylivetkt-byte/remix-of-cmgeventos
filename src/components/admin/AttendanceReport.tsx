@@ -19,8 +19,19 @@ function downloadCSV(content: string, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function AttendanceReport() {
-  const [filterEvent, setFilterEvent] = useState<string>("all");
+interface AttendanceReportProps {
+  filterEvent?: string;
+  onFilterEventChange?: (id: string) => void;
+}
+
+export function AttendanceReport({ filterEvent: externalFilterEvent, onFilterEventChange }: AttendanceReportProps = {}) {
+  const [internalFilterEvent, setInternalFilterEvent] = useState<string>("all");
+
+  const filterEvent = externalFilterEvent !== undefined ? externalFilterEvent : internalFilterEvent;
+  const setFilterEvent = (id: string) => {
+    setInternalFilterEvent(id);
+    if (onFilterEventChange) onFilterEventChange(id);
+  };
 
   const { data: events } = useQuery({
     queryKey: ["admin_events_list"],
