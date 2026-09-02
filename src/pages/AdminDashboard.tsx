@@ -718,19 +718,6 @@ const AdminDashboard = () => {
               <Sparkles className="w-5 h-5 text-teal-700 shrink-0" />
               {(!collapsed || mobileMenuOpen) && <span className="truncate font-extrabold text-teal-950">Manual Web</span>}
             </a>
-
-            <a
-              href="/MANUAL_USUARIO_DOXA_EVENTOS.pdf"
-              target="_blank"
-              rel="noreferrer"
-              title={collapsed ? "Manual PDF" : undefined}
-              className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-amber-900 bg-amber-50 hover:bg-amber-100/80 border border-amber-200/80 transition-all mt-1.5 shadow-2xs ${
-                collapsed && !mobileMenuOpen ? "justify-center px-0" : ""
-              }`}
-            >
-              <Download className="w-5 h-5 text-amber-600 shrink-0" />
-              {(!collapsed || mobileMenuOpen) && <span className="truncate font-extrabold text-amber-950">Manual PDF</span>}
-            </a>
           </div>
         </div>
 
