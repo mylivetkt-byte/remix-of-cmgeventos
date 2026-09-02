@@ -64,6 +64,8 @@ const AdminDashboard = () => {
   const [filterRed, setFilterRed] = useState<string>("all");
   const [filterCdp, setFilterCdp] = useState<string>("all");
   const [filterPayment, setFilterPayment] = useState<string>("all");
+  const [registrosSubmenuOpen, setRegistrosSubmenuOpen] = useState(true);
+  const [asistenciaSubmenuOpen, setAsistenciaSubmenuOpen] = useState(true);
 
   const [editReg, setEditReg] = useState<any>(null);
   const [editForm, setEditForm] = useState<any>({});
@@ -494,6 +496,149 @@ const AdminDashboard = () => {
 
           {tabs.map((t) => {
             const isActive = tab === t.id;
+            const isRegistros = t.id === "registros";
+            const isAsistencia = t.id === "asistencia";
+
+            if (isRegistros) {
+              return (
+                <div key={t.id} className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setTab("registros");
+                      setRegistrosSubmenuOpen(!registrosSubmenuOpen);
+                    }}
+                    title={collapsed ? t.label : undefined}
+                    className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                      isActive
+                        ? "bg-teal-100/90 text-teal-950 shadow-xs border border-teal-200/80 font-extrabold"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                    } ${collapsed && !mobileMenuOpen ? "justify-center px-0" : ""}`}
+                  >
+                    <div className="flex items-center gap-3.5 truncate">
+                      <div className={`${isActive ? "text-teal-900" : "text-slate-500"}`}>{t.icon}</div>
+                      {(!collapsed || mobileMenuOpen) && <span className="truncate">{t.label}</span>}
+                    </div>
+                    {(!collapsed || mobileMenuOpen) && (
+                      <div className="text-slate-400">
+                        {registrosSubmenuOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Sub-menú desplegable de eventos en Registros */}
+                  {registrosSubmenuOpen && (!collapsed || mobileMenuOpen) && (
+                    <div className="pl-6 space-y-1 border-l-2 border-teal-200/60 ml-4 py-1 animate-fade-in">
+                      <button
+                        onClick={() => {
+                          setTab("registros");
+                          setFilterEvent("all");
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                          isActive && filterEvent === "all"
+                            ? "bg-teal-700 text-white font-extrabold shadow-2xs"
+                            : "text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        <span>📊 Todos los Registros</span>
+                      </button>
+
+                      {eventsList.data?.map((evt) => {
+                        const isEvtActive = isActive && filterEvent === evt.id;
+                        return (
+                          <button
+                            key={evt.id}
+                            onClick={() => {
+                              setTab("registros");
+                              setFilterEvent(evt.id);
+                              setMobileMenuOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-between gap-1.5 ${
+                              isEvtActive
+                                ? "bg-teal-700 text-white font-extrabold shadow-2xs"
+                                : "text-slate-600 hover:bg-slate-100"
+                            }`}
+                          >
+                            <span className="truncate">{evt.nombre}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            if (isAsistencia) {
+              return (
+                <div key={t.id} className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setTab("asistencia");
+                      setAsistenciaSubmenuOpen(!asistenciaSubmenuOpen);
+                    }}
+                    title={collapsed ? t.label : undefined}
+                    className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                      isActive
+                        ? "bg-teal-100/90 text-teal-950 shadow-xs border border-teal-200/80 font-extrabold"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                    } ${collapsed && !mobileMenuOpen ? "justify-center px-0" : ""}`}
+                  >
+                    <div className="flex items-center gap-3.5 truncate">
+                      <div className={`${isActive ? "text-teal-900" : "text-slate-500"}`}>{t.icon}</div>
+                      {(!collapsed || mobileMenuOpen) && <span className="truncate">{t.label}</span>}
+                    </div>
+                    {(!collapsed || mobileMenuOpen) && (
+                      <div className="text-slate-400">
+                        {asistenciaSubmenuOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Sub-menú desplegable de eventos en Asistencia */}
+                  {asistenciaSubmenuOpen && (!collapsed || mobileMenuOpen) && (
+                    <div className="pl-6 space-y-1 border-l-2 border-teal-200/60 ml-4 py-1 animate-fade-in">
+                      <button
+                        onClick={() => {
+                          setTab("asistencia");
+                          setFilterEvent("all");
+                          setMobileMenuOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                          isActive && filterEvent === "all"
+                            ? "bg-teal-700 text-white font-extrabold shadow-2xs"
+                            : "text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        <span>📊 Toda la Asistencia</span>
+                      </button>
+
+                      {eventsList.data?.map((evt) => {
+                        const isEvtActive = isActive && filterEvent === evt.id;
+                        return (
+                          <button
+                            key={evt.id}
+                            onClick={() => {
+                              setTab("asistencia");
+                              setFilterEvent(evt.id);
+                              setMobileMenuOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-between gap-1.5 ${
+                              isEvtActive
+                                ? "bg-teal-700 text-white font-extrabold shadow-2xs"
+                                : "text-slate-600 hover:bg-slate-100"
+                            }`}
+                          >
+                            <span className="truncate">{evt.nombre}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <button
                 key={t.id}
@@ -647,48 +792,20 @@ const AdminDashboard = () => {
 
         {tab === "registros" && (
           <div className="space-y-4 animate-fade-in pb-8">
-            {/* Sub-Módulos de Eventos Independientes */}
-            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-teal-600 animate-pulse" /> Sub-Módulos de Eventos Independientes:
-                </p>
-                {filterEvent !== "all" && (
-                  <Badge className="bg-teal-100 text-teal-900 border-teal-300 font-extrabold text-[11px] px-2.5 py-0.5">
-                    Modo Evento Aislado
-                  </Badge>
-                )}
+            {/* Cabecera del Modo Evento Aislado si aplica */}
+            {filterEvent !== "all" && (
+              <div className="bg-teal-700 text-white p-3.5 rounded-2xl flex items-center justify-between shadow-md">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+                  <span className="text-xs sm:text-sm font-extrabold">
+                    Módulo Aislado del Evento: <span className="underline underline-offset-4 font-black">{eventsList.data?.find((e) => e.id === filterEvent)?.nombre}</span>
+                  </span>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setFilterEvent("all")} className="text-white hover:bg-teal-800 text-xs font-bold px-3 py-1 rounded-xl">
+                  ✕ Ver Todos los Registros
+                </Button>
               </div>
-              <div className="flex overflow-x-auto pb-1 gap-2 scrollbar-none">
-                <button
-                  onClick={() => setFilterEvent("all")}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all shadow-2xs ${
-                    filterEvent === "all"
-                      ? "bg-slate-900 text-white shadow-md ring-2 ring-slate-700"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
-                  }`}
-                >
-                  📊 Todos los Eventos
-                </button>
-
-                {eventsList.data?.map((evt) => {
-                  const isActive = filterEvent === evt.id;
-                  return (
-                    <button
-                      key={evt.id}
-                      onClick={() => setFilterEvent(evt.id)}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all shadow-2xs ${
-                        isActive
-                          ? "bg-teal-700 text-white shadow-md ring-2 ring-teal-500"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
-                      }`}
-                    >
-                      <span>{evt.nombre}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            )}
 
             {/* Filtros */}
             <div className="flex flex-wrap gap-2">
