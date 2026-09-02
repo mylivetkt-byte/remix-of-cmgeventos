@@ -100,6 +100,57 @@ export const EventManager = () => {
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+
+  const handlePdfFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      toast.error("Por favor selecciona un archivo PDF (.pdf)");
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("El archivo PDF excede el tamaño máximo permitido (15 MB)");
+      return;
+    }
+
+    setUploadingPdf(true);
+    try {
+      const fileExt = file.name.split(".").pop() || "pdf";
+      const filePath = `checkin_pdfs/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      const { data, error } = await supabase.storage
+        .from("event-assets")
+        .upload(filePath, file, { upsert: true });
+
+      if (error) {
+        console.warn("Storage upload fallback:", error);
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          setFormData((prev) => ({ ...prev, pdf_whatsapp_checkin_url: result }));
+          toast.success("¡Archivo PDF cargado exitosamente!");
+          setUploadingPdf(false);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("event-assets")
+        .getPublicUrl(filePath);
+
+      const publicUrl = publicUrlData.publicUrl;
+      setFormData((prev) => ({ ...prev, pdf_whatsapp_checkin_url: publicUrl }));
+      toast.success("¡Archivo PDF subido exitosamente!");
+    } catch (err: any) {
+      toast.error("Error al subir archivo PDF: " + (err.message || "Error de red"));
+    } finally {
+      setUploadingPdf(false);
+    }
+  };
 
   const { data: events, isLoading } = useQuery({
     queryKey: ["admin_events"],
@@ -1355,18 +1406,64 @@ export const EventManager = () => {
                         </div>
 
                         <div>
-                          <Label className="text-xs font-bold text-slate-800 mb-1 block">
-                            URL del PDF Adjunto para el Check-in (Opcional - Guía, Programa o Material)
+                          <Label className="text-xs font-bold text-slate-800 mb-1.5 block flex items-center gap-1.5">
+                            <Upload className="w-3.5 h-3.5 text-teal-700" />
+                            Adjuntar Archivo PDF del Evento desde tu Dispositivo (Guía, Programa o Material)
                           </Label>
-                          <Input
-                            placeholder="https://... o pega la URL pública del PDF"
-                            value={formData.pdf_whatsapp_checkin_url}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, pdf_whatsapp_checkin_url: e.target.value }))}
-                            className="bg-white border-teal-300 text-slate-900 font-mono text-xs h-10 rounded-xl"
-                          />
-                          <p className="text-[11px] text-slate-500 mt-1">
-                            Si ingresas una URL de un PDF, la persona recibirá el enlace directo a su material de evento junto a su WhatsApp.
-                          </p>
+
+                          {formData.pdf_whatsapp_checkin_url ? (
+                            <div className="flex items-center justify-between bg-white p-3 rounded-2xl border-2 border-teal-500 shadow-xs">
+                              <div className="flex items-center gap-2.5 overflow-hidden">
+                                <div className="w-9 h-9 rounded-xl bg-red-100 text-red-700 flex items-center justify-center font-bold text-xs shrink-0 border border-red-200">
+                                  PDF
+                                </div>
+                                <div className="truncate">
+                                  <p className="text-xs font-extrabold text-slate-900 truncate">
+                                    Documento PDF Adjunto
+                                  </p>
+                                  <a
+                                    href={formData.pdf_whatsapp_checkin_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[11px] font-bold text-teal-700 hover:underline block truncate"
+                                  >
+                                    🔗 Abrir / Vista Previa del PDF
+                                  </a>
+                                </div>
+                              </div>
+
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setFormData((prev) => ({ ...prev, pdf_whatsapp_checkin_url: "" }))}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 font-bold text-xs h-8 px-2.5 rounded-lg shrink-0"
+                              >
+                                <X className="w-4 h-4 mr-1" /> Quitar PDF
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="relative border-2 border-dashed border-teal-300 rounded-2xl p-4 bg-white hover:bg-teal-50/50 transition-all text-center">
+                              <input
+                                type="file"
+                                accept="application/pdf"
+                                onChange={handlePdfFileChange}
+                                disabled={uploadingPdf}
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                              />
+                              <div className="flex flex-col items-center justify-center space-y-1.5 pointer-events-none">
+                                <div className="w-10 h-10 rounded-full bg-teal-100 text-teal-800 flex items-center justify-center font-bold">
+                                  {uploadingPdf ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5 text-teal-700" />}
+                                </div>
+                                <p className="text-xs font-extrabold text-slate-900">
+                                  {uploadingPdf ? "Subiendo archivo PDF..." : "Haz clic aquí para seleccionar y cargar el archivo PDF"}
+                                </p>
+                                <p className="text-[10px] text-slate-500 font-medium">
+                                  Selecciona un archivo PDF de tu dispositivo (Guías, programas, materiales o cartas)
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
