@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Menu, UserPlus, Send } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Menu, UserPlus, Send, Bot } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
@@ -19,6 +19,7 @@ import { DashboardStats } from "@/components/admin/DashboardStats";
 import { WhatsAppCrm } from "@/components/admin/WhatsAppCrm";
 import { WhatsAppManager } from "@/components/admin/WhatsAppManager";
 import { WhatsAppChat } from "@/components/admin/chat/WhatsAppChat";
+import { ChatbotManager } from "@/components/admin/ChatbotManager";
 import { WhatsAppContacts, StoredContact } from "@/components/admin/WhatsAppContacts";
 import { EventManager } from "@/components/admin/EventManager";
 import { UserManager } from "@/components/admin/UserManager";
@@ -27,7 +28,7 @@ import { useCatalog } from "@/hooks/useCatalogs";
 import { sendCheckInWhatsAppNotification } from "@/lib/whatsapp-bot";
 import { toast } from "sonner";
 
-type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "whatsapp" | "usuarios" | "crm" | "chat" | "contactos";
+type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "whatsapp" | "usuarios" | "crm" | "chat" | "contactos" | "chatbot";
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
@@ -102,6 +103,7 @@ const AdminDashboard = () => {
     { id: "contactos", label: "Agenda Contactos", icon: <Users className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "crm", label: "Envío Masivo", icon: <Send className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "chat", label: "Chat WhatsApp", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
+    { id: "chatbot", label: "Chatbot IA 24/7", icon: <Bot className="w-5 h-5 text-teal-600" />, roles: ["super_admin", "coordinador"] },
   ];
 
   // Sincronizar rol según usuario logueado
@@ -1168,6 +1170,7 @@ const AdminDashboard = () => {
         )}
         {tab === "crm" && <div className="animate-fade-in pb-8"><WhatsAppCrm initialContacts={crmContacts} /></div>}
         {tab === "chat" && <div className="animate-fade-in pb-8"><WhatsAppChat selectedContact={selectedChatContact} /></div>}
+        {tab === "chatbot" && <div className="animate-fade-in pb-8"><ChatbotManager /></div>}
         </main>
       </div>
 
