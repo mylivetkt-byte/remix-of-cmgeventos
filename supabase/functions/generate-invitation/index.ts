@@ -159,8 +159,16 @@ Deno.serve(async (req) => {
     doc.setLineWidth(0.5);
     rr(doc, TX, TY, TW, TH, 8, "S");
 
+    // ── Calcular altura dinámica de la cabecera ──────────────────
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    const titleLines = doc.splitTextToSize(eventName.toUpperCase(), TW - 16);
+    const titleBlockH = (titleLines.length - 1) * 5.5 + 5;
+    const imgBlockH = eventImgBytes ? 24 : 16;
+    const dateBlockH = eventDate ? 9 : 2;
+    const headerH = 24 + titleBlockH + imgBlockH + dateBlockH + 5;
+
     // ── Cabecera verde (esquinas superiores redondeadas) ─────────
-    const headerH = 58;
     doc.setFillColor(...GREEN);
     rr(doc, TX, TY, TW, headerH, 8, "F");
     doc.rect(TX, TY + headerH / 2, TW, headerH / 2, "F"); // cuadrar esquinas inferiores
@@ -172,45 +180,56 @@ Deno.serve(async (req) => {
     doc.circle(TX + TW - 18, TY + headerH - 6, 20, "F");
     doc.setGState(new (doc as any).GState({ opacity: 1 }));
 
-    // Badge dorado: ENTRADA OFICIAL • PASE VIP
-    const badgeW = 62, badgeH = 7;
+    // Badge dorado más grande: ENTRADA OFICIAL • PASE VIP
+    const badgeW = 74, badgeH = 9;
     doc.setFillColor(...GOLD);
-    rr(doc, CX - badgeW / 2, TY + 7, badgeW, badgeH, 3.5, "F");
+    rr(doc, CX - badgeW / 2, TY + 6, badgeW, badgeH, 4.5, "F");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(7);
+    doc.setFontSize(9);
     doc.setTextColor(...GREEN);
-    doc.text("ENTRADA OFICIAL  •  PASE VIP", CX, TY + 12, { align: "center" });
+    doc.text("ENTRADA OFICIAL  •  PASE VIP", CX, TY + 12.3, { align: "center" });
 
-    // Imagen del evento en marco dorado (derecha) o icono de iglesia
+    // Nombre del evento en dorado (más arriba, centrado, ancho completo)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(...GOLD);
+    const titleY = TY + 24;
+    doc.text(titleLines, CX, titleY, { align: "center" });
+    let headerCurY = titleY + titleBlockH;
+
+    // Imagen del evento centrada debajo del título, en marco dorado
     if (eventImgBytes) {
-      const imgSize = 22;
-      const imgX = TX + TW - 13 - imgSize;
-      const imgY = TY + 18;
+      const imgSize = 24;
+      const imgX = CX - imgSize / 2;
+      const imgY = headerCurY;
       doc.setFillColor(...GOLD);
       rr(doc, imgX - 1.5, imgY - 1.5, imgSize + 3, imgSize + 3, 4, "F");
       doc.setFillColor(...WHITE);
       rr(doc, imgX - 0.5, imgY - 0.5, imgSize + 1, imgSize + 1, 3.5, "F");
       doc.addImage(eventImgBytes, eventImgFmt, imgX, imgY, imgSize, imgSize);
+      headerCurY += imgSize + 1;
     } else {
-      drawChurchIcon(doc, TX + TW - 24, TY + 30, 16, GOLD);
+      drawChurchIcon(doc, CX, headerCurY + 8, 16, GOLD);
+      headerCurY += 16;
     }
 
-    // Nombre del evento en dorado
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.setTextColor(...GOLD);
-    const titleW = eventImgBytes ? TW - 46 : TW - 20;
-    const titleLines = doc.splitTextToSize(eventName.toUpperCase(), titleW);
-    const titleStartY = TY + 28 - (titleLines.length - 1) * 3;
-    doc.text(titleLines, CX - (eventImgBytes ? 10 : 0), titleStartY + 6, { align: "center" });
+    // Fecha del evento en la cabecera (blanco)
+    if (eventDate) {
+      const dateStr = eventDate.charAt(0).toUpperCase() + eventDate.slice(1);
+      const full = eventTime ? `${dateStr} • ${eventTime}` : dateStr;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(...WHITE);
+      doc.text(doc.splitTextToSize(full, TW - 20), CX, headerCurY + 7, { align: "center" });
+    }
 
-    // Línea dorada bajo el título
+    // Línea dorada al final de la cabecera
     doc.setDrawColor(...GOLD);
     doc.setLineWidth(0.7);
-    doc.line(TX + 30, TY + headerH - 5, TX + TW - 30, TY + headerH - 5);
+    doc.line(TX + 30, TY + headerH - 3, TX + TW - 30, TY + headerH - 3);
 
     // ── Nombre del asistente (serif, verde, protagonista) ─────────
-    let curY = TY + headerH + 16;
+    let curY = TY + headerH + 11;
     const fullName = `${reg.nombres} ${reg.apellidos}`.toUpperCase();
     doc.setFont("times", "bold");
     doc.setTextColor(...GREEN);
@@ -223,22 +242,13 @@ Deno.serve(async (req) => {
       nameLines = doc.splitTextToSize(fullName, TW - 18);
     }
     doc.text(nameLines, CX, curY, { align: "center" });
-    curY += nameLines.length * (fontSize * 0.4) + 7;
+    curY += nameLines.length * (fontSize * 0.4) + 5;
 
-    // ── Fecha y lugar ─────────────────────────────────────────────
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(...INK);
-    if (eventDate) {
-      const dateStr = eventDate.charAt(0).toUpperCase() + eventDate.slice(1);
-      const full = eventTime ? `${dateStr} • ${eventTime}` : dateStr;
-      const dLines = doc.splitTextToSize(full, TW - 16);
-      doc.text(dLines, CX, curY, { align: "center" });
-      curY += dLines.length * 4.6 + 2.5;
-    }
+    // ── Lugar del evento (la fecha ya va en la cabecera) ─────────
     if (eventPlace) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9.5);
+      doc.setTextColor(...INK);
       const pLines = doc.splitTextToSize(eventPlace, TW - 16);
       doc.text(pLines, CX, curY, { align: "center" });
       curY += pLines.length * 4.4 + 2;
@@ -283,17 +293,19 @@ Deno.serve(async (req) => {
     doc.circle(TX, stubY, 4.5, "S");
     doc.circle(TX + TW, stubY, 4.5, "S");
 
-    // ── QR con marco dorado + Badge ID (centrados en el stub) ─────
+    // ── QR centrado con marco dorado + Badge ID debajo ───────────
     const footerH = 14;
     const footerY = TY + TH - footerH;
-    const qrSize = 40;
-    const badgeBoxW = 34, badgeBoxH = 16;
-    const gap = 6;
-    const groupW = qrSize + gap + badgeBoxW;
-    const qrX = CX - groupW / 2;
-    const stubSpaceTop = stubY + 6;
-    const stubSpaceBottom = footerY - 6;
-    const qrY = stubSpaceTop + Math.max(0, (stubSpaceBottom - stubSpaceTop - qrSize) / 2);
+    const badgeBoxW = 46, badgeBoxH = 12;
+    const stubSpaceTop = stubY + 5;
+    const stubSpaceBottom = footerY - 3;
+    const avail = stubSpaceBottom - stubSpaceTop;
+    // QR adaptativo: garantiza que quepan QR + badge ID + texto guía
+    let qrSize = Math.min(40, avail - 3 - badgeBoxH - 5);
+    qrSize = Math.max(28, qrSize);
+    const groupH = qrSize + 3 + badgeBoxH + 5;
+    const qrX = CX - qrSize / 2;
+    const qrY = stubSpaceTop + Math.max(0, (avail - groupH) / 2);
 
     // Marco dorado del QR
     doc.setFillColor(...GOLD);
@@ -302,9 +314,9 @@ Deno.serve(async (req) => {
     rr(doc, qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, 3, "F");
     doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
 
-    // Badge ID a la derecha del QR
-    const badgeX = qrX + qrSize + gap;
-    const badgeY = qrY + qrSize / 2 - badgeBoxH / 2;
+    // Badge ID debajo del QR
+    const badgeX = CX - badgeBoxW / 2;
+    const badgeY = qrY + qrSize + 3;
     doc.setDrawColor(...GOLD);
     doc.setLineWidth(0.6);
     doc.setFillColor(...WHITE);
@@ -312,17 +324,17 @@ Deno.serve(async (req) => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6);
     doc.setTextColor(...GRAY);
-    doc.text("Ticket badge ID:", badgeX + badgeBoxW / 2, badgeY + 5.5, { align: "center" });
+    doc.text("Ticket badge ID:", CX, badgeY + 4.8, { align: "center" });
     doc.setFont("courier", "bold");
     doc.setFontSize(9);
     doc.setTextColor(...INK);
-    doc.text(`#${registrationId.slice(0, 8).toUpperCase()}`, badgeX + badgeBoxW / 2, badgeY + 11.5, { align: "center" });
+    doc.text(`#${registrationId.slice(0, 8).toUpperCase()}`, CX, badgeY + 10, { align: "center" });
 
-    // Texto guía bajo el QR
+    // Texto guía bajo el badge
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.5);
     doc.setTextColor(...GRAY);
-    doc.text("Presenta este código QR al ingresar al evento", CX, qrY + qrSize + 6, { align: "center" });
+    doc.text("Presenta este código QR al ingresar al evento", CX, badgeY + badgeBoxH + 4.5, { align: "center" });
 
     // ── Pie verde (esquinas inferiores redondeadas) ───────────────
     doc.setFillColor(...GREEN);
