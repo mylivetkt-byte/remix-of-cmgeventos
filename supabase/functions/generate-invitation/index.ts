@@ -237,20 +237,11 @@ Deno.serve(async (req) => {
     doc.text(nameLines, CX, curY, { align: "center" });
     curY += nameLines.length * (fontSize * 0.4) + 7;
 
-    // ── Fecha y lugar ─────────────────────────────────────────────
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(...INK);
-    if (eventDate) {
-      const dateStr = eventDate.charAt(0).toUpperCase() + eventDate.slice(1);
-      const full = eventTime ? `${dateStr} • ${eventTime}` : dateStr;
-      const dLines = doc.splitTextToSize(full, TW - 16);
-      doc.text(dLines, CX, curY, { align: "center" });
-      curY += dLines.length * 4.6 + 2.5;
-    }
+    // ── Lugar del evento (la fecha ya va en la cabecera) ─────────
     if (eventPlace) {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9.5);
+      doc.setTextColor(...INK);
       const pLines = doc.splitTextToSize(eventPlace, TW - 16);
       doc.text(pLines, CX, curY, { align: "center" });
       curY += pLines.length * 4.4 + 2;
