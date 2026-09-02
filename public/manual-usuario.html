@@ -3,198 +3,365 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manual de Usuario - Doxa Eventos / CMG</title>
+  <title>Manual de Usuario Interactivo - Doxa Eventos / CMG</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; }
+    html { scroll-behavior: smooth; }
     @media print {
       .no-print { display: none !important; }
       body { background: white !important; color: black !important; }
+      .print-shadow-none { shadow: none !important; border: 1px solid #cbd5e1 !important; }
       .page-break { page-break-before: always; }
     }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen">
+<body class="bg-slate-950 text-slate-100 min-h-screen">
 
-  <!-- Header Flotante con Botón de Imprimir -->
-  <header class="no-print sticky top-0 z-50 bg-slate-950/90 backdrop-blur-md border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+  <!-- CABECERA PRINCIPAL FLOTANTE -->
+  <header class="no-print sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 sm:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
     <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-xl bg-teal-600 text-white font-extrabold flex items-center justify-center shadow-md">
+      <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-700 to-emerald-500 text-white font-black flex items-center justify-center shadow-lg shadow-teal-900/50">
         DX
       </div>
       <div>
-        <h1 class="font-black text-sm text-white">Manual de Usuario Doxa Eventos</h1>
-        <p class="text-xs text-slate-400">Centro Mundial de Gloria © 2026</p>
+        <h1 class="font-black text-base text-white flex items-center gap-2">
+          DOXA EVENTOS <span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-extrabold px-2 py-0.5 rounded-full">Manual Interactivo v2.5</span>
+        </h1>
+        <p class="text-xs text-slate-400 font-medium">Centro Mundial de Gloria • Guía Completa de Operación</p>
       </div>
     </div>
 
-    <div class="flex items-center gap-3">
-      <a href="/MANUAL_USUARIO_DOXA_EVENTOS.pdf" download class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-md transition-all">
-        📥 Descargar Archivo PDF
-      </a>
-      <button onclick="window.print()" class="bg-teal-700 hover:bg-teal-800 text-white font-black px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-md transition-all">
-        🖨️ Imprimir a PDF / Papel
+    <!-- Buscador en tiempo real & Botón Imprimir -->
+    <div class="flex items-center gap-3 w-full sm:w-auto">
+      <div class="relative flex-1 sm:w-64">
+        <input
+          type="text"
+          id="searchInput"
+          onkeyup="filterManual()"
+          placeholder="🔍 Buscar módulo o tema..."
+          className="w-full bg-slate-800/90 border border-slate-700 text-slate-200 text-xs rounded-xl pl-3 pr-8 py-2 focus:outline-none focus:border-teal-500 transition-all"
+        />
+      </div>
+      <button onclick="window.print()" class="bg-teal-600 hover:bg-teal-500 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow-md transition-all shrink-0">
+        🖨️ Imprimir Manual
       </button>
     </div>
   </header>
 
-  <!-- Contenedor Principal del Manual -->
-  <main class="max-w-4xl mx-auto p-6 sm:p-12 space-y-12 bg-white text-slate-900 shadow-2xl rounded-3xl my-8 border border-slate-200">
+  <!-- CONTENEDOR PRINCIPAL CON SIDEBAR NAVEGABLE -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex flex-col md:flex-row gap-8">
 
-    <!-- PORTADA -->
-    <div class="text-center space-y-6 pb-8 border-b border-slate-200">
-      <div class="inline-block p-4 rounded-3xl bg-teal-950 border border-teal-800 shadow-xl">
-        <img src="/images/logo-doxa.jpg" alt="Doxa Eventos" class="h-28 mx-auto rounded-2xl object-cover shadow-md">
-      </div>
+    <!-- MENÚ LATERAL DE ÍNDICE (DESKTOPS) -->
+    <aside class="no-print md:w-64 shrink-0 space-y-2 sticky top-24 h-fit bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+      <p class="text-xs font-black text-slate-400 uppercase tracking-wider px-2 mb-3">Tabla de Contenido</p>
+      <nav class="space-y-1 text-xs font-semibold">
+        <a href="#modulo-intro" class="block px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all">1. Introducción y Accesos</a>
+        <a href="#modulo-catalogo" class="block px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all">2. Catálogo de Eventos</a>
+        <a href="#modulo-registro" class="block px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all">3. Formulario Animado 3D</a>
+        <a href="#modulo-pase-vip" class="block px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all">4. Boleto VIP e Invitación QR</a>
+        <a href="#modulo-finanzas" class="block px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all">5. Control Financiero y Abonos</a>
+        <a href="#modulo-admin" class="block px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all">6. Panel Admin & Sub-Menús</a>
+        <a href="#modulo-eventmanager" class="block px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all">7. Configurador de Eventos</a>
+        <a href="#modulo-escaner" class="block px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all">8. Escáner de Puerta (/checkin)</a>
+        <a href="#modulo-whatsapp" class="block px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all">9. WhatsApp Check-in con PDF</a>
+        <a href="#modulo-chatbot" class="block px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 transition-all">10. Chatbot IA y Brevo Mail</a>
+      </nav>
+    </aside>
 
-      <div class="space-y-2">
-        <span class="bg-teal-100 text-teal-900 border border-teal-300 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
-          Documento Oficial de Operación v2.5
-        </span>
-        <h1 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-          MANUAL DE USUARIO Y GUÍA COMPLETA DE PLATAFORMA
-        </h1>
-        <p class="text-base font-semibold text-teal-800">
-          Sistema Integral de Gestión Multi-Evento, Finanzas y Check-in
+    <!-- CUERPO PRINCIPAL DEL MANUAL -->
+    <main class="flex-1 bg-white text-slate-900 rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-200 space-y-12 min-w-0">
+
+      <!-- PORTADA Y TITULAR -->
+      <div class="text-center space-y-4 pb-8 border-b border-slate-200">
+        <div class="inline-block p-4 rounded-3xl bg-slate-950 border border-slate-800 shadow-xl">
+          <img src="/images/logo-doxa.jpg" alt="Doxa Eventos" class="h-24 mx-auto rounded-2xl object-cover">
+        </div>
+        <div>
+          <span class="bg-teal-100 text-teal-900 border border-teal-300 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider">
+            Documentación Oficial de Plataforma
+          </span>
+          <h1 class="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-3">
+            MANUAL DE USUARIO Y GUÍA COMPLETA
+          </h1>
+          <p class="text-base font-bold text-teal-800 mt-1">
+            DOXA EVENTOS • CENTRO MUNDIAL DE GLORIA
+          </p>
+        </div>
+        <p class="text-xs text-slate-500 font-medium">
+          Guía detallada de uso para participantes, administradores y personal de logística en puerta.
         </p>
       </div>
 
-      <p class="text-xs text-slate-500 font-medium">
-        CENTRO MUNDIAL DE GLORIA • DOXA EVENTOS
-      </p>
-    </div>
+      <!-- SECCIÓN 1: INTRODUCCIÓN -->
+      <section id="modulo-intro" class="manual-section space-y-4">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-xl bg-teal-800 text-white font-black flex items-center justify-center text-sm">1</span>
+          <h2 class="text-2xl font-black text-slate-900">Introducción y Arquitectura del Sistema</h2>
+        </div>
+        <p class="text-sm text-slate-700 leading-relaxed">
+          La plataforma <strong>DOXA EVENTOS</strong> ha sido concebida para la gestión integral de congresos, seminarios, retiros y actividades masivas de la iglesia Centro Mundial de Gloria. La plataforma automatiza desde la publicación del catálogo hasta el control óptico en puerta y el envío automático de notificaciones por WhatsApp.
+        </p>
 
-    <!-- CAPÍTULO 1 -->
-    <section class="space-y-4">
-      <h2 class="text-2xl font-black text-teal-950 border-b-2 border-amber-400 pb-2 flex items-center gap-2">
-        <span>1.</span> Introducción y Arquitectura del Sistema
-      </h2>
-      <p class="text-sm text-slate-700 leading-relaxed">
-        La plataforma DOXA EVENTOS es una solución integral para la organización de eventos masivos, conferencias, seminarios y retiros. Integra la difusión en catálogo, registro dinámico del público, control financiero de abonos, boletaje VIP con código QR y notificaciones inteligentes por WhatsApp con archivos PDF adjuntos.
-      </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+            <h3 class="font-bold text-sm text-teal-900">🌐 Sitio Público (/eventos)</h3>
+            <p class="text-xs text-slate-600 mt-1">Catálogo de eventos activos con imágenes, precios, cupos y botón de inscripción.</p>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+            <h3 class="font-bold text-sm text-teal-900">📝 Registro Animado 3D</h3>
+            <p class="text-xs text-slate-600 mt-1">Pantalla de inicio interactiva con logo 3D metálico y campos configurables por evento.</p>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+            <h3 class="font-bold text-sm text-teal-900">🎟️ Pase VIP e Invitación PDF</h3>
+            <p class="text-xs text-slate-600 mt-1">Boleto con código QR dinámico, sellos financieros y marca de agua institucional.</p>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+            <h3 class="font-bold text-sm text-teal-900">🔐 Panel Administrador (/admin)</h3>
+            <p class="text-xs text-slate-600 mt-1">Consola con sub-módulos aislados por evento, reportes contables y borrado delimitado.</p>
+          </div>
+        </div>
+      </section>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
-          <h3 class="font-bold text-sm text-teal-900">🌐 Sitio Público y Catálogo (/eventos)</h3>
-          <p class="text-xs text-slate-600">Página principal con tarjetas ilustradas de cada evento, fechas, ubicaciones, estado (Gratis o Pago) y botón de inscripción.</p>
+      <!-- SECCIÓN 2: CATÁLOGO DE EVENTOS -->
+      <section id="modulo-catalogo" class="manual-section space-y-4 pt-6 border-t border-slate-200">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-xl bg-teal-800 text-white font-black flex items-center justify-center text-sm">2</span>
+          <h2 class="text-2xl font-black text-slate-900">Catálogo Público de Eventos (/eventos)</h2>
         </div>
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
-          <h3 class="font-bold text-sm text-teal-900">📝 Registro Animado con Intro 3D</h3>
-          <p class="text-xs text-slate-600">Pantalla de bienvenida con logo metálico 3D animado de DOXA EVENTOS e inscripción con reordenamiento dinámico de campos.</p>
+        <p class="text-sm text-slate-700 leading-relaxed">
+          En el portal público, los asistentes pueden explorar los eventos habilitados. Cada tarjeta muestra:
+        </p>
+        <ul class="list-disc list-inside text-xs text-slate-700 space-y-1.5 font-medium pl-2">
+          <li><strong>Imagen de Banner y Logo Oficial:</strong> Personalizados por cada ministerio.</li>
+          <li><strong>Distintivo de Precio:</strong> Muestra "Evento Gratuito" o el valor en COP / USD para eventos de costo.</li>
+          <li><strong>Información de Fecha y Lugar:</strong> Indicación del auditorio o templo donde se llevará a cabo.</li>
+          <li><strong>Botón 'Inscribirme':</strong> Conduce directamente al formulario dinámico del evento.</li>
+        </ul>
+      </section>
+
+      <!-- SECCIÓN 3: FORMULARIO DINÁMICO 3D -->
+      <section id="modulo-registro" class="manual-section space-y-4 pt-6 border-t border-slate-200">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-xl bg-teal-800 text-white font-black flex items-center justify-center text-sm">3</span>
+          <h2 class="text-2xl font-black text-slate-900">Formulario de Registro Animado 3D</h2>
         </div>
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
-          <h3 class="font-bold text-sm text-teal-900">🎟️ Boleto VIP e Invitación PDF</h3>
-          <p class="text-xs text-slate-600">Pase individual con código QR dinámico para lectura en puerta, sellos de estado financiero y marca de agua institucional.</p>
+        <p class="text-sm text-slate-700 leading-relaxed">
+          Al hacer clic en un evento, se despliega una pantalla de bienvenida animada (Splash Screen) con el logo metálico 3D de DOXA EVENTOS y efectos de luz Shimmer.
+        </p>
+        <div class="bg-teal-50 p-4 rounded-2xl border border-teal-200 text-xs space-y-2">
+          <p class="font-extrabold text-teal-950">💡 Regla de Multi-Inscripción:</p>
+          <p class="text-teal-900">
+            Un participante puede registrarse en múltiples eventos distintos usando el mismo número de documento. No obstante, dentro de un mismo evento se bloquea el registro duplicado de la cédula para preservar el cupo.
+          </p>
         </div>
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
-          <h3 class="font-bold text-sm text-teal-900">🔐 Panel Administrador (/admin)</h3>
-          <p class="text-xs text-slate-600">Consola de control con sub-menús desplegables en el menú lateral, gestión de catálogo, reportes y borrado delimitado por evento.</p>
+      </section>
+
+      <!-- SECCIÓN 4: PASE VIP E INVITACIÓN QR -->
+      <section id="modulo-pase-vip" class="manual-section space-y-4 pt-6 border-t border-slate-200">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-xl bg-teal-800 text-white font-black flex items-center justify-center text-sm">4</span>
+          <h2 class="text-2xl font-black text-slate-900">Boleto VIP e Invitación PDF</h2>
         </div>
+        <p class="text-sm text-slate-700 leading-relaxed">
+          Al completar el registro, el sistema genera automáticamente una invitación VIP en PDF con:
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-semibold">
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">✅ Código QR dinámico para lectura óptica rápida.</div>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">✅ Colores primario y secundario corporativos del evento.</div>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">✅ Sello de estado de pago (PAGO COMPLETO, ABONADO, BECADO).</div>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">✅ Marca de agua institucional y código único de registro.</div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN 5: CONTROL FINANCIERO Y ABONOS -->
+      <section id="modulo-finanzas" class="manual-section space-y-4 pt-6 border-t border-slate-200">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-xl bg-teal-800 text-white font-black flex items-center justify-center text-sm">5</span>
+          <h2 class="text-2xl font-black text-slate-900">Control Financiero, Abonos y Becas</h2>
+        </div>
+        <p class="text-sm text-slate-700 leading-relaxed">
+          El panel administrador incluye una herramienta de seguimiento contable para gestionar inscripciones con costo:
+        </p>
+
+        <div class="space-y-2.5 text-xs">
+          <div class="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+            <span class="bg-emerald-700 text-white font-extrabold px-2.5 py-1 rounded-lg shrink-0">🟢 Pagado Completo</span>
+            <span class="text-slate-800">Canceló el 100% de la entrada. Pase VIP con sello de Pago Completo.</span>
+          </div>
+          <div class="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
+            <span class="bg-amber-600 text-white font-extrabold px-2.5 py-1 rounded-lg shrink-0">🟡 Abonado (Parcial)</span>
+            <span class="text-slate-800">Registra un abono inicial. El sistema calcula y muestra el saldo pendiente.</span>
+          </div>
+          <div class="flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-200">
+            <span class="bg-red-600 text-white font-extrabold px-2.5 py-1 rounded-lg shrink-0">🔴 Pendiente de Pago</span>
+            <span class="text-slate-800">Participante registrado que aún no ha realizado ningún abono.</span>
+          </div>
+          <div class="flex items-center gap-3 p-3 bg-teal-50 rounded-xl border border-teal-200">
+            <span class="bg-teal-700 text-white font-extrabold px-2.5 py-1 rounded-lg shrink-0">🎓 Becado / Exento</span>
+            <span class="text-slate-800">Invitado de honor o participante exento de pago autorizado por la iglesia.</span>
+          </div>
+        </div>
+
+        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs space-y-1.5">
+          <h4 class="font-extrabold text-slate-900 text-sm">💰 Modal 'Control de Pago' en Registros:</h4>
+          <p class="text-slate-600">
+            Al presionar el botón 💰 Pago junto a cualquier participante, el administrador puede cambiar el estado, digitar el monto pagado, ver la foto del comprobante de transferencia y añadir notas internas.
+          </p>
+        </div>
+      </section>
+
+      <!-- SECCIÓN 6: PANEL ADMIN Y SUB-MENÚS -->
+      <section id="modulo-admin" class="manual-section space-y-4 pt-6 border-t border-slate-200">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-xl bg-teal-800 text-white font-black flex items-center justify-center text-sm">6</span>
+          <h2 class="text-2xl font-black text-slate-900">Panel Administrador y Sub-Módulos por Evento</h2>
+        </div>
+        <p class="text-sm text-slate-700 leading-relaxed">
+          Para evitar errores al administrar múltiples eventos al mismo tiempo, las secciones de <strong>Registros</strong> y <strong>Asistencia</strong> cuentan con sub-menús desplegables en la barra lateral (Sidebar):
+        </p>
+
+        <div class="space-y-2 text-xs font-medium text-slate-800">
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">📌 **Filtro Aislado:** Al hacer clic en un evento específico, la pantalla se transforma mostrando solo los datos de ese evento.</div>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">📌 **Sync en Encabezado:** El título superior cambia a `Registros · [Nombre del Evento]` para tener total claridad.</div>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">📌 **Eliminación Segura:** El botón de borrado dirá *"Eliminar registros de [Evento]"*, asegurando que la limpieza de un evento NO afecte a los demás.</div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN 7: CONFIGURADOR DE EVENTOS -->
+      <section id="modulo-eventmanager" class="manual-section space-y-4 pt-6 border-t border-slate-200">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-xl bg-teal-800 text-white font-black flex items-center justify-center text-sm">7</span>
+          <h2 class="text-2xl font-black text-slate-900">Gestor y Configurador de Eventos (EventManager)</h2>
+        </div>
+        <p class="text-sm text-slate-700 leading-relaxed">
+          Al crear o editar un evento en la pestaña **Eventos**, se despliega un modal ampliado (`max-w-6xl`) estructurado en 4 pestañas:
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <h4 class="font-extrabold text-teal-900 mb-1">1. Info & Imágenes</h4>
+            <p class="text-slate-600">Nombre, Slug público, Descripción, Fecha, Lugar, Logo, Banner y Colores de marca.</p>
+          </div>
+          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <h4 class="font-extrabold text-teal-900 mb-1">2. Configuración de Pago</h4>
+            <p class="text-slate-600">Habilitar pago, Precio, Moneda, Cuentas bancarias e instrucción de comprobante.</p>
+          </div>
+          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <h4 class="font-extrabold text-teal-900 mb-1">3. Campos Formulario</h4>
+            <p class="text-slate-600">Selección de campos requeridos y ordenamiento dinámico de la posición de cada campo.</p>
+          </div>
+          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <h4 class="font-extrabold text-teal-900 mb-1">4. Mensajes & Sistema</h4>
+            <p class="text-slate-600">Correo remitente Brevo, Plantilla de WhatsApp y configuración de Check-in con PDF.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN 8: ESCÁNER EN PUERTA -->
+      <section id="modulo-escaner" class="manual-section space-y-4 pt-6 border-t border-slate-200">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-xl bg-teal-800 text-white font-black flex items-center justify-center text-sm">8</span>
+          <h2 class="text-2xl font-black text-slate-900">Escáner de Puerta (/checkin)</h2>
+        </div>
+        <p class="text-sm text-slate-700 leading-relaxed">
+          Punto de control de entrada optimizado para celulares y tablets con cámara frontal o trasera:
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-bold text-center">
+          <div class="p-3 bg-emerald-100 text-emerald-950 rounded-xl border border-emerald-300">
+            🟩 ACCESO PERMITIDO<br><span class="text-[11px] font-normal">Pase válido. Asistencia marcada.</span>
+          </div>
+          <div class="p-3 bg-amber-100 text-amber-950 rounded-xl border border-amber-300">
+            🟨 PASE YA UTILIZADO<br><span class="text-[11px] font-normal">Muestra la hora exacta del primer ingreso.</span>
+          </div>
+          <div class="p-3 bg-red-100 text-red-950 rounded-xl border border-red-300">
+            🟥 EVENTO INCORRECTO<br><span class="text-[11px] font-normal">Pase de otro evento o no registrado.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN 9: WHATSAPP EN CHECK-IN CON PDF -->
+      <section id="modulo-whatsapp" class="manual-section space-y-4 pt-6 border-t border-slate-200">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-xl bg-teal-800 text-white font-black flex items-center justify-center text-sm">9</span>
+          <h2 class="text-2xl font-black text-slate-900">WhatsApp en Check-in con PDF Adjunto desde Dispositivo</h2>
+        </div>
+        <p class="text-sm text-slate-700 leading-relaxed">
+          Permite enviar un WhatsApp automático con un archivo PDF (Guía del Evento, Programa o Material) justo cuando la persona escanea su pase en la puerta.
+        </p>
+
+        <div class="space-y-3">
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-teal-800 text-white font-bold flex items-center justify-center shrink-0">1</span>
+            <span>En el panel admin, ve a <strong>Eventos</strong> y haz clic en <strong>Configurar</strong>.</span>
+          </div>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-teal-800 text-white font-bold flex items-center justify-center shrink-0">2</span>
+            <span>Abre la pestaña <strong>4. Mensajes & Sistema</strong>.</span>
+          </div>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-teal-800 text-white font-bold flex items-center justify-center shrink-0">3</span>
+            <span>Activa el switch <strong>"Enviar WhatsApp automático al hacer Check-in en Puerta"</strong> y redacta tu mensaje usando <code class="font-mono text-teal-800">{nombres}</code> y <code class="font-mono text-teal-800">{evento}</code>.</span>
+          </div>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-teal-800 text-white font-bold flex items-center justify-center shrink-0">4</span>
+            <span>Haz clic en la recuadro de carga <strong>"📄 Haz clic aquí para seleccionar y cargar el archivo PDF"</strong> y selecciona tu documento desde la computadora o celular.</span>
+          </div>
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-teal-800 text-white font-bold flex items-center justify-center shrink-0">5</span>
+            <span>Haz clic en <strong>"Guardar Cambios"</strong>. En cuanto escaneen al participante en puerta, recibirá su WhatsApp y su PDF adjunto automáticamente.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECCIÓN 10: CHATBOT Y BREVO -->
+      <section id="modulo-chatbot" class="manual-section space-y-4 pt-6 border-t border-slate-200">
+        <div class="flex items-center gap-3">
+          <span class="w-8 h-8 rounded-xl bg-teal-800 text-white font-black flex items-center justify-center text-sm">10</span>
+          <h2 class="text-2xl font-black text-slate-900">Chatbot Inteligente IA, CRM y Brevo Mail</h2>
+        </div>
+        <p class="text-sm text-slate-700 leading-relaxed">
+          Herramientas avanzadas de comunicación masiva y atención automatizada:
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+            <h4 class="font-extrabold text-teal-900 mb-1">🤖 Chatbot IA 24/7 (RSVP):</h4>
+            <p class="text-slate-600">Responde dudas de fecha y ubicación. Si el usuario responde "1" confirma asistencia, si responde "2" declina.</p>
+          </div>
+          <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+            <h4 class="font-extrabold text-teal-900 mb-1">📧 Correos Transaccionales (Brevo):</h4>
+            <p class="text-slate-600">Envia invitaciones por correo electrónico con remitente personalizado por evento y adjunto automático.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- FOOTER DEL MANUAL -->
+      <div class="pt-8 border-t border-slate-200 text-center space-y-2">
+        <p class="text-xs font-black text-teal-950">DOXA EVENTOS • CENTRO MUNDIAL DE GLORIA</p>
+        <p class="text-[11px] text-slate-500 font-medium">Manual de Usuario Oficial Interactivo • Todos los derechos reservados © 2026</p>
       </div>
-    </section>
 
-    <!-- CAPÍTULO 2 -->
-    <section class="space-y-4 page-break">
-      <h2 class="text-2xl font-black text-teal-950 border-b-2 border-amber-400 pb-2 flex items-center gap-2">
-        <span>2.</span> Control Financiero, Abonos y Becas
-      </h2>
-      <p class="text-sm text-slate-700 leading-relaxed">
-        El sistema cuenta con un módulo contable para eventos de pago que permite hacer seguimiento a abonos parciales, becas exentas y comprobantes de transferencia.
-      </p>
+    </main>
+  </div>
 
-      <div class="space-y-3">
-        <div class="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-          <span class="bg-emerald-700 text-white font-extrabold text-xs px-2.5 py-1 rounded-lg">🟢 Pagado Completo</span>
-          <span class="text-xs text-slate-700 font-medium">El participante ha cancelado el 100% de la entrada. Su pase VIP mostrará el sello de Pago Completo.</span>
-        </div>
-        <div class="flex items-center gap-3 p-3 bg-amber-50 rounded-xl border border-amber-200">
-          <span class="bg-amber-600 text-white font-extrabold text-xs px-2.5 py-1 rounded-lg">🟡 Abonado (Parcial)</span>
-          <span class="text-xs text-slate-700 font-medium">Registra un abono inicial. El sistema calcula automáticamente el saldo pendiente en el pase.</span>
-        </div>
-        <div class="flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-200">
-          <span class="bg-red-600 text-white font-extrabold text-xs px-2.5 py-1 rounded-lg">🔴 Pendiente de Pago</span>
-          <span class="text-xs text-slate-700 font-medium">Participante registrado pero que aún no ha abonado ni enviado comprobante.</span>
-        </div>
-        <div class="flex items-center gap-3 p-3 bg-teal-50 rounded-xl border border-teal-200">
-          <span class="bg-teal-700 text-white font-extrabold text-xs px-2.5 py-1 rounded-lg">🎓 Becado / Exento</span>
-          <span class="text-xs text-slate-700 font-medium">Invitado de honor o participante becado exento de pago.</span>
-        </div>
-      </div>
-    </section>
+  <!-- SCRIPT DE BÚSQUEDA Y FILTRADO EN TIEMPO REAL -->
+  <script>
+    function filterManual() {
+      const query = document.getElementById("searchInput").value.toLowerCase();
+      const sections = document.querySelectorAll(".manual-section");
 
-    <!-- CAPÍTULO 3 -->
-    <section class="space-y-4">
-      <h2 class="text-2xl font-black text-teal-950 border-b-2 border-amber-400 pb-2 flex items-center gap-2">
-        <span>3.</span> Sub-Módulos del Sidebar y Escáner QR (/checkin)
-      </h2>
-      <div class="space-y-3 text-sm text-slate-700">
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-          <h3 class="font-extrabold text-teal-900 text-sm mb-1">📌 Navegación Aislada por Evento</h3>
-          <p class="text-xs text-slate-600">Al seleccionar un evento en el sub-menú desplegable de la barra lateral, los reportes, estadísticas y botones de borrado se ajustan exclusivamente a ese evento, protegiendo a los demás.</p>
-        </div>
-        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-          <h3 class="font-extrabold text-teal-900 text-sm mb-1">📷 Escáner en Puerta (/checkin)</h3>
-          <p class="text-xs text-slate-600">Punto de control accesible desde dispositivos móviles. Permite escanear con la cámara o buscar por número de documento con alertas sonoras y visuales.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- CAPÍTULO 4 -->
-    <section class="space-y-4 page-break">
-      <h2 class="text-2xl font-black text-teal-950 border-b-2 border-amber-400 pb-2 flex items-center gap-2">
-        <span>4.</span> WhatsApp Automático en Check-in con PDF Adjunto
-      </h2>
-      <p class="text-sm text-slate-700">
-        Pasos para configurar el envío automático de WhatsApp con PDF adjunto (Guía del Evento, Programa o Material) al momento de validar el ingreso:
-      </p>
-
-      <div class="space-y-3">
-        <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-start gap-3">
-          <span class="w-7 h-7 rounded-full bg-teal-800 text-white font-extrabold text-xs flex items-center justify-center shrink-0">1</span>
-          <div>
-            <h4 class="font-bold text-xs text-slate-900">Configuración del Evento</h4>
-            <p class="text-xs text-slate-600">En el panel admin, ve a Eventos y presiona "Configurar" en el evento deseado.</p>
-          </div>
-        </div>
-        <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-start gap-3">
-          <span class="w-7 h-7 rounded-full bg-teal-800 text-white font-extrabold text-xs flex items-center justify-center shrink-0">2</span>
-          <div>
-            <h4 class="font-bold text-xs text-slate-900">Pestaña "4. Mensajes & Sistema"</h4>
-            <p class="text-xs text-slate-600">Localiza la casilla "Enviar WhatsApp automático al hacer Check-in en Puerta".</p>
-          </div>
-        </div>
-        <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-start gap-3">
-          <span class="w-7 h-7 rounded-full bg-teal-800 text-white font-extrabold text-xs flex items-center justify-center shrink-0">3</span>
-          <div>
-            <h4 class="font-bold text-xs text-slate-900">Activar Switch y Personalizar Texto</h4>
-            <p class="text-xs text-slate-600">Activa el switch y redacta el mensaje con variables como {nombres} y {evento}.</p>
-          </div>
-        </div>
-        <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-start gap-3">
-          <span class="w-7 h-7 rounded-full bg-teal-800 text-white font-extrabold text-xs flex items-center justify-center shrink-0">4</span>
-          <div>
-            <h4 class="font-bold text-xs text-slate-900">Cargar Archivo PDF desde el Dispositivo</h4>
-            <p class="text-xs text-slate-600">Haz clic en la zona de carga de PDF y selecciona el archivo de tu computador o teléfono.</p>
-          </div>
-        </div>
-        <div class="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-start gap-3">
-          <span class="w-7 h-7 rounded-full bg-teal-800 text-white font-extrabold text-xs flex items-center justify-center shrink-0">5</span>
-          <div>
-            <h4 class="font-bold text-xs text-slate-900">Guardar Cambios</h4>
-            <p class="text-xs text-slate-600">Presiona "Guardar Cambios". La persona recibirá automáticamente su WhatsApp y PDF al ingresar en puerta.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- FOOTER FINAL -->
-    <div class="pt-8 border-t border-slate-200 text-center space-y-2">
-      <p class="text-xs font-extrabold text-teal-900">DOXA EVENTOS • CENTRO MUNDIAL DE GLORIA</p>
-      <p class="text-[11px] text-slate-500">Documentación Oficial de Plataforma • Versión 2.5 Enterprise Edition</p>
-    </div>
-
-  </main>
-
+      sections.forEach((sec) => {
+        const text = sec.innerText.toLowerCase();
+        if (text.includes(query)) {
+          sec.style.display = "block";
+        } else {
+          sec.style.display = "none";
+        }
+      });
+    }
+  </script>
 </body>
 </html>
