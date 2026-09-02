@@ -597,16 +597,16 @@ export const EventManager = () => {
               Crear Nuevo Evento
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl w-[95vw] bg-white border border-slate-200 text-slate-900 max-h-[92vh] overflow-y-auto rounded-3xl p-6 sm:p-8 shadow-2xl">
-            <DialogHeader>
+          <DialogContent className="max-w-6xl sm:w-[96vw] max-h-[94vh] h-[92vh] flex flex-col bg-white border border-slate-200 text-slate-900 rounded-3xl p-6 sm:p-8 shadow-2xl overflow-hidden">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="text-2xl font-black font-heading text-slate-900 flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-teal-600" />
+                <Sparkles className="w-6 h-6 text-teal-600 animate-pulse" />
                 {editingEventId ? "Editar Configuración del Evento" : "Crear Nuevo Evento"}
               </DialogTitle>
             </DialogHeader>
 
-            {/* Pestañas dentro del Modal (Amplias y Cómodas) */}
-            <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3 pt-2 text-sm font-bold">
+            {/* Pestañas dentro del Modal (Fijas arriba, Amplias y Cómodas) */}
+            <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3 pt-2 text-sm font-bold shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveTab("general")}
@@ -645,8 +645,10 @@ export const EventManager = () => {
                 e.preventDefault();
                 saveEventMutation.mutate(formData);
               }}
-              className="space-y-5 pt-3 text-sm"
+              className="flex-1 flex flex-col justify-between overflow-hidden min-h-0 pt-3 text-sm"
             >
+              {/* ÁREA DE CONTENIDO CON SCROLL INTERNO */}
+              <div className="flex-1 overflow-y-auto pr-3 space-y-6">
               {/* TAB 1: GENERAL */}
               {activeTab === "general" && (
                 <div className="space-y-5">
@@ -1399,8 +1401,10 @@ export const EventManager = () => {
                   </div>
                 </div>
               )}
+              </div>
 
-              <div className="flex justify-end gap-3 pt-5 border-t border-slate-200">
+              {/* PIE DE ACCIONES (Fijo al fondo del modal) */}
+              <div className="shrink-0 pt-4 mt-2 border-t border-slate-200 bg-white flex justify-end gap-3">
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} className="border-slate-300 text-slate-700 font-bold px-6 py-2.5 text-sm rounded-xl">
                   Cancelar
                 </Button>
