@@ -300,12 +300,16 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        const data = await res.json();
+        const raw = await res.json();
+        const data = Array.isArray(raw) ? raw : (raw.chats || []);
         if (Array.isArray(data)) {
           setChats((prev) => {
             const map = new Map<string, Chat>();
             prev.forEach((c) => map.set(c.id, c));
-            data.forEach((c) => map.set(c.id, { ...map.get(c.id), ...c }));
+            data.forEach((c) => {
+              const id = String(c.id || c.phone);
+              map.set(id, { id, name: c.name || id, lastMessage: c.lastMessage || c.body, timestamp: c.timestamp, unreadCount: c.unreadCount || c.unread });
+            });
             const merged = Array.from(map.values());
             saveStoredChats(merged);
             return merged;
@@ -320,7 +324,6 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
   };
 
   const fetchMessages = async (chatId: string) => {
-    // Primero cargar historial persistente guardado localmente o en nube
     const map = loadStoredMessagesMap();
     if (map[chatId] && map[chatId].length > 0) {
       setMessages(map[chatId]);
@@ -334,10 +337,17 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
         headers: { Authorization: `Bearer ${waConfig.token}` },
       });
       if (res.ok) {
-        const data = await res.json();
+        const raw = await res.json();
+        const data = Array.isArray(raw) ? raw : (raw.messages || []);
         if (Array.isArray(data)) {
-          setMessages(data);
-          const updatedMap = { ...loadStoredMessagesMap(), [chatId]: data };
+          const formatted: Message[] = data.map((m: any) => ({
+            id: String(m.id || Date.now()),
+            fromMe: Boolean(m.fromMe),
+            body: m.body || m.text || "",
+            timestamp: typeof m.timestamp === "number" ? m.timestamp : Math.floor(new Date(m.timestamp).getTime() / 1000),
+          }));
+          setMessages(formatted);
+          const updatedMap = { ...loadStoredMessagesMap(), [chatId]: formatted };
           saveStoredMessagesMap(updatedMap);
         }
       }
