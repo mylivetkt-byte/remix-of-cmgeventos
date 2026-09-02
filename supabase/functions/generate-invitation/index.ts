@@ -193,10 +193,9 @@ Deno.serve(async (req) => {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.setTextColor(...GOLD);
-    const titleLines = doc.splitTextToSize(eventName.toUpperCase(), TW - 16);
     const titleY = TY + 24;
     doc.text(titleLines, CX, titleY, { align: "center" });
-    let headerCurY = titleY + (titleLines.length - 1) * 5.5 + 5;
+    let headerCurY = titleY + titleBlockH;
 
     // Imagen del evento centrada debajo del título, en marco dorado
     if (eventImgBytes) {
@@ -208,10 +207,10 @@ Deno.serve(async (req) => {
       doc.setFillColor(...WHITE);
       rr(doc, imgX - 0.5, imgY - 0.5, imgSize + 1, imgSize + 1, 3.5, "F");
       doc.addImage(eventImgBytes, eventImgFmt, imgX, imgY, imgSize, imgSize);
-      headerCurY += imgSize + 6;
+      headerCurY += imgSize + 1;
     } else {
-      drawChurchIcon(doc, CX, headerCurY + 12, 16, GOLD);
-      headerCurY += 22;
+      drawChurchIcon(doc, CX, headerCurY + 8, 16, GOLD);
+      headerCurY += 16;
     }
 
     // Fecha del evento en la cabecera (blanco)
@@ -221,16 +220,16 @@ Deno.serve(async (req) => {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(8.5);
       doc.setTextColor(...WHITE);
-      doc.text(doc.splitTextToSize(full, TW - 20), CX, Math.min(headerCurY + 1, TY + headerH - 6.5), { align: "center" });
+      doc.text(doc.splitTextToSize(full, TW - 20), CX, headerCurY + 7, { align: "center" });
     }
 
     // Línea dorada al final de la cabecera
     doc.setDrawColor(...GOLD);
     doc.setLineWidth(0.7);
-    doc.line(TX + 30, TY + headerH - 3.5, TX + TW - 30, TY + headerH - 3.5);
+    doc.line(TX + 30, TY + headerH - 3, TX + TW - 30, TY + headerH - 3);
 
     // ── Nombre del asistente (serif, verde, protagonista) ─────────
-    let curY = TY + headerH + 16;
+    let curY = TY + headerH + 11;
     const fullName = `${reg.nombres} ${reg.apellidos}`.toUpperCase();
     doc.setFont("times", "bold");
     doc.setTextColor(...GREEN);
