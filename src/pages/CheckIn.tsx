@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Camera, CheckCircle2, XCircle, Loader2, RotateCcw, Ticket, Filter, Search, AlertTriangle, ShieldCheck } from "lucide-react";
 import { EventItem } from "@/integrations/supabase/event-types";
+import { sendCheckInWhatsAppNotification } from "@/lib/whatsapp-bot";
 
 type ScanState = "scanning" | "found" | "confirming" | "success" | "error" | "already" | "wrong_event";
 
@@ -18,6 +19,7 @@ interface RegistrationData {
   apellidos: string;
   asistio: boolean;
   numero_documento: string;
+  telefono?: string;
   event_id?: string;
   events?: {
     nombre: string;
@@ -100,7 +102,7 @@ const CheckIn = () => {
 
     const { data, error } = await supabase
       .from("registrations")
-      .select("id, event_id, nombres, apellidos, asistio, numero_documento")
+      .select("id, event_id, nombres, apellidos, asistio, numero_documento, telefono")
       .eq("qr_code", qrCode)
       .maybeSingle();
 
@@ -124,7 +126,7 @@ const CheckIn = () => {
 
     const { data, error } = await supabase
       .from("registrations")
-      .select("id, event_id, nombres, apellidos, asistio, numero_documento")
+      .select("id, event_id, nombres, apellidos, asistio, numero_documento, telefono")
       .eq("numero_documento", manualDoc.trim())
       .maybeSingle();
 
@@ -148,6 +150,17 @@ const CheckIn = () => {
       });
 
       if (res.error) throw res.error;
+
+      // Disparar envío automático de WhatsApp con PDF adjunto si está activo para el evento
+      if (registration.telefono && registration.event_id) {
+        sendCheckInWhatsAppNotification({
+          phone: registration.telefono,
+          nombres: registration.nombres,
+          apellidos: registration.apellidos,
+          eventId: registration.event_id,
+          eventName: registration.events?.nombre || "Evento",
+        }).catch((e) => console.warn("WhatsApp checkin notification error:", e));
+      }
 
       setState("success");
     } catch (err: any) {
