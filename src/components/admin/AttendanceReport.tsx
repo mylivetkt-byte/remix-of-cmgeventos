@@ -102,7 +102,43 @@ export function AttendanceReport() {
 
   return (
     <div className="space-y-6 animate-fade-in pb-8 text-emerald-950 font-sans">
-      {/* Filtro de Evento */}
+      {/* Sub-Módulos de Navegación por Evento */}
+      <div className="glass-card p-3 rounded-2xl border border-white/80 space-y-2 shadow-xs">
+        <p className="text-xs font-extrabold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-amber-600" /> Reportes de Asistencia por Evento:
+        </p>
+        <div className="flex overflow-x-auto pb-1 gap-2 scrollbar-none">
+          <button
+            onClick={() => setFilterEvent("all")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black whitespace-nowrap transition-all shadow-xs ${
+              filterEvent === "all"
+                ? "bg-emerald-800 text-white shadow-md ring-2 ring-emerald-600"
+                : "bg-white text-emerald-900 hover:bg-emerald-50 border border-emerald-200"
+            }`}
+          >
+            📊 Todos los Eventos
+          </button>
+
+          {events?.map((evt) => {
+            const isActive = filterEvent === evt.id;
+            return (
+              <button
+                key={evt.id}
+                onClick={() => setFilterEvent(evt.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-black whitespace-nowrap transition-all shadow-xs ${
+                  isActive
+                    ? "bg-teal-700 text-white shadow-md ring-2 ring-teal-500"
+                    : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
+                }`}
+              >
+                <span>{evt.nombre}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Filtro de Evento Select */}
       <div className="glass-card p-4 rounded-2xl border border-white/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-amber-600" />

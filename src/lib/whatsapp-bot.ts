@@ -152,7 +152,7 @@ export async function processWhatsAppMessageIntent(
       .limit(1);
 
     if (eventsData && eventsData[0]) {
-      const evt = eventsData[0];
+      const evt = eventsData[0] as any;
       eventInfo.nombre = evt.nombre || eventInfo.nombre;
       if (evt.fecha_evento) {
         eventInfo.fecha = new Date(evt.fecha_evento).toLocaleString("es-CO", {

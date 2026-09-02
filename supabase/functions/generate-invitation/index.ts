@@ -24,6 +24,19 @@ function hexToRgb(hex: string | null | undefined, defaultRgb: [number, number, n
   return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
 }
 
+// Icono de iglesia vectorial (dorado) — techo triangular, cuerpo y cruz
+function drawChurchIcon(doc: any, cx: number, cy: number, s: number, rgb: [number, number, number]) {
+  doc.setFillColor(...rgb);
+  // Cuerpo
+  doc.rect(cx - s * 0.28, cy - s * 0.05, s * 0.56, s * 0.45, "F");
+  // Techo (triángulo)
+  doc.triangle(cx - s * 0.34, cy - s * 0.05, cx, cy - s * 0.38, cx + s * 0.34, cy - s * 0.05, "F");
+  // Cruz en el campanario
+  doc.rect(cx - s * 0.035, cy - s * 0.62, s * 0.07, s * 0.24, "F");
+  doc.rect(cx - s * 0.10, cy - s * 0.55, s * 0.20, s * 0.06, "F");
+  // Puerta (hueco con color de fondo se simula con semicírculo blanco del header → usar color primario)
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -61,8 +74,8 @@ Deno.serve(async (req) => {
     let eventDate    = "";
     let eventTime    = "";
     let eventImage: string | null = null;
-    let primaryHex   = "#083E30";
-    let secondaryHex = "#CFAA37";
+    let primaryHex   = "#0B4A34";
+    let secondaryHex = "#D4AF37";
     let emailMessage = "Te invitamos cordialmente a este evento especial.";
 
     if (reg.event_id) {
@@ -70,14 +83,14 @@ Deno.serve(async (req) => {
       if (evt) {
         eventName    = evt.nombre || "Evento CMG";
         eventPlace   = evt.lugar_evento || "";
-        eventImage   = evt.logo_url || evt.banner_url || null;
+        eventImage   = evt.banner_url || evt.logo_url || null;
         primaryHex   = evt.color_primario || primaryHex;
         secondaryHex = evt.color_secundario || secondaryHex;
         emailMessage = evt.mensaje_correo || emailMessage;
         if (evt.fecha_evento) {
           const d = new Date(evt.fecha_evento);
           eventDate = d.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-          eventTime = d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+          eventTime = d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", hour12: true });
         }
       }
     }
@@ -92,293 +105,245 @@ Deno.serve(async (req) => {
         if (config.fecha_evento) {
           const d = new Date(config.fecha_evento);
           eventDate = d.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-          eventTime = d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+          eventTime = d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", hour12: true });
         }
       }
     }
 
     // ── Colores Dinámicos ───────────────────────────────────────────
-    const COLOR_PRIMARY   = hexToRgb(primaryHex, [8, 62, 48]);
-    const COLOR_SECONDARY = hexToRgb(secondaryHex, [207, 170, 55]);
-
-    const WHITE       = [255, 255, 255] as [number, number, number];
-    const CREAM_BG    = [250, 250, 246] as [number, number, number];
-    const GRAY_LIGHT  = [243, 245, 244] as [number, number, number];
-    const GRAY_MID    = [218, 224, 221] as [number, number, number];
-    const GRAY_TEXT   = [100, 112, 108] as [number, number, number];
+    const GREEN  = hexToRgb(primaryHex, [11, 74, 52]);
+    const GOLD   = hexToRgb(secondaryHex, [212, 175, 55]);
+    const WHITE  = [255, 255, 255] as [number, number, number];
+    const INK    = [38, 38, 38] as [number, number, number];
+    const GRAY   = [110, 110, 110] as [number, number, number];
+    const LINE   = [210, 210, 210] as [number, number, number];
 
     // ── QR Code ──────────────────────────────────────────────────────
     const qrDataUrl = await QRCode.toDataURL(registrationId, {
       width: 500,
       margin: 1,
-      color: { dark: primaryHex, light: "#ffffff" },
+      color: { dark: "#1a1a1a", light: "#ffffff" },
     });
 
-    // ── PDF A4 Vertical (VIP Luxury Design) ─────────────────────────
-    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const W = doc.internal.pageSize.getWidth();   // 210
-    const H = doc.internal.pageSize.getHeight();  // 297
-    const CX = W / 2;
-
-    // ── Fondo Crema Alabastro ───────────────────────────────────────
-    doc.setFillColor(...CREAM_BG);
-    doc.rect(0, 0, W, H, "F");
-
-    // Patrón de marcas de agua diagonales muy tenues
-    doc.setDrawColor(238, 238, 233);
-    doc.setLineWidth(0.15);
-    for (let i = -H; i < W + H; i += 10) {
-      doc.line(i, 0, i + H, H);
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    // CABECERA VIP DEL EVENTO (Color Primario Dinámico)
-    // ══════════════════════════════════════════════════════════════
-    const headerH = 92;
-    doc.setFillColor(...COLOR_PRIMARY);
-    rr(doc, 10, 10, W - 20, headerH, 10, "F");
-
-    // Adorno geométrico de esquina
-    doc.setFillColor(255, 255, 255);
-    doc.setGState(new (doc as any).GState({ opacity: 0.05 }));
-    doc.circle(22, 22, 20, "F");
-    doc.circle(W - 22, 22, 20, "F");
-    doc.circle(22, 10 + headerH - 12, 15, "F");
-    doc.circle(W - 22, 10 + headerH - 12, 15, "F");
-    doc.setGState(new (doc as any).GState({ opacity: 1 }));
-
-    // Badge Superior: INVITACIÓN OFICIAL VIP
-    const badgeW = 74, badgeH = 7.5;
-    const badgeY = 18;
-    doc.setFillColor(...COLOR_SECONDARY);
-    rr(doc, CX - badgeW / 2, badgeY, badgeW, badgeH, 3.5, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(6.5);
-    doc.setTextColor(...COLOR_PRIMARY);
-    doc.text("✦   ENTRADA OFICIAL • PASE VIP   ✦", CX, badgeY + 5.2, { align: "center" });
-
-    // Imagen del Evento (Logo / Banner)
-    let currentY = badgeY + badgeH + 5;
+    // ── Cargar imagen del evento (si existe) ────────────────────────
+    let eventImgBytes: Uint8Array | null = null;
+    let eventImgFmt = "PNG";
     if (eventImage) {
       try {
         const imgRes = await fetch(eventImage);
         if (imgRes.ok) {
-          const imgBuffer = await imgRes.arrayBuffer();
-          const imgBytes  = new Uint8Array(imgBuffer);
-          const ct  = imgRes.headers.get("content-type") || "image/png";
-          const fmt = ct.includes("png") ? "PNG" : "JPEG";
-          const maxW = 54, maxH = 26;
-          doc.addImage(imgBytes, fmt, CX - maxW / 2, currentY, maxW, maxH);
-          currentY += maxH + 4;
+          eventImgBytes = new Uint8Array(await imgRes.arrayBuffer());
+          const ct = imgRes.headers.get("content-type") || "image/png";
+          eventImgFmt = ct.includes("png") ? "PNG" : "JPEG";
         }
       } catch (_) {}
     }
 
-    // Nombre del Evento (Título Principal)
+    // ══════════════════════════════════════════════════════════════
+    // TICKET VERTICAL ESTILO PASE VIP (A5)
+    // ══════════════════════════════════════════════════════════════
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a5" });
+    const W = doc.internal.pageSize.getWidth();   // 148
+    const H = doc.internal.pageSize.getHeight();  // 210
+    const CX = W / 2;
+
+    // Fondo gris muy claro de la página
+    doc.setFillColor(244, 245, 244);
+    doc.rect(0, 0, W, H, "F");
+
+    // ── Tarjeta del ticket ─────────────────────────────────────────
+    const TX = 14, TY = 12, TW = W - 28, TH = H - 24; // 120 x 186
+    doc.setFillColor(...WHITE);
+    rr(doc, TX, TY, TW, TH, 8, "F");
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.5);
+    rr(doc, TX, TY, TW, TH, 8, "S");
+
+    // ── Calcular altura dinámica de la cabecera ──────────────────
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(19);
-    doc.setTextColor(...WHITE);
-    const evLines = doc.splitTextToSize(eventName.toUpperCase(), W - 44);
-    doc.text(evLines, CX, currentY + 6, { align: "center" });
+    doc.setFontSize(14);
+    const titleLines = doc.splitTextToSize(eventName.toUpperCase(), TW - 16);
+    const titleBlockH = (titleLines.length - 1) * 5.5 + 5;
+    const imgBlockH = eventImgBytes ? 24 : 16;
+    const dateBlockH = eventDate ? 9 : 2;
+    const headerH = 24 + titleBlockH + imgBlockH + dateBlockH + 5;
 
-    // Línea de separación secundaria
-    const lineY = currentY + 6 + evLines.length * 8.5 + 2;
-    doc.setDrawColor(...COLOR_SECONDARY);
-    doc.setLineWidth(0.9);
-    doc.line(CX - 32, lineY, CX + 32, lineY);
+    // ── Cabecera verde (esquinas superiores redondeadas) ─────────
+    doc.setFillColor(...GREEN);
+    rr(doc, TX, TY, TW, headerH, 8, "F");
+    doc.rect(TX, TY + headerH / 2, TW, headerH / 2, "F"); // cuadrar esquinas inferiores
 
-    // Subtítulo Institucional
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(255, 255, 255);
-    doc.setGState(new (doc as any).GState({ opacity: 0.85 }));
-    doc.text("Centro Mundial de Gloria  •  Doxa Eventos", CX, lineY + 6, { align: "center" });
+    // Brillo decorativo sutil
+    doc.setFillColor(255, 255, 255);
+    doc.setGState(new (doc as any).GState({ opacity: 0.06 }));
+    doc.circle(TX + 18, TY + 8, 16, "F");
+    doc.circle(TX + TW - 18, TY + headerH - 6, 20, "F");
     doc.setGState(new (doc as any).GState({ opacity: 1 }));
 
-    // ══════════════════════════════════════════════════════════════
-    // TARJETA DE ASISTENTE (Cuerpo Principal Blanco Elegante)
-    // ══════════════════════════════════════════════════════════════
-    const cardY = 10 + headerH + 6;
-    const cardH = H - cardY - 22;
-    doc.setFillColor(...WHITE);
-    rr(doc, 10, cardY, W - 20, cardH, 8, "F");
-    doc.setDrawColor(...GRAY_MID);
-    doc.setLineWidth(0.35);
-    rr(doc, 10, cardY, W - 20, cardH, 8, "S");
-
-    // Etiqueta de Invitado
-    let curY = cardY + 15;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(...GRAY_TEXT);
-    doc.text("SE INVITA CORDIALMENTE A:", CX, curY, { align: "center" });
-
-    // Nombre Completo del Asistente
-    curY += 8;
-    const fullName = `${reg.nombres} ${reg.apellidos}`;
+    // Badge dorado más grande: ENTRADA OFICIAL • PASE VIP
+    const badgeW = 74, badgeH = 9;
+    doc.setFillColor(...GOLD);
+    rr(doc, CX - badgeW / 2, TY + 6, badgeW, badgeH, 4.5, "F");
     doc.setFont("helvetica", "bold");
-    let fontSize = 26;
+    doc.setFontSize(9);
+    doc.setTextColor(...GREEN);
+    doc.text("ENTRADA OFICIAL  •  PASE VIP", CX, TY + 12.3, { align: "center" });
+
+    // Nombre del evento en dorado (más arriba, centrado, ancho completo)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(...GOLD);
+    const titleY = TY + 24;
+    doc.text(titleLines, CX, titleY, { align: "center" });
+    let headerCurY = titleY + titleBlockH;
+
+    // Imagen del evento centrada debajo del título, en marco dorado
+    if (eventImgBytes) {
+      const imgSize = 24;
+      const imgX = CX - imgSize / 2;
+      const imgY = headerCurY;
+      doc.setFillColor(...GOLD);
+      rr(doc, imgX - 1.5, imgY - 1.5, imgSize + 3, imgSize + 3, 4, "F");
+      doc.setFillColor(...WHITE);
+      rr(doc, imgX - 0.5, imgY - 0.5, imgSize + 1, imgSize + 1, 3.5, "F");
+      doc.addImage(eventImgBytes, eventImgFmt, imgX, imgY, imgSize, imgSize);
+      headerCurY += imgSize + 1;
+    } else {
+      drawChurchIcon(doc, CX, headerCurY + 8, 16, GOLD);
+      headerCurY += 16;
+    }
+
+    // Fecha del evento en la cabecera (blanco)
+    if (eventDate) {
+      const dateStr = eventDate.charAt(0).toUpperCase() + eventDate.slice(1);
+      const full = eventTime ? `${dateStr} • ${eventTime}` : dateStr;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(...WHITE);
+      doc.text(doc.splitTextToSize(full, TW - 20), CX, headerCurY + 7, { align: "center" });
+    }
+
+    // Línea dorada al final de la cabecera
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.7);
+    doc.line(TX + 30, TY + headerH - 3, TX + TW - 30, TY + headerH - 3);
+
+    // ── Nombre del asistente (serif, verde, protagonista) ─────────
+    let curY = TY + headerH + 11;
+    const fullName = `${reg.nombres} ${reg.apellidos}`.toUpperCase();
+    doc.setFont("times", "bold");
+    doc.setTextColor(...GREEN);
+    let fontSize = 24;
     doc.setFontSize(fontSize);
-    doc.setTextColor(...COLOR_PRIMARY);
-    let nameLines = doc.splitTextToSize(fullName, W - 44);
-    while (nameLines.length > 2 && fontSize > 16) {
+    let nameLines = doc.splitTextToSize(fullName, TW - 18);
+    while (nameLines.length > 2 && fontSize > 14) {
       fontSize -= 2;
       doc.setFontSize(fontSize);
-      nameLines = doc.splitTextToSize(fullName, W - 44);
+      nameLines = doc.splitTextToSize(fullName, TW - 18);
     }
     doc.text(nameLines, CX, curY, { align: "center" });
-    curY += nameLines.length * (fontSize * 0.38) + 6;
+    curY += nameLines.length * (fontSize * 0.4) + 5;
 
-    // Adorno central dorado bajo el nombre
-    doc.setDrawColor(...COLOR_SECONDARY);
-    doc.setLineWidth(1);
-    doc.line(CX - 38, curY, CX + 38, curY);
-    doc.setFillColor(...COLOR_SECONDARY);
-    doc.circle(CX, curY, 1.6, "F");
-    curY += 7;
-
-    // Badge Estado de Pago
-    const payState = reg.estado_pago || "Pendiente";
-    let payText = "🔴 PAGO PENDIENTE";
-    let payBg = [254, 242, 242] as [number, number, number];
-    let payFg = [220, 38, 38] as [number, number, number];
-
-    if (payState === "Pagado Completo") {
-      payText = "🟢 PAGO COMPLETO (100%)";
-      payBg = [236, 253, 245];
-      payFg = [5, 150, 105];
-    } else if (payState === "Abonado") {
-      const pend = Number(reg.monto_pendiente || 0);
-      payText = `🟡 ABONO PARCIAL ${pend > 0 ? "· SALDO: $" + pend.toLocaleString("es-CO") : ""}`;
-      payBg = [254, 243, 199];
-      payFg = [217, 119, 6];
-    } else if (payState === "Becado") {
-      payText = "🎓 ENTRADA BECADA / EXENTA";
-      payBg = [243, 232, 255];
-      payFg = [147, 51, 234];
+    // ── Lugar del evento (la fecha ya va en la cabecera) ─────────
+    if (eventPlace) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(...INK);
+      const pLines = doc.splitTextToSize(eventPlace, TW - 16);
+      doc.text(pLines, CX, curY, { align: "center" });
+      curY += pLines.length * 4.4 + 2;
     }
 
-    const payW = 68, payH = 6;
+    // ── Estado de pago (badge pequeño) ────────────────────────────
+    const payState = reg.estado_pago || "Pendiente";
+    let payText: string | null = null;
+    let payBg: [number, number, number] = [254, 242, 242];
+    let payFg: [number, number, number] = [220, 38, 38];
+    if (payState === "Pagado Completo") {
+      payText = "PAGO COMPLETO"; payBg = [236, 253, 245]; payFg = [5, 150, 105];
+    } else if (payState === "Abonado") {
+      payText = "ABONO PARCIAL"; payBg = [254, 243, 199]; payFg = [180, 100, 6];
+    } else if (payState === "Becado") {
+      payText = "ENTRADA BECADA"; payBg = [243, 232, 255]; payFg = [147, 51, 234];
+    } else {
+      payText = "PAGO PENDIENTE";
+    }
+    curY += 2;
     doc.setFillColor(...payBg);
-    rr(doc, CX - payW / 2, curY, payW, payH, 3, "F");
+    rr(doc, CX - 24, curY, 48, 6, 3, "F");
     doc.setFont("helvetica", "bold");
     doc.setFontSize(6.5);
     doc.setTextColor(...payFg);
     doc.text(payText, CX, curY + 4.2, { align: "center" });
-    curY += payH + 5;
+    curY += 10;
 
-    // ── BLOQUE FECHA & LUGAR ──────────────────────────────────────
-    if (eventDate || eventPlace) {
-      const infoH = (eventDate ? 13 : 0) + (eventPlace ? 13 : 0) + 10;
-      doc.setFillColor(...GRAY_LIGHT);
-      rr(doc, 18, curY, W - 36, infoH, 6, "F");
-      
-      // Barra lateral de acento de color primario
-      doc.setFillColor(...COLOR_PRIMARY);
-      doc.rect(18, curY, 4, infoH, "F");
-
-      let iy = curY + 10;
-      if (eventDate) {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
-        doc.setTextColor(...COLOR_PRIMARY);
-        doc.text("📅  FECHA:", 27, iy);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(40, 40, 40);
-        const formattedDate = eventDate.charAt(0).toUpperCase() + eventDate.slice(1);
-        doc.text(`${formattedDate}${eventTime ? "  ·  " + eventTime : ""}`, 56, iy);
-        iy += 13;
-      }
-      if (eventPlace) {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
-        doc.setTextColor(...COLOR_PRIMARY);
-        doc.text("📍  LUGAR:", 27, iy);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(40, 40, 40);
-        doc.text(eventPlace, 56, iy);
-      }
-      curY += infoH + 8;
-    }
-
-    // ── PERFORACIÓN DE TICKET / STUB ─────────────────────────────
-    doc.setDrawColor(...GRAY_MID);
+    // ── Línea perforada con muescas laterales ─────────────────────
+    const stubY = curY + 4;
+    doc.setDrawColor(...LINE);
     doc.setLineWidth(0.4);
-    doc.setLineDashPattern([3, 3], 0);
-    doc.line(24, curY + 4, W - 24, curY + 4);
+    doc.setLineDashPattern([2.5, 2.5], 0);
+    doc.line(TX + 8, stubY, TX + TW - 8, stubY);
     doc.setLineDashPattern([], 0);
+    // Muescas del ticket (círculos del color del fondo de página)
+    doc.setFillColor(244, 245, 244);
+    doc.circle(TX, stubY, 4.5, "F");
+    doc.circle(TX + TW, stubY, 4.5, "F");
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.5);
+    doc.circle(TX, stubY, 4.5, "S");
+    doc.circle(TX + TW, stubY, 4.5, "S");
 
-    // Muescas de ticket en los bordes
-    doc.setFillColor(...CREAM_BG);
-    doc.circle(10, curY + 4, 5, "F");
-    doc.circle(W - 10, curY + 4, 5, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(6.5);
-    doc.setTextColor(...GRAY_TEXT);
-    doc.text("CÓDIGO DE CONTROL Y ACCESO AL EVENTO", CX, curY + 2.8, { align: "center" });
-    curY += 12;
-
-    // ── CÓDIGO QR Y VALIDACIÓN ──────────────────────────────────
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(...COLOR_PRIMARY);
-    doc.text("Presenta este código QR desde tu celular al ingresar", CX, curY + 4, { align: "center" });
-
-    const qrSize = 52;
+    // ── QR centrado con marco dorado + Badge ID debajo ───────────
+    const footerH = 14;
+    const footerY = TY + TH - footerH;
+    const badgeBoxW = 46, badgeBoxH = 12;
+    const stubSpaceTop = stubY + 5;
+    const stubSpaceBottom = footerY - 3;
+    const avail = stubSpaceBottom - stubSpaceTop;
+    // QR adaptativo: garantiza que quepan QR + badge ID + texto guía
+    let qrSize = Math.min(40, avail - 3 - badgeBoxH - 5);
+    qrSize = Math.max(28, qrSize);
+    const groupH = qrSize + 3 + badgeBoxH + 5;
     const qrX = CX - qrSize / 2;
-    const qrY = curY + 8;
+    const qrY = stubSpaceTop + Math.max(0, (avail - groupH) / 2);
 
-    // Sombra del QR
-    doc.setFillColor(210, 215, 212);
-    rr(doc, qrX + 2, qrY + 2, qrSize, qrSize, 5, "F");
-    // Marco exterior con color primario
-    doc.setFillColor(...COLOR_PRIMARY);
-    rr(doc, qrX - 5, qrY - 5, qrSize + 10, qrSize + 10, 6, "F");
-    // Borde interior secundario (dorado)
-    doc.setDrawColor(...COLOR_SECONDARY);
-    doc.setLineWidth(0.8);
-    rr(doc, qrX - 3, qrY - 3, qrSize + 6, qrSize + 6, 5, "S");
-    // Fondo blanco para legibilidad óptima del QR
+    // Marco dorado del QR
+    doc.setFillColor(...GOLD);
+    rr(doc, qrX - 2.5, qrY - 2.5, qrSize + 5, qrSize + 5, 4, "F");
     doc.setFillColor(...WHITE);
-    doc.rect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, "F");
+    rr(doc, qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, 3, "F");
     doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
-    curY = qrY + qrSize + 7;
 
-    // Badge del ID de Registro
-    doc.setFillColor(...COLOR_PRIMARY);
-    rr(doc, CX - 30, curY, 60, 8.5, 4, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.setTextColor(...COLOR_SECONDARY);
-    doc.text(`ID: #${registrationId.slice(0, 8).toUpperCase()}`, CX, curY + 6, { align: "center" });
-    curY += 13;
-
-    // Mensaje opcional del evento
-    if (emailMessage && curY + 14 < cardY + cardH - 6) {
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(7.5);
-      doc.setTextColor(...GRAY_TEXT);
-      const msgLines = doc.splitTextToSize(`"${emailMessage}"`, W - 52);
-      doc.text(msgLines.slice(0, 2), CX, curY + 4, { align: "center" });
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    // PIE DE PÁGINA INSTITUCIONAL
-    // ══════════════════════════════════════════════════════════════
-    const footerY = H - 18;
-    doc.setFillColor(...COLOR_PRIMARY);
-    rr(doc, 10, footerY - 4, W - 20, 14, 6, "F");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    doc.setTextColor(...COLOR_SECONDARY);
-    doc.text("Centro Mundial de Gloria  •  Doxa Eventos", CX, footerY + 3, { align: "center" });
+    // Badge ID debajo del QR
+    const badgeX = CX - badgeBoxW / 2;
+    const badgeY = qrY + qrSize + 3;
+    doc.setDrawColor(...GOLD);
+    doc.setLineWidth(0.6);
+    doc.setFillColor(...WHITE);
+    rr(doc, badgeX, badgeY, badgeBoxW, badgeBoxH, 3, "FD");
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6);
-    doc.setTextColor(255, 255, 255);
-    doc.setGState(new (doc as any).GState({ opacity: 0.7 }));
-    doc.text("Documento personal e intransferible — Validez oficial para 1 persona", CX, footerY + 8, { align: "center" });
-    doc.setGState(new (doc as any).GState({ opacity: 1 }));
+    doc.setTextColor(...GRAY);
+    doc.text("Ticket badge ID:", CX, badgeY + 4.8, { align: "center" });
+    doc.setFont("courier", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...INK);
+    doc.text(`#${registrationId.slice(0, 8).toUpperCase()}`, CX, badgeY + 10, { align: "center" });
+
+    // Texto guía bajo el badge
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(...GRAY);
+    doc.text("Presenta este código QR al ingresar al evento", CX, badgeY + badgeBoxH + 4.5, { align: "center" });
+
+    // ── Pie verde (esquinas inferiores redondeadas) ───────────────
+    doc.setFillColor(...GREEN);
+    rr(doc, TX, footerY, TW, footerH, 8, "F");
+    doc.rect(TX, footerY, TW, footerH / 2, "F"); // cuadrar esquinas superiores
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(...WHITE);
+    doc.text("Centro Mundial de Gloria  •  Doxa Eventos", CX, footerY + footerH / 2 + 2.5, { align: "center" });
 
     // ── Guardar y Subir PDF ──────────────────────────────────────
     const pdfBytes = new Uint8Array(doc.output("arraybuffer"));

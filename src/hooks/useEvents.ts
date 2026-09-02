@@ -78,7 +78,7 @@ export function useEventBySlug(slug?: string) {
           asunto_correo: cfg.asunto_correo,
           mensaje_correo: cfg.mensaje_correo,
           mensaje_whatsapp: cfg.mensaje_whatsapp,
-          correo_remitente: cfg.correo_remitente,
+          correo_remitente: (cfg as any).correo_remitente,
           barrio_como_combo: cfg.barrio_como_combo,
           invitado_obligatorio: cfg.invitado_obligatorio,
         } as EventItem;

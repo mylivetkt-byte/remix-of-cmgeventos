@@ -203,7 +203,7 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
           cdp_id: form.cdp_id,
         },
         { onConflict: "tipo_documento_id,numero_documento" }
-      ).catch(() => {});
+      );
 
       toast.success("¡Inscripción exitosa al Retiro!");
 

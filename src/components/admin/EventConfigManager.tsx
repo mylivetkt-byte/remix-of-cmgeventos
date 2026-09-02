@@ -29,7 +29,7 @@ export function EventConfigManager() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const currentForm = form || config;
+  const currentForm: Record<string, any> | null = form || (config as any);
 
   const mutation = useMutation({
     mutationFn: async (values: Record<string, any>) => {
