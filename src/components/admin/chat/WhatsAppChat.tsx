@@ -244,11 +244,32 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                         if (replyText) {
                           const botMsg: Message = {
                             id: `bot-reply-${Date.now()}`,
-                            fromMe: false,
+                            fromMe: true,
                             body: replyText,
                             timestamp: Math.floor(Date.now() / 1000),
                           };
                           setMessages((curr) => [...curr, botMsg]);
+
+                          // 🚀 ENVIAR RESPUESTA DEL BOT POR WHATSAPP REAL
+                          if (waConfig.url) {
+                            const cleanUrl = waConfig.url.replace(/\/$/, "");
+                            fetch(`${cleanUrl}/send`, {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${waConfig.token}`,
+                              },
+                              body: JSON.stringify({
+                                phone: activeChat.id,
+                                message: replyText,
+                              }),
+                            }).then((r) => {
+                              if (r.ok) {
+                                toast.success("🤖 Respuesta del Chatbot IA enviada a WhatsApp");
+                              }
+                            });
+                          }
+
                           if (rsvpStatus) {
                             toast.success(`RSVP auto-registrado: ${rsvpStatus.toUpperCase()}`);
                           }
