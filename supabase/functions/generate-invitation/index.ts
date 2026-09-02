@@ -159,8 +159,16 @@ Deno.serve(async (req) => {
     doc.setLineWidth(0.5);
     rr(doc, TX, TY, TW, TH, 8, "S");
 
+    // ── Calcular altura dinámica de la cabecera ──────────────────
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    const titleLines = doc.splitTextToSize(eventName.toUpperCase(), TW - 16);
+    const titleBlockH = (titleLines.length - 1) * 5.5 + 5;
+    const imgBlockH = eventImgBytes ? 24 : 16;
+    const dateBlockH = eventDate ? 9 : 2;
+    const headerH = 24 + titleBlockH + imgBlockH + dateBlockH + 5;
+
     // ── Cabecera verde (esquinas superiores redondeadas) ─────────
-    const headerH = eventImgBytes ? 78 : 62;
     doc.setFillColor(...GREEN);
     rr(doc, TX, TY, TW, headerH, 8, "F");
     doc.rect(TX, TY + headerH / 2, TW, headerH / 2, "F"); // cuadrar esquinas inferiores
