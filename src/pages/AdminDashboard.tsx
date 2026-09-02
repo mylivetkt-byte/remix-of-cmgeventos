@@ -196,11 +196,24 @@ const AdminDashboard = () => {
     refresh();
   };
 
-  // Eliminar todos
+  // Eliminar registros (delimitado por evento si hay un evento seleccionado)
   const deleteAll = async () => {
-    const { error } = await supabase.from("registrations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    let q = supabase.from("registrations").delete();
+    if (filterEvent !== "all") {
+      q = q.eq("event_id", filterEvent);
+    } else {
+      q = q.neq("id", "00000000-0000-0000-0000-000000000000");
+    }
+
+    const { error } = await q;
     if (error) { toast.error("Error al eliminar: " + error.message); return; }
-    toast.success("Todos los registros eliminados");
+
+    const activeEvtName = eventsList.data?.find((e) => e.id === filterEvent)?.nombre;
+    toast.success(
+      filterEvent !== "all"
+        ? `Registros del evento "${activeEvtName}" eliminados con éxito`
+        : "Todos los registros de todos los eventos eliminados"
+    );
     refresh();
   };
 
@@ -634,6 +647,49 @@ const AdminDashboard = () => {
 
         {tab === "registros" && (
           <div className="space-y-4 animate-fade-in pb-8">
+            {/* Sub-Módulos de Eventos Independientes */}
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-extrabold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-teal-600 animate-pulse" /> Sub-Módulos de Eventos Independientes:
+                </p>
+                {filterEvent !== "all" && (
+                  <Badge className="bg-teal-100 text-teal-900 border-teal-300 font-extrabold text-[11px] px-2.5 py-0.5">
+                    Modo Evento Aislado
+                  </Badge>
+                )}
+              </div>
+              <div className="flex overflow-x-auto pb-1 gap-2 scrollbar-none">
+                <button
+                  onClick={() => setFilterEvent("all")}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all shadow-2xs ${
+                    filterEvent === "all"
+                      ? "bg-slate-900 text-white shadow-md ring-2 ring-slate-700"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+                  }`}
+                >
+                  📊 Todos los Eventos
+                </button>
+
+                {eventsList.data?.map((evt) => {
+                  const isActive = filterEvent === evt.id;
+                  return (
+                    <button
+                      key={evt.id}
+                      onClick={() => setFilterEvent(evt.id)}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all shadow-2xs ${
+                        isActive
+                          ? "bg-teal-700 text-white shadow-md ring-2 ring-teal-500"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+                      }`}
+                    >
+                      <span>{evt.nombre}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Filtros */}
             <div className="flex flex-wrap gap-2">
               <div className="relative flex-1 min-w-[200px]">
@@ -680,9 +736,11 @@ const AdminDashboard = () => {
               </Select>
             </div>
 
-            {/* Stats, exports y eliminar todos */}
+            {/* Stats, exports y eliminar delimitado */}
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm text-muted-foreground">{data.length} registro(s)</span>
+              <span className="text-sm font-bold text-slate-700">
+                {data.length} registro(s) {filterEvent !== "all" ? `en ${eventsList.data?.find((e) => e.id === filterEvent)?.nombre}` : "totales"}
+              </span>
               <div className="flex gap-2 flex-wrap">
                 <Button variant="outline" size="sm" onClick={() => downloadCSV(buildCSV(HEADERS, data.map(getRow)), "registros.csv")}>
                   <Download className="w-4 h-4 mr-1" /> Registros (.csv)
@@ -709,25 +767,37 @@ const AdminDashboard = () => {
                   </Button>
                 )}
 
-                {/* Eliminar todos */}
+                {/* Eliminar delimitado por evento */}
                 {data.length > 0 && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm">
-                        <Trash className="w-4 h-4 mr-1" /> Eliminar todos
+                      <Button variant="destructive" size="sm" className="font-bold">
+                        <Trash className="w-4 h-4 mr-1" />
+                        {filterEvent !== "all"
+                          ? `Eliminar registros de ${eventsList.data?.find((e) => e.id === filterEvent)?.nombre}`
+                          : "Eliminar todos los registros de todos los eventos"
+                        }
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar todos los registros?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta acción eliminará <strong>{data.length} registros</strong> permanentemente. No se puede deshacer.
+                        <AlertDialogTitle className="text-xl font-bold text-red-600">
+                          {filterEvent !== "all"
+                            ? `¿Eliminar inscritos de "${eventsList.data?.find((e) => e.id === filterEvent)?.nombre}"?`
+                            : "⚠️ ¿ELIMINAR REGISTROS DE TODOS LOS EVENTOS?"
+                          }
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-sm font-medium text-slate-700">
+                          {filterEvent !== "all"
+                            ? `Esta acción eliminará únicamente los ${data.length} participantes del evento "${eventsList.data?.find((e) => e.id === filterEvent)?.nombre}". Los demás eventos NO se verán afectados. No se puede deshacer.`
+                            : `⚠️ ATENCIÓN: Se eliminarán ${data.length} registros pertenecientes a TODOS los eventos del sistema. Esta acción no se puede deshacer.`
+                          }
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={deleteAll} className="bg-destructive text-white hover:bg-destructive/90">
-                          Sí, eliminar todos
+                        <AlertDialogCancel className="font-bold">Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={deleteAll} className="bg-destructive text-white font-extrabold hover:bg-destructive/90">
+                          Sí, eliminar {filterEvent !== "all" ? "estos registros" : "todos"}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
