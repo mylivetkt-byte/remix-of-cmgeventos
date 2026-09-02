@@ -221,16 +221,26 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
           });
 
           if (res.ok) {
-            const data = await res.json();
-            if (Array.isArray(data)) {
+            const raw = await res.json();
+            const data = Array.isArray(raw) ? raw : (raw.messages || []);
+            if (Array.isArray(data) && data.length > 0) {
+              const formatted: Message[] = data.map((m: any) => ({
+                id: String(m.id || Date.now()),
+                fromMe: Boolean(m.fromMe),
+                body: m.body || m.text || "",
+                timestamp: typeof m.timestamp === "number" ? m.timestamp : Math.floor(new Date(m.timestamp).getTime() / 1000),
+              }));
+
               setMessages((prevMsgs) => {
-                if (data.length > prevMsgs.length) {
-                  const lastIncoming = data[data.length - 1];
-                  if (lastIncoming && !lastIncoming.fromMe && prevMsgs.length > 0) {
-                    toast.info(`💬 Nuevo mensaje de ${activeChat.name || activeChat.id}: "${lastIncoming.body.slice(0, 35)}..."`);
+                const lastPrev = prevMsgs[prevMsgs.length - 1];
+                const lastNew = formatted[formatted.length - 1];
+
+                if (lastNew && (!lastPrev || lastNew.id !== lastPrev.id || lastNew.body !== lastPrev.body)) {
+                  if (!lastNew.fromMe && prevMsgs.length > 0) {
+                    toast.info(`💬 Nuevo mensaje de ${activeChat.name || activeChat.id}: "${lastNew.body.slice(0, 35)}..."`);
                     
                     if (aiBotActive) {
-                      processWhatsAppMessageIntent(lastIncoming.body, activeChat.id).then(({ replyText, rsvpStatus }) => {
+                      processWhatsAppMessageIntent(lastNew.body, activeChat.id).then(({ replyText, rsvpStatus }) => {
                         if (replyText) {
                           const botMsg: Message = {
                             id: `bot-reply-${Date.now()}`,
@@ -246,9 +256,8 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                       });
                     }
                   }
-                  return data;
                 }
-                return prevMsgs;
+                return formatted;
               });
             }
           }
