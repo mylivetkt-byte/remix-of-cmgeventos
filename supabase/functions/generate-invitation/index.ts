@@ -286,17 +286,16 @@ Deno.serve(async (req) => {
     doc.circle(TX, stubY, 4.5, "S");
     doc.circle(TX + TW, stubY, 4.5, "S");
 
-    // ── QR con marco dorado + Badge ID (centrados en el stub) ─────
+    // ── QR centrado con marco dorado + Badge ID debajo ───────────
     const footerH = 14;
     const footerY = TY + TH - footerH;
     const qrSize = 40;
-    const badgeBoxW = 34, badgeBoxH = 16;
-    const gap = 6;
-    const groupW = qrSize + gap + badgeBoxW;
-    const qrX = CX - groupW / 2;
+    const badgeBoxW = 46, badgeBoxH = 13;
     const stubSpaceTop = stubY + 6;
-    const stubSpaceBottom = footerY - 6;
-    const qrY = stubSpaceTop + Math.max(0, (stubSpaceBottom - stubSpaceTop - qrSize) / 2);
+    const stubSpaceBottom = footerY - 4;
+    const groupH = qrSize + 4 + badgeBoxH + 5; // QR + gap + badge + texto guía
+    const qrX = CX - qrSize / 2;
+    const qrY = stubSpaceTop + Math.max(0, (stubSpaceBottom - stubSpaceTop - groupH) / 2);
 
     // Marco dorado del QR
     doc.setFillColor(...GOLD);
@@ -305,9 +304,9 @@ Deno.serve(async (req) => {
     rr(doc, qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, 3, "F");
     doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
 
-    // Badge ID a la derecha del QR
-    const badgeX = qrX + qrSize + gap;
-    const badgeY = qrY + qrSize / 2 - badgeBoxH / 2;
+    // Badge ID debajo del QR
+    const badgeX = CX - badgeBoxW / 2;
+    const badgeY = qrY + qrSize + 4;
     doc.setDrawColor(...GOLD);
     doc.setLineWidth(0.6);
     doc.setFillColor(...WHITE);
@@ -315,17 +314,17 @@ Deno.serve(async (req) => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6);
     doc.setTextColor(...GRAY);
-    doc.text("Ticket badge ID:", badgeX + badgeBoxW / 2, badgeY + 5.5, { align: "center" });
+    doc.text("Ticket badge ID:", CX, badgeY + 4.8, { align: "center" });
     doc.setFont("courier", "bold");
     doc.setFontSize(9);
     doc.setTextColor(...INK);
-    doc.text(`#${registrationId.slice(0, 8).toUpperCase()}`, badgeX + badgeBoxW / 2, badgeY + 11.5, { align: "center" });
+    doc.text(`#${registrationId.slice(0, 8).toUpperCase()}`, CX, badgeY + 10, { align: "center" });
 
-    // Texto guía bajo el QR
+    // Texto guía bajo el badge
     doc.setFont("helvetica", "normal");
     doc.setFontSize(6.5);
     doc.setTextColor(...GRAY);
-    doc.text("Presenta este código QR al ingresar al evento", CX, qrY + qrSize + 6, { align: "center" });
+    doc.text("Presenta este código QR al ingresar al evento", CX, badgeY + badgeBoxH + 4.5, { align: "center" });
 
     // ── Pie verde (esquinas inferiores redondeadas) ───────────────
     doc.setFillColor(...GREEN);
