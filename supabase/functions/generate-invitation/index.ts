@@ -160,7 +160,7 @@ Deno.serve(async (req) => {
     rr(doc, TX, TY, TW, TH, 8, "S");
 
     // ── Cabecera verde (esquinas superiores redondeadas) ─────────
-    const headerH = 58;
+    const headerH = eventImgBytes ? 78 : 62;
     doc.setFillColor(...GREEN);
     rr(doc, TX, TY, TW, headerH, 8, "F");
     doc.rect(TX, TY + headerH / 2, TW, headerH / 2, "F"); // cuadrar esquinas inferiores
@@ -172,42 +172,54 @@ Deno.serve(async (req) => {
     doc.circle(TX + TW - 18, TY + headerH - 6, 20, "F");
     doc.setGState(new (doc as any).GState({ opacity: 1 }));
 
-    // Badge dorado: ENTRADA OFICIAL • PASE VIP
-    const badgeW = 62, badgeH = 7;
+    // Badge dorado más grande: ENTRADA OFICIAL • PASE VIP
+    const badgeW = 74, badgeH = 9;
     doc.setFillColor(...GOLD);
-    rr(doc, CX - badgeW / 2, TY + 7, badgeW, badgeH, 3.5, "F");
+    rr(doc, CX - badgeW / 2, TY + 6, badgeW, badgeH, 4.5, "F");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(7);
+    doc.setFontSize(9);
     doc.setTextColor(...GREEN);
-    doc.text("ENTRADA OFICIAL  •  PASE VIP", CX, TY + 12, { align: "center" });
+    doc.text("ENTRADA OFICIAL  •  PASE VIP", CX, TY + 12.3, { align: "center" });
 
-    // Imagen del evento en marco dorado (derecha) o icono de iglesia
+    // Nombre del evento en dorado (más arriba, centrado, ancho completo)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(...GOLD);
+    const titleLines = doc.splitTextToSize(eventName.toUpperCase(), TW - 16);
+    const titleY = TY + 24;
+    doc.text(titleLines, CX, titleY, { align: "center" });
+    let headerCurY = titleY + (titleLines.length - 1) * 5.5 + 5;
+
+    // Imagen del evento centrada debajo del título, en marco dorado
     if (eventImgBytes) {
-      const imgSize = 22;
-      const imgX = TX + TW - 13 - imgSize;
-      const imgY = TY + 18;
+      const imgSize = 24;
+      const imgX = CX - imgSize / 2;
+      const imgY = headerCurY;
       doc.setFillColor(...GOLD);
       rr(doc, imgX - 1.5, imgY - 1.5, imgSize + 3, imgSize + 3, 4, "F");
       doc.setFillColor(...WHITE);
       rr(doc, imgX - 0.5, imgY - 0.5, imgSize + 1, imgSize + 1, 3.5, "F");
       doc.addImage(eventImgBytes, eventImgFmt, imgX, imgY, imgSize, imgSize);
+      headerCurY += imgSize + 6;
     } else {
-      drawChurchIcon(doc, TX + TW - 24, TY + 30, 16, GOLD);
+      drawChurchIcon(doc, CX, headerCurY + 12, 16, GOLD);
+      headerCurY += 22;
     }
 
-    // Nombre del evento en dorado
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.setTextColor(...GOLD);
-    const titleW = eventImgBytes ? TW - 46 : TW - 20;
-    const titleLines = doc.splitTextToSize(eventName.toUpperCase(), titleW);
-    const titleStartY = TY + 28 - (titleLines.length - 1) * 3;
-    doc.text(titleLines, CX - (eventImgBytes ? 10 : 0), titleStartY + 6, { align: "center" });
+    // Fecha del evento en la cabecera (blanco)
+    if (eventDate) {
+      const dateStr = eventDate.charAt(0).toUpperCase() + eventDate.slice(1);
+      const full = eventTime ? `${dateStr} • ${eventTime}` : dateStr;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.setTextColor(...WHITE);
+      doc.text(doc.splitTextToSize(full, TW - 20), CX, Math.min(headerCurY + 1, TY + headerH - 6.5), { align: "center" });
+    }
 
-    // Línea dorada bajo el título
+    // Línea dorada al final de la cabecera
     doc.setDrawColor(...GOLD);
     doc.setLineWidth(0.7);
-    doc.line(TX + 30, TY + headerH - 5, TX + TW - 30, TY + headerH - 5);
+    doc.line(TX + 30, TY + headerH - 3.5, TX + TW - 30, TY + headerH - 3.5);
 
     // ── Nombre del asistente (serif, verde, protagonista) ─────────
     let curY = TY + headerH + 16;
