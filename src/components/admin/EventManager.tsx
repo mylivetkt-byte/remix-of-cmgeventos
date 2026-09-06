@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare, ListChecks, DollarSign, CreditCard, ArrowUp, ArrowDown, GripVertical, X, Check, ListPlus } from "lucide-react";
+import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare, ListChecks, DollarSign, CreditCard, ArrowUp, ArrowDown, GripVertical, X, Check, ListPlus, RefreshCw } from "lucide-react";
 
 interface CustomField {
   key: string;
@@ -200,6 +200,9 @@ export const EventManager = () => {
       moneda: "COP",
       instrucciones_pago: "",
       requiere_comprobante: false,
+      enviar_whatsapp_checkin: false,
+      mensaje_whatsapp_checkin: "",
+      pdf_whatsapp_checkin_url: "",
     });
   };
 
