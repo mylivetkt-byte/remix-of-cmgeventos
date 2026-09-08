@@ -76,6 +76,14 @@ export const EventRegistrationPage = () => {
   const isDefaultEvent = !event.slug || event.slug === "evento-principal" || event.slug === "evento-default";
   const isRetiroSanidad = event.slug ? event.slug.includes("retiro-sanidad") : false;
 
+  const mensajePersonalizado = (event as any).mensaje_personalizado as string | null;
+  const proteccionDatos = (event as any).proteccion_datos as string | null;
+  const rawBloques = (event as any).bloques_orden;
+  const bloques: string[] = Array.isArray(rawBloques) && rawBloques.length
+    ? rawBloques
+    : ["mensaje", "formulario", "proteccion"];
+
+
   return (
     <div className="min-h-screen py-8 px-4 flex flex-col items-center justify-between font-sans bg-slate-50 text-slate-900 selection:bg-teal-200">
       {/* Intro Animada con Logo Metálico DOXA EVENTOS */}
