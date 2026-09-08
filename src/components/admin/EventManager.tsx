@@ -51,6 +51,7 @@ export const EventManager = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"general" | "campos" | "pago" | "sistema">("general");
+  const [dragBlockIdx, setDragBlockIdx] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -77,6 +78,9 @@ export const EventManager = () => {
     enviar_whatsapp_checkin: false,
     mensaje_whatsapp_checkin: "¡Hola {nombres}! 👋 Te damos la bienvenida oficial a {evento}. Tu ingreso ha sido registrado exitosamente.",
     pdf_whatsapp_checkin_url: "",
+    mensaje_personalizado: "",
+    proteccion_datos: "",
+    bloques_orden: ["mensaje", "formulario", "proteccion"] as string[],
   });
 
   const [selectedFields, setSelectedFields] = useState<string[]>([
@@ -203,6 +207,9 @@ export const EventManager = () => {
       enviar_whatsapp_checkin: false,
       mensaje_whatsapp_checkin: "",
       pdf_whatsapp_checkin_url: "",
+      mensaje_personalizado: "",
+      proteccion_datos: "",
+      bloques_orden: ["mensaje", "formulario", "proteccion"],
     });
   };
 
@@ -264,6 +271,11 @@ export const EventManager = () => {
       enviar_whatsapp_checkin: evt.enviar_whatsapp_checkin ?? false,
       mensaje_whatsapp_checkin: evt.mensaje_whatsapp_checkin || "¡Hola {nombres}! 👋 Te damos la bienvenida oficial a {evento}. Tu ingreso ha sido registrado exitosamente.",
       pdf_whatsapp_checkin_url: evt.pdf_whatsapp_checkin_url || "",
+      mensaje_personalizado: (evt as any).mensaje_personalizado || "",
+      proteccion_datos: (evt as any).proteccion_datos || "",
+      bloques_orden: Array.isArray((evt as any).bloques_orden)
+        ? ((evt as any).bloques_orden as string[])
+        : ["mensaje", "formulario", "proteccion"],
     });
 
     const { data: savedFields } = await supabase
@@ -509,6 +521,9 @@ export const EventManager = () => {
         enviar_whatsapp_checkin: data.enviar_whatsapp_checkin,
         mensaje_whatsapp_checkin: data.mensaje_whatsapp_checkin,
         pdf_whatsapp_checkin_url: data.pdf_whatsapp_checkin_url,
+        mensaje_personalizado: data.mensaje_personalizado || null,
+        proteccion_datos: data.proteccion_datos || null,
+        bloques_orden: data.bloques_orden,
       };
 
       let targetEventId = editingEventId;
@@ -743,6 +758,59 @@ export const EventManager = () => {
                       className="bg-white border-slate-300 text-slate-900 text-sm rounded-xl"
                     />
                   </div>
+
+                  <div>
+                    <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Mensaje adicional (texto libre)</Label>
+                    <Textarea
+                      placeholder="Ej: Recuerda llegar 30 minutos antes..."
+                      value={formData.mensaje_personalizado}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, mensaje_personalizado: e.target.value }))}
+                      rows={3}
+                      className="bg-white border-slate-300 text-slate-900 text-sm rounded-xl"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Protección de datos</Label>
+                    <Textarea
+                      placeholder="Texto de tratamiento y protección de datos personales..."
+                      value={formData.proteccion_datos}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, proteccion_datos: e.target.value }))}
+                      rows={4}
+                      className="bg-white border-slate-300 text-slate-900 text-sm rounded-xl"
+                    />
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <Label className="text-sm font-bold text-slate-900 mb-1 block">Orden en la página (arrastra para mover)</Label>
+                    <p className="text-xs text-slate-500 mb-3">Define dónde aparece cada bloque del formulario de registro.</p>
+                    <div className="space-y-2">
+                      {formData.bloques_orden.map((bloque, idx) => (
+                        <div
+                          key={bloque}
+                          draggable
+                          onDragStart={() => setDragBlockIdx(idx)}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={() => {
+                            if (dragBlockIdx === null || dragBlockIdx === idx) return;
+                            setFormData((prev) => {
+                              const next = [...prev.bloques_orden];
+                              const [moved] = next.splice(dragBlockIdx, 1);
+                              next.splice(idx, 0, moved);
+                              return { ...prev, bloques_orden: next };
+                            });
+                            setDragBlockIdx(null);
+                          }}
+                          onDragEnd={() => setDragBlockIdx(null)}
+                          className={`flex items-center gap-3 bg-white border border-slate-300 rounded-xl px-4 py-3 cursor-grab active:cursor-grabbing text-sm font-semibold text-slate-800 ${dragBlockIdx === idx ? "opacity-50" : ""}`}
+                        >
+                          <GripVertical className="w-4 h-4 text-slate-400 shrink-0" />
+                          {bloque === "mensaje" ? "Mensaje adicional" : bloque === "formulario" ? "Formulario de registro" : "Protección de datos"}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
