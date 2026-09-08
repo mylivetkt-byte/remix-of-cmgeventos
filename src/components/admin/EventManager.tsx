@@ -77,6 +77,9 @@ export const EventManager = () => {
     enviar_whatsapp_checkin: false,
     mensaje_whatsapp_checkin: "¡Hola {nombres}! 👋 Te damos la bienvenida oficial a {evento}. Tu ingreso ha sido registrado exitosamente.",
     pdf_whatsapp_checkin_url: "",
+    mensaje_personalizado: "",
+    proteccion_datos: "",
+    bloques_orden: ["mensaje", "formulario", "proteccion"] as string[],
   });
 
   const [selectedFields, setSelectedFields] = useState<string[]>([
@@ -203,6 +206,9 @@ export const EventManager = () => {
       enviar_whatsapp_checkin: false,
       mensaje_whatsapp_checkin: "",
       pdf_whatsapp_checkin_url: "",
+      mensaje_personalizado: "",
+      proteccion_datos: "",
+      bloques_orden: ["mensaje", "formulario", "proteccion"],
     });
   };
 
@@ -264,6 +270,11 @@ export const EventManager = () => {
       enviar_whatsapp_checkin: evt.enviar_whatsapp_checkin ?? false,
       mensaje_whatsapp_checkin: evt.mensaje_whatsapp_checkin || "¡Hola {nombres}! 👋 Te damos la bienvenida oficial a {evento}. Tu ingreso ha sido registrado exitosamente.",
       pdf_whatsapp_checkin_url: evt.pdf_whatsapp_checkin_url || "",
+      mensaje_personalizado: (evt as any).mensaje_personalizado || "",
+      proteccion_datos: (evt as any).proteccion_datos || "",
+      bloques_orden: Array.isArray((evt as any).bloques_orden)
+        ? ((evt as any).bloques_orden as string[])
+        : ["mensaje", "formulario", "proteccion"],
     });
 
     const { data: savedFields } = await supabase
@@ -509,6 +520,9 @@ export const EventManager = () => {
         enviar_whatsapp_checkin: data.enviar_whatsapp_checkin,
         mensaje_whatsapp_checkin: data.mensaje_whatsapp_checkin,
         pdf_whatsapp_checkin_url: data.pdf_whatsapp_checkin_url,
+        mensaje_personalizado: data.mensaje_personalizado || null,
+        proteccion_datos: data.proteccion_datos || null,
+        bloques_orden: data.bloques_orden,
       };
 
       let targetEventId = editingEventId;
