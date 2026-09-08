@@ -730,6 +730,248 @@ export type Database = {
           },
         ]
       }
+      evento_libres_para_amar_registrations: {
+        Row: {
+          apellidos: string
+          asistio: boolean
+          barrio: string
+          cdp_id: string | null
+          correo: string
+          created_at: string
+          direccion: string
+          edad: number
+          estado_civil_id: string | null
+          event_id: string | null
+          fecha_asistencia: string | null
+          fecha_nacimiento: string
+          id: string
+          nombre_invitador: string | null
+          nombres: string
+          numero_documento: string
+          pdf_url: string | null
+          qr_code: string | null
+          red_id: string | null
+          sexo_id: string | null
+          telefono: string
+          tipo_documento_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          apellidos: string
+          asistio?: boolean
+          barrio: string
+          cdp_id?: string | null
+          correo: string
+          created_at?: string
+          direccion: string
+          edad: number
+          estado_civil_id?: string | null
+          event_id?: string | null
+          fecha_asistencia?: string | null
+          fecha_nacimiento: string
+          id?: string
+          nombre_invitador?: string | null
+          nombres: string
+          numero_documento: string
+          pdf_url?: string | null
+          qr_code?: string | null
+          red_id?: string | null
+          sexo_id?: string | null
+          telefono: string
+          tipo_documento_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          apellidos?: string
+          asistio?: boolean
+          barrio?: string
+          cdp_id?: string | null
+          correo?: string
+          created_at?: string
+          direccion?: string
+          edad?: number
+          estado_civil_id?: string | null
+          event_id?: string | null
+          fecha_asistencia?: string | null
+          fecha_nacimiento?: string
+          id?: string
+          nombre_invitador?: string | null
+          nombres?: string
+          numero_documento?: string
+          pdf_url?: string | null
+          qr_code?: string | null
+          red_id?: string | null
+          sexo_id?: string | null
+          telefono?: string
+          tipo_documento_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evento_libres_para_amar_registrations_cdp_id_fkey"
+            columns: ["cdp_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_cdp"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_libres_para_amar_registrations_estado_civil_id_fkey"
+            columns: ["estado_civil_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_estado_civil"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_libres_para_amar_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_libres_para_amar_registrations_red_id_fkey"
+            columns: ["red_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_red"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_libres_para_amar_registrations_sexo_id_fkey"
+            columns: ["sexo_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_sexo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_libres_para_amar_registrations_tipo_documento_id_fkey"
+            columns: ["tipo_documento_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_tipo_documento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evento_mega_casa_de_paz_registrations: {
+        Row: {
+          apellidos: string
+          asistio: boolean
+          barrio: string
+          cdp_id: string | null
+          correo: string
+          created_at: string
+          direccion: string
+          edad: number
+          estado_civil_id: string | null
+          event_id: string | null
+          fecha_asistencia: string | null
+          fecha_nacimiento: string
+          id: string
+          nombre_invitador: string | null
+          nombres: string
+          numero_documento: string
+          pdf_url: string | null
+          qr_code: string | null
+          red_id: string | null
+          sexo_id: string | null
+          telefono: string
+          tipo_documento_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          apellidos: string
+          asistio?: boolean
+          barrio: string
+          cdp_id?: string | null
+          correo: string
+          created_at?: string
+          direccion: string
+          edad: number
+          estado_civil_id?: string | null
+          event_id?: string | null
+          fecha_asistencia?: string | null
+          fecha_nacimiento: string
+          id?: string
+          nombre_invitador?: string | null
+          nombres: string
+          numero_documento: string
+          pdf_url?: string | null
+          qr_code?: string | null
+          red_id?: string | null
+          sexo_id?: string | null
+          telefono: string
+          tipo_documento_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          apellidos?: string
+          asistio?: boolean
+          barrio?: string
+          cdp_id?: string | null
+          correo?: string
+          created_at?: string
+          direccion?: string
+          edad?: number
+          estado_civil_id?: string | null
+          event_id?: string | null
+          fecha_asistencia?: string | null
+          fecha_nacimiento?: string
+          id?: string
+          nombre_invitador?: string | null
+          nombres?: string
+          numero_documento?: string
+          pdf_url?: string | null
+          qr_code?: string | null
+          red_id?: string | null
+          sexo_id?: string | null
+          telefono?: string
+          tipo_documento_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evento_mega_casa_de_paz_registrations_cdp_id_fkey"
+            columns: ["cdp_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_cdp"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_mega_casa_de_paz_registrations_estado_civil_id_fkey"
+            columns: ["estado_civil_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_estado_civil"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_mega_casa_de_paz_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_mega_casa_de_paz_registrations_red_id_fkey"
+            columns: ["red_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_red"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_mega_casa_de_paz_registrations_sexo_id_fkey"
+            columns: ["sexo_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_sexo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_mega_casa_de_paz_registrations_tipo_documento_id_fkey"
+            columns: ["tipo_documento_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_tipo_documento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evento_retiro_de_lideres_de_casa_de_paz_registrations: {
         Row: {
           apellidos: string
