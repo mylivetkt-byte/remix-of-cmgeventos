@@ -1341,6 +1341,7 @@ export type Database = {
           asunto_correo: string
           banner_url: string | null
           barrio_como_combo: boolean
+          bloques_orden: Json
           color_primario: string
           color_secundario: string
           correo_remitente: string
@@ -1358,12 +1359,14 @@ export type Database = {
           lugar: string | null
           lugar_evento: string | null
           mensaje_correo: string
+          mensaje_personalizado: string | null
           mensaje_whatsapp: string
           mensaje_whatsapp_checkin: string | null
           moneda: string | null
           nombre: string
           pdf_whatsapp_checkin_url: string | null
           precio: number | null
+          proteccion_datos: string | null
           requiere_checkin: boolean
           requiere_comprobante: boolean | null
           slug: string | null
@@ -1374,6 +1377,7 @@ export type Database = {
           asunto_correo?: string
           banner_url?: string | null
           barrio_como_combo?: boolean
+          bloques_orden?: Json
           color_primario?: string
           color_secundario?: string
           correo_remitente?: string
@@ -1391,12 +1395,14 @@ export type Database = {
           lugar?: string | null
           lugar_evento?: string | null
           mensaje_correo?: string
+          mensaje_personalizado?: string | null
           mensaje_whatsapp?: string
           mensaje_whatsapp_checkin?: string | null
           moneda?: string | null
           nombre?: string
           pdf_whatsapp_checkin_url?: string | null
           precio?: number | null
+          proteccion_datos?: string | null
           requiere_checkin?: boolean
           requiere_comprobante?: boolean | null
           slug?: string | null
@@ -1407,6 +1413,7 @@ export type Database = {
           asunto_correo?: string
           banner_url?: string | null
           barrio_como_combo?: boolean
+          bloques_orden?: Json
           color_primario?: string
           color_secundario?: string
           correo_remitente?: string
@@ -1424,12 +1431,14 @@ export type Database = {
           lugar?: string | null
           lugar_evento?: string | null
           mensaje_correo?: string
+          mensaje_personalizado?: string | null
           mensaje_whatsapp?: string
           mensaje_whatsapp_checkin?: string | null
           moneda?: string | null
           nombre?: string
           pdf_whatsapp_checkin_url?: string | null
           precio?: number | null
+          proteccion_datos?: string | null
           requiere_checkin?: boolean
           requiere_comprobante?: boolean | null
           slug?: string | null
