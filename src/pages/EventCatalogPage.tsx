@@ -8,6 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { BannerCarousel } from "@/components/BannerCarousel";
 import { SplashScreen } from "@/components/SplashScreen";
+import { CasaDePazForm } from "@/components/CasaDePazForm";
 
 export const EventCatalogPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -251,6 +252,9 @@ export const EventCatalogPage = () => {
           </div>
         )}
       </main>
+
+      {/* Formulario Casa de Paz */}
+      <CasaDePazForm />
 
       {/* Footer Limpio */}
       <footer className="border-t border-slate-200/80 bg-white px-6 py-6 text-center text-xs text-slate-500">
