@@ -47,7 +47,7 @@ export function CasaDePazRequestsManager() {
       } else if (data) {
         // Combinar con local si hubiese pendientes
         const local = JSON.parse(localStorage.getItem("casa_de_paz_solicitudes") || "[]");
-        const combined = [...data];
+        const combined = [...(data as unknown as CasaDePazSolicitud[])];
         local.forEach((loc: any) => {
           if (!combined.some((c) => c.id === loc.id)) {
             combined.push(loc);
