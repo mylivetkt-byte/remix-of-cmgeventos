@@ -32,6 +32,45 @@ export type Database = {
         }
         Relationships: []
       }
+      casa_de_paz_solicitudes: {
+        Row: {
+          barrio: string
+          correo: string | null
+          created_at: string
+          direccion: string
+          estado: string | null
+          id: string
+          nombre: string
+          notas: string | null
+          telefono: string
+          updated_at: string
+        }
+        Insert: {
+          barrio: string
+          correo?: string | null
+          created_at?: string
+          direccion: string
+          estado?: string | null
+          id?: string
+          nombre: string
+          notas?: string | null
+          telefono: string
+          updated_at?: string
+        }
+        Update: {
+          barrio?: string
+          correo?: string | null
+          created_at?: string
+          direccion?: string
+          estado?: string | null
+          id?: string
+          nombre?: string
+          notas?: string | null
+          telefono?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       catalog_barrio: {
         Row: {
           activo: boolean
