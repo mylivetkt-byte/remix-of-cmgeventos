@@ -25,7 +25,7 @@ export const CasaDePazPrompt = () => {
       const gridHeight = gridRect.height || 1;
       const scrolledIntoGrid = window.innerHeight - gridRect.top;
       const ratio = scrolledIntoGrid / gridHeight;
-      const passedEvents = isMobile ? ratio > 0.5 : gridRect.bottom < window.innerHeight * 0.9;
+      const passedEvents = isMobile ? ratio > 0.2 : gridRect.bottom < window.innerHeight * 0.9;
       const formNotVisible = formTop > window.innerHeight * 0.6;
       setVisible(passedEvents && formNotVisible);
     };
@@ -51,19 +51,16 @@ export const CasaDePazPrompt = () => {
           : "opacity-0 translate-y-8 pointer-events-none"
       }`}
     >
-      <div className="relative flex items-center gap-2 sm:gap-3 bg-teal-700 text-white pl-2.5 pr-2 py-2 sm:pl-4 sm:pr-3 sm:py-3 rounded-xl sm:rounded-2xl shadow-2xl border-2 border-amber-300 animate-[bounce-soft_2s_ease-in-out_infinite] max-w-[calc(100vw-2rem)]">
-        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-          <Church className="w-4 h-4 sm:w-5 sm:h-5 text-amber-300" />
+      <div className="relative flex items-center gap-2 bg-teal-700 text-white pl-2 pr-1.5 py-1.5 sm:pl-4 sm:pr-3 sm:py-3 rounded-full shadow-2xl border-2 border-amber-300 animate-[bounce-soft_2s_ease-in-out_infinite]">
+        <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+          <Church className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-amber-300" />
         </div>
-        <div className="leading-tight">
-          <p className="font-extrabold text-xs sm:text-base">¿Sin Casa de Paz?</p>
-          <p className="text-[10px] sm:text-xs text-teal-100 font-medium">
-            Regístrate aquí
-          </p>
-        </div>
+        <p className="font-extrabold text-[11px] sm:text-base leading-tight whitespace-nowrap">
+          ¿Sin Casa de Paz?
+        </p>
         <button
           onClick={goToForm}
-          className="ml-1 flex items-center gap-1 bg-amber-400 hover:bg-amber-300 text-teal-950 font-extrabold text-[11px] sm:text-sm px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-lg sm:rounded-xl transition-colors shadow-md whitespace-nowrap"
+          className="flex items-center gap-1 bg-amber-400 hover:bg-amber-300 text-teal-950 font-extrabold text-[11px] sm:text-sm px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-full transition-colors shadow-md whitespace-nowrap"
         >
           Ir al formulario
           <ArrowDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
