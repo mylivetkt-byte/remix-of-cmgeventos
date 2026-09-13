@@ -136,6 +136,10 @@ export const EventCatalogPage = () => {
         </div>
       </section>
 
+      {/* Banner Alquiler del Auditorio */}
+      <AuditorioBanner />
+
+
       {/* Grid de Tarjetas de Eventos en Tarjetas Blancas Pulcras */}
       <main id="eventos-grid" className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
         <div className="flex items-center justify-between mb-8">

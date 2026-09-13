@@ -37,6 +37,7 @@ const App = () => (
             <Route path="/eventos/:slug" element={<EventRegistrationPage />} />
             <Route path="/descargar/:id" element={<DownloadInvitation />} />
             <Route path="/checkin" element={<CheckIn />} />
+            <Route path="/auditorio" element={<AuditorioPage />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
