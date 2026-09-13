@@ -24,12 +24,13 @@ import { ChatbotManager } from "@/components/admin/ChatbotManager";
 import { WhatsAppContacts, StoredContact } from "@/components/admin/WhatsAppContacts";
 import { EventManager } from "@/components/admin/EventManager";
 import { UserManager } from "@/components/admin/UserManager";
+import { AuditorioManager } from "@/components/admin/AuditorioManager";
 import { UserRole, ROLE_LABELS, ROLE_PERMISSIONS_MAP } from "@/integrations/supabase/user-role-types";
 import { useCatalog } from "@/hooks/useCatalogs";
 import { sendCheckInWhatsAppNotification } from "@/lib/whatsapp-bot";
 import { toast } from "sonner";
 
-type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "casas_de_paz" | "whatsapp" | "usuarios" | "crm" | "chat" | "contactos" | "chatbot";
+type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "casas_de_paz" | "whatsapp" | "usuarios" | "crm" | "chat" | "contactos" | "chatbot" | "auditorio";
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
@@ -106,6 +107,7 @@ const AdminDashboard = () => {
     { id: "crm", label: "Envío Masivo", icon: <Send className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "chat", label: "Chat WhatsApp", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "chatbot", label: "Chatbot IA 24/7", icon: <Bot className="w-5 h-5 text-teal-600" />, roles: ["super_admin", "coordinador"] },
+    { id: "auditorio", label: "Auditorio", icon: <Building2 className="w-5 h-5 text-amber-600" />, roles: ["super_admin", "coordinador"] },
   ];
 
   // Sincronizar rol según usuario logueado
@@ -1174,6 +1176,7 @@ const AdminDashboard = () => {
         {tab === "crm" && <div className="animate-fade-in pb-8"><WhatsAppCrm initialContacts={crmContacts} /></div>}
         {tab === "chat" && <div className="animate-fade-in pb-8"><WhatsAppChat selectedContact={selectedChatContact} /></div>}
         {tab === "chatbot" && <div className="animate-fade-in pb-8"><ChatbotManager /></div>}
+        {tab === "auditorio" && <div className="animate-fade-in pb-8"><AuditorioManager /></div>}
         </main>
       </div>
 
