@@ -10,6 +10,7 @@ import { BannerCarousel } from "@/components/BannerCarousel";
 import { SplashScreen } from "@/components/SplashScreen";
 import { CasaDePazForm } from "@/components/CasaDePazForm";
 import { CasaDePazPrompt } from "@/components/CasaDePazPrompt";
+import { AuditorioBanner } from "@/components/AuditorioBanner";
 
 export const EventCatalogPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -134,6 +135,10 @@ export const EventCatalogPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Banner Alquiler del Auditorio */}
+      <AuditorioBanner />
+
 
       {/* Grid de Tarjetas de Eventos en Tarjetas Blancas Pulcras */}
       <main id="eventos-grid" className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
