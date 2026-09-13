@@ -10,6 +10,7 @@ import { BannerCarousel } from "@/components/BannerCarousel";
 import { SplashScreen } from "@/components/SplashScreen";
 import { CasaDePazForm } from "@/components/CasaDePazForm";
 import { CasaDePazPrompt } from "@/components/CasaDePazPrompt";
+import { AuditorioBanner } from "@/components/AuditorioBanner";
 
 export const EventCatalogPage = () => {
   const [searchTerm, setSearchTerm] = useState("");

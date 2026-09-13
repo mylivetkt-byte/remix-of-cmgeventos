@@ -12,6 +12,7 @@ import AdminLogin from "./pages/AdminLogin";
 import AdminDashboard from "./pages/AdminDashboard";
 import DownloadInvitation from "./pages/DownloadInvitation";
 import CheckIn from "./pages/CheckIn";
+import AuditorioPage from "./pages/AuditorioPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
