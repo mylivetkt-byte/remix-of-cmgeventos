@@ -62,17 +62,54 @@ export async function sendInstantWhatsAppTicket(payload: InstantTicketPayload): 
   if (!cleanPhone || cleanPhone.length < 8) return false;
 
   const downloadUrl = `${window.location.origin}/descargar/${payload.registrationId}`;
-  const eventTitle = payload.eventName || "Doxa Eventos";
+  let eventTitle = payload.eventName || "Doxa Eventos";
+  let eventPlace = payload.eventPlace || "";
+  let eventDate = payload.eventDate || "";
+  let customMessageTemplate: string | null = null;
 
-  const messageText = `¡Hola ${payload.name}! 🎉
+  if (payload.eventId) {
+    try {
+      const { data: evt } = await supabase
+        .from("events")
+        .select("nombre, fecha_evento, lugar_evento, mensaje_whatsapp")
+        .eq("id", payload.eventId)
+        .maybeSingle();
 
-Tu registro para *${eventTitle}* ha sido confirmado exitosamente.
+      if (evt) {
+        if (evt.nombre) eventTitle = evt.nombre;
+        if (evt.lugar_evento) eventPlace = evt.lugar_evento;
+        if (evt.mensaje_whatsapp) customMessageTemplate = evt.mensaje_whatsapp;
+        if (evt.fecha_evento && !eventDate) {
+          const d = new Date(evt.fecha_evento);
+          eventDate = d.toLocaleDateString("es-CO", {
+            weekday: "long", year: "numeric", month: "long", day: "numeric",
+          });
+        }
+      }
+    } catch (_) {}
+  }
 
-🎟️ *Descarga tu pase de entrada y Código QR aquí:*
-${downloadUrl}
+  let messageText = "";
+  if (customMessageTemplate && customMessageTemplate.trim() !== "") {
+    let template = customMessageTemplate
+      .replace(/{nombres}/gi, payload.name || "")
+      .replace(/{nombre}/gi, payload.name || "")
+      .replace(/{evento}/gi, eventTitle)
+      .replace(/{nombre_evento}/gi, eventTitle)
+      .replace(/{fecha}/gi, eventDate)
+      .replace(/{lugar}/gi, eventPlace);
 
-${payload.eventDate ? `📅 *Fecha:* ${payload.eventDate}\n` : ""}${payload.eventPlace ? `📍 *Lugar:* ${payload.eventPlace}\n` : ""}
-¡Te esperamos en Doxa Eventos / Centro Mundial de Gloria!`;
+    if (/{enlace}|{link}|{url}/i.test(template)) {
+      messageText = template
+        .replace(/{enlace}/gi, downloadUrl)
+        .replace(/{link}/gi, downloadUrl)
+        .replace(/{url}/gi, downloadUrl);
+    } else {
+      messageText = `${template.trim()}\n\n📄 *Descarga tu invitación:* ${downloadUrl}`;
+    }
+  } else {
+    messageText = `¡Hola ${payload.name}! 🎉\n\nTu registro para *${eventTitle}* ha sido confirmado exitosamente.\n\n🎟️ *Descarga tu pase de entrada y Código QR aquí:*\n${downloadUrl}\n\n${payload.eventDate || eventDate ? `📅 *Fecha:* ${payload.eventDate || eventDate}\n` : ""}${payload.eventPlace || eventPlace ? `📍 *Lugar:* ${payload.eventPlace || eventPlace}\n` : ""}¡Te esperamos en ${eventTitle}!`;
+  }
 
   try {
     // Simulación de tipeo previo por seguridad Anti-Baneo

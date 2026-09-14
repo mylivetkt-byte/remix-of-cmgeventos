@@ -358,37 +358,87 @@ const AdminDashboard = () => {
 
       const downloadUrl = r.pdf_url || `${window.location.origin}/descargar/${r.id}`;
 
-      // Obtener config del evento
-      const { data: evConfig } = await supabase
-        .from("event_config")
-        .select("nombre_evento, fecha_evento, lugar_evento")
-        .limit(1)
-        .single();
+      // Obtener configuración del evento del registro o de event_config
+      let eventData: any = null;
+      if (r.event_id) {
+        const { data: ev } = await supabase
+          .from("events")
+          .select("nombre, fecha_evento, lugar_evento, mensaje_whatsapp")
+          .eq("id", r.event_id)
+          .maybeSingle();
+        if (ev) eventData = ev;
+      }
 
-      const eventName  = evConfig?.nombre_evento || "Evento";
-      const eventPlace = evConfig?.lugar_evento  || "";
-      const eventDate  = evConfig?.fecha_evento
-        ? new Date(evConfig.fecha_evento).toLocaleDateString("es-CO", {
+      if (!eventData) {
+        const { data: evConfig } = await supabase
+          .from("event_config")
+          .select("nombre_evento, fecha_evento, lugar_evento, mensaje_whatsapp")
+          .limit(1)
+          .maybeSingle();
+        if (evConfig) {
+          eventData = {
+            nombre: evConfig.nombre_evento,
+            fecha_evento: evConfig.fecha_evento,
+            lugar_evento: evConfig.lugar_evento,
+            mensaje_whatsapp: evConfig.mensaje_whatsapp,
+          };
+        }
+      }
+
+      const eventName  = eventData?.nombre || "Evento";
+      const eventPlace = eventData?.lugar_evento || "";
+      let eventDate = "";
+      let eventTime = "";
+
+      if (eventData?.fecha_evento) {
+        try {
+          const d = new Date(eventData.fecha_evento);
+          eventDate = d.toLocaleDateString("es-CO", {
             weekday: "long", year: "numeric", month: "long", day: "numeric",
-          })
-        : "";
-      const eventTime = evConfig?.fecha_evento
-        ? new Date(evConfig.fecha_evento).toLocaleTimeString("es-CO", {
+          });
+          eventTime = d.toLocaleTimeString("es-CO", {
             hour: "2-digit", minute: "2-digit",
-          })
-        : "";
+          });
+        } catch (_) {}
+      }
 
-      const lines = [
-        `🎉 *${eventName.toUpperCase()}*`,
-        ``,
-        `Hola *${r.nombres} ${r.apellidos}*,`,
-        `¡Tu invitación está lista! 🎊`,
-        ``,
-      ];
-      if (eventDate)  lines.push(`📅 *Fecha:* ${eventDate}${eventTime ? " · " + eventTime : ""}`);
-      if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
-      lines.push(``, `📄 *Descarga tu invitación:*`, downloadUrl);
-      const message = lines.join("\n");
+      let message = "";
+      if (eventData?.mensaje_whatsapp && eventData.mensaje_whatsapp.trim() !== "") {
+        let template = eventData.mensaje_whatsapp;
+        template = template
+          .replace(/{nombres}/gi, r.nombres || "")
+          .replace(/{nombre}/gi, r.nombres || "")
+          .replace(/{apellidos}/gi, r.apellidos || "")
+          .replace(/{evento}/gi, eventName)
+          .replace(/{nombre_evento}/gi, eventName)
+          .replace(/{fecha}/gi, eventDate ? `${eventDate}${eventTime ? " · " + eventTime : ""}` : "")
+          .replace(/{hora}/gi, eventTime || "")
+          .replace(/{lugar}/gi, eventPlace || "")
+          .replace(/{documento}/gi, r.numero_documento || "")
+          .replace(/{numero_documento}/gi, r.numero_documento || "")
+          .replace(/{cedula}/gi, r.numero_documento || "");
+
+        if (/{enlace}|{link}|{url}/i.test(template)) {
+          message = template
+            .replace(/{enlace}/gi, downloadUrl)
+            .replace(/{link}/gi, downloadUrl)
+            .replace(/{url}/gi, downloadUrl);
+        } else {
+          message = `${template.trim()}\n\n📄 *Descarga tu invitación:* ${downloadUrl}`;
+        }
+      } else {
+        const lines = [
+          `🎉 *${eventName.toUpperCase()}*`,
+          ``,
+          `Hola *${r.nombres} ${r.apellidos || ""}*`.trim() + `,`,
+          `¡Tu invitación está lista! 🎊`,
+          ``,
+        ];
+        if (eventDate)  lines.push(`📅 *Fecha:* ${eventDate}${eventTime ? " · " + eventTime : ""}`);
+        if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
+        lines.push(``, `📄 *Descarga tu invitación:*`, downloadUrl);
+        message = lines.join("\n");
+      }
 
       const res = await fetch(`${waUrl.value}/send`, {
         method: "POST",
@@ -400,7 +450,7 @@ const AdminDashboard = () => {
       });
 
       const data = await res.json();
-      if (res.ok) toast.success(`WhatsApp enviado a ${r.telefono}`);
+      if (res.ok) toast.success(`WhatsApp reenviado a ${r.telefono}`);
       else toast.error("Error: " + (data.error || "No se pudo enviar"));
     } catch (err: any) {
       toast.error("Error: " + err.message);
