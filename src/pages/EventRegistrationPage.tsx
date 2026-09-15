@@ -76,6 +76,14 @@ export const EventRegistrationPage = () => {
   const isDefaultEvent = !event.slug || event.slug === "evento-principal" || event.slug === "evento-default";
   const isRetiroSanidad = event.slug ? event.slug.includes("retiro-sanidad") : false;
 
+  const mensajePersonalizado = (event as any).mensaje_personalizado as string | null;
+  const proteccionDatos = (event as any).proteccion_datos as string | null;
+  const rawBloques = (event as any).bloques_orden;
+  const bloques: string[] = Array.isArray(rawBloques) && rawBloques.length
+    ? rawBloques
+    : ["mensaje", "formulario", "proteccion"];
+
+
   return (
     <div className="min-h-screen py-8 px-4 flex flex-col items-center justify-between font-sans bg-slate-50 text-slate-900 selection:bg-teal-200">
       {/* Intro Animada con Logo Metálico DOXA EVENTOS */}
@@ -179,24 +187,52 @@ export const EventRegistrationPage = () => {
           </div>
         </div>
 
-        {/* Tarjeta del Formulario en Blanco Pulcro (Con Espacio Amplio) */}
-        <div className="bg-white rounded-3xl p-6 md:p-10 shadow-xs border border-slate-200/80">
-          {successData ? (
-            <SuccessScreen
-              nombres={successData.nombres}
-              pdfUrl={successData.pdfUrl}
-              whatsappUrl={getWhatsAppUrl()}
-              onReset={() => setSuccessData(null)}
-              registrationId={successData.registrationId}
-            />
-          ) : (fieldConfigs && fieldConfigs.length > 0) ? (
-            <DynamicRegistrationForm eventId={event.id} onSuccess={setSuccessData} />
-          ) : isRetiroSanidad ? (
-            <RetiroSanidadForm eventId={event.id} onSuccess={setSuccessData} />
-          ) : (
-            <DynamicRegistrationForm eventId={event.id} onSuccess={setSuccessData} />
-          )}
-        </div>
+        {bloques.map((bloque) => {
+          if (bloque === "mensaje") {
+            if (!mensajePersonalizado) return null;
+            return (
+              <div key="mensaje" className="bg-teal-50 border border-teal-200 rounded-3xl p-6 md:p-8 shadow-xs">
+                <p className="whitespace-pre-line text-sm md:text-base text-slate-800 leading-relaxed font-medium">
+                  {mensajePersonalizado}
+                </p>
+              </div>
+            );
+          }
+
+          if (bloque === "proteccion") {
+            if (!proteccionDatos) return null;
+            return (
+              <div key="proteccion" className="bg-slate-100 border border-slate-200 rounded-3xl p-6 md:p-8 shadow-xs">
+                <h2 className="text-sm font-extrabold text-slate-900 mb-2 uppercase tracking-wide">
+                  Protección de datos
+                </h2>
+                <p className="whitespace-pre-line text-xs md:text-sm text-slate-600 leading-relaxed">
+                  {proteccionDatos}
+                </p>
+              </div>
+            );
+          }
+
+          return (
+            <div key="formulario" className="bg-white rounded-3xl p-6 md:p-10 shadow-xs border border-slate-200/80">
+              {successData ? (
+                <SuccessScreen
+                  nombres={successData.nombres}
+                  pdfUrl={successData.pdfUrl}
+                  whatsappUrl={getWhatsAppUrl()}
+                  onReset={() => setSuccessData(null)}
+                  registrationId={successData.registrationId}
+                />
+              ) : (fieldConfigs && fieldConfigs.length > 0) ? (
+                <DynamicRegistrationForm eventId={event.id} onSuccess={setSuccessData} />
+              ) : isRetiroSanidad ? (
+                <RetiroSanidadForm eventId={event.id} onSuccess={setSuccessData} />
+              ) : (
+                <DynamicRegistrationForm eventId={event.id} onSuccess={setSuccessData} />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <footer className="mt-10 text-center text-xs sm:text-sm text-slate-500 font-semibold">

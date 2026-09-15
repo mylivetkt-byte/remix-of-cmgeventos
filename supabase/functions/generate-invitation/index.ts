@@ -251,31 +251,10 @@ Deno.serve(async (req) => {
       doc.setTextColor(...INK);
       const pLines = doc.splitTextToSize(eventPlace, TW - 16);
       doc.text(pLines, CX, curY, { align: "center" });
-      curY += pLines.length * 4.4 + 2;
-    }
-
-    // ── Estado de pago (badge pequeño) ────────────────────────────
-    const payState = reg.estado_pago || "Pendiente";
-    let payText: string | null = null;
-    let payBg: [number, number, number] = [254, 242, 242];
-    let payFg: [number, number, number] = [220, 38, 38];
-    if (payState === "Pagado Completo") {
-      payText = "PAGO COMPLETO"; payBg = [236, 253, 245]; payFg = [5, 150, 105];
-    } else if (payState === "Abonado") {
-      payText = "ABONO PARCIAL"; payBg = [254, 243, 199]; payFg = [180, 100, 6];
-    } else if (payState === "Becado") {
-      payText = "ENTRADA BECADA"; payBg = [243, 232, 255]; payFg = [147, 51, 234];
+      curY += pLines.length * 4.4 + 4;
     } else {
-      payText = "PAGO PENDIENTE";
+      curY += 4;
     }
-    curY += 2;
-    doc.setFillColor(...payBg);
-    rr(doc, CX - 24, curY, 48, 6, 3, "F");
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(6.5);
-    doc.setTextColor(...payFg);
-    doc.text(payText, CX, curY + 4.2, { align: "center" });
-    curY += 10;
 
     // ── Línea perforada con muescas laterales ─────────────────────
     const stubY = curY + 4;

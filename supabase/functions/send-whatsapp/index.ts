@@ -55,32 +55,91 @@ Deno.serve(async (req) => {
     }
 
     // Obtener mensaje de WhatsApp específico del evento
-    let waMsg = "Hola, aquí está mi invitación al evento. Puedes descargarla desde este enlace:";
+    let waMsg = "";
     let eventName = "Evento";
+    let eventPlace = "";
+    let eventDate = "";
+    let eventTime = "";
 
     if (reg.event_id) {
       const { data: evt } = await supabase
         .from("events")
-        .select("mensaje_whatsapp, nombre")
+        .select("mensaje_whatsapp, nombre, fecha_evento, lugar_evento")
         .eq("id", reg.event_id)
         .maybeSingle();
 
       if (evt) {
         if (evt.mensaje_whatsapp) waMsg = evt.mensaje_whatsapp;
         if (evt.nombre) eventName = evt.nombre;
+        if (evt.lugar_evento) eventPlace = evt.lugar_evento;
+        if (evt.fecha_evento) {
+          const d = new Date(evt.fecha_evento);
+          eventDate = d.toLocaleDateString("es-CO", {
+            weekday: "long", year: "numeric", month: "long", day: "numeric",
+          });
+          eventTime = d.toLocaleTimeString("es-CO", {
+            hour: "2-digit", minute: "2-digit",
+          });
+        }
       }
     } else {
       const { data: config } = await supabase
-        .from("event_config").select("mensaje_whatsapp, nombre_evento").limit(1).maybeSingle();
+        .from("event_config").select("mensaje_whatsapp, nombre_evento, fecha_evento, lugar_evento").limit(1).maybeSingle();
 
       if (config?.mensaje_whatsapp) waMsg = config.mensaje_whatsapp;
       if (config?.nombre_evento) eventName = config.nombre_evento;
+      if (config?.lugar_evento) eventPlace = config.lugar_evento;
+      if (config?.fecha_evento) {
+        const d = new Date(config.fecha_evento);
+        eventDate = d.toLocaleDateString("es-CO", {
+          weekday: "long", year: "numeric", month: "long", day: "numeric",
+        });
+        eventTime = d.toLocaleTimeString("es-CO", {
+          hour: "2-digit", minute: "2-digit",
+        });
+      }
     }
 
     // Construir URL de descarga
     const appUrl = Deno.env.get("APP_URL") || "https://cmgeventos.lovable.app";
     const downloadUrl = reg.pdf_url || `${appUrl}/descargar/${registrationId}`;
-    const message = `${waMsg}\n\n📄 Descarga tu invitación a ${eventName} aquí:\n${downloadUrl}`;
+
+    let message = "";
+    if (waMsg && waMsg.trim() !== "") {
+      let template = waMsg
+        .replace(/{nombres}/gi, reg.nombres || "")
+        .replace(/{nombre}/gi, reg.nombres || "")
+        .replace(/{apellidos}/gi, reg.apellidos || "")
+        .replace(/{evento}/gi, eventName)
+        .replace(/{nombre_evento}/gi, eventName)
+        .replace(/{fecha}/gi, eventDate ? `${eventDate}${eventTime ? " · " + eventTime : ""}` : "")
+        .replace(/{hora}/gi, eventTime || "")
+        .replace(/{lugar}/gi, eventPlace || "")
+        .replace(/{documento}/gi, reg.numero_documento || "")
+        .replace(/{numero_documento}/gi, reg.numero_documento || "")
+        .replace(/{cedula}/gi, reg.numero_documento || "");
+
+      if (/{enlace}|{link}|{url}/i.test(template)) {
+        message = template
+          .replace(/{enlace}/gi, downloadUrl)
+          .replace(/{link}/gi, downloadUrl)
+          .replace(/{url}/gi, downloadUrl);
+      } else {
+        message = `${template.trim()}\n\n📄 *Descarga tu invitación a ${eventName} aquí:*\n${downloadUrl}`;
+      }
+    } else {
+      const lines = [
+        `🎉 *${eventName.toUpperCase()}*`,
+        ``,
+        `Hola *${reg.nombres} ${reg.apellidos || ""}*`.trim() + `,`,
+        `¡Tu invitación está lista! 🎊`,
+        ``,
+      ];
+      if (eventDate)  lines.push(`📅 *Fecha:* ${eventDate}${eventTime ? " · " + eventTime : ""}`);
+      if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
+      lines.push(``, `📄 *Descarga tu invitación:*`, downloadUrl);
+      message = lines.join("\n");
+    }
 
     // Enviar al servidor WhatsApp
     const res = await fetch(`${waUrl}/send`, {

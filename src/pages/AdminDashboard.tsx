@@ -11,24 +11,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Menu, UserPlus, Send, Bot } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Menu, UserPlus, Send, Bot, Home, Building2 } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
+import { CasaDePazRequestsManager } from "@/components/admin/CasaDePazRequestsManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
 import { DashboardStats } from "@/components/admin/DashboardStats";
 import { WhatsAppCrm } from "@/components/admin/WhatsAppCrm";
 import { WhatsAppManager } from "@/components/admin/WhatsAppManager";
-import { WhatsAppChat } from "@/components/admin/chat/WhatsAppChat";
+import { WhatsAppChat, loadStoredChats, saveStoredChats, loadStoredMessagesMap, saveStoredMessagesMap } from "@/components/admin/chat/WhatsAppChat";
 import { ChatbotManager } from "@/components/admin/ChatbotManager";
 import { WhatsAppContacts, StoredContact } from "@/components/admin/WhatsAppContacts";
 import { EventManager } from "@/components/admin/EventManager";
 import { UserManager } from "@/components/admin/UserManager";
+import { AuditorioManager } from "@/components/admin/AuditorioManager";
 import { UserRole, ROLE_LABELS, ROLE_PERMISSIONS_MAP } from "@/integrations/supabase/user-role-types";
 import { useCatalog } from "@/hooks/useCatalogs";
 import { sendCheckInWhatsAppNotification } from "@/lib/whatsapp-bot";
 import { toast } from "sonner";
 
-type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "whatsapp" | "usuarios" | "crm" | "chat" | "contactos" | "chatbot";
+type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "casas_de_paz" | "whatsapp" | "usuarios" | "crm" | "chat" | "contactos" | "chatbot" | "auditorio";
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
@@ -98,12 +100,14 @@ const AdminDashboard = () => {
     { id: "registros", label: "Registros", icon: <Users className="w-5 h-5" />, roles: ["super_admin", "coordinador", "lider_red"] },
     { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-5 h-5" />, roles: ["super_admin", "coordinador"] },
     { id: "catalogos", label: "Catálogos", icon: <List className="w-5 h-5" />, roles: ["super_admin"] },
+    { id: "casas_de_paz", label: "Casas de Paz (Leads)", icon: <Home className="w-5 h-5 text-emerald-600" />, roles: ["super_admin", "coordinador", "lider_red"] },
     { id: "usuarios", label: "Usuarios & Roles", icon: <ShieldCheck className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "whatsapp", label: "WhatsApp & Brevo", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "contactos", label: "Agenda Contactos", icon: <Users className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "crm", label: "Envío Masivo", icon: <Send className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "chat", label: "Chat WhatsApp", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "chatbot", label: "Chatbot IA 24/7", icon: <Bot className="w-5 h-5 text-teal-600" />, roles: ["super_admin", "coordinador"] },
+    { id: "auditorio", label: "Auditorio", icon: <Building2 className="w-5 h-5 text-amber-600" />, roles: ["super_admin", "coordinador"] },
   ];
 
   // Sincronizar rol según usuario logueado
@@ -356,37 +360,87 @@ const AdminDashboard = () => {
 
       const downloadUrl = r.pdf_url || `${window.location.origin}/descargar/${r.id}`;
 
-      // Obtener config del evento
-      const { data: evConfig } = await supabase
-        .from("event_config")
-        .select("nombre_evento, fecha_evento, lugar_evento")
-        .limit(1)
-        .single();
+      // Obtener configuración del evento del registro o de event_config
+      let eventData: any = null;
+      if (r.event_id) {
+        const { data: ev } = await supabase
+          .from("events")
+          .select("nombre, fecha_evento, lugar_evento, mensaje_whatsapp")
+          .eq("id", r.event_id)
+          .maybeSingle();
+        if (ev) eventData = ev;
+      }
 
-      const eventName  = evConfig?.nombre_evento || "Evento";
-      const eventPlace = evConfig?.lugar_evento  || "";
-      const eventDate  = evConfig?.fecha_evento
-        ? new Date(evConfig.fecha_evento).toLocaleDateString("es-CO", {
+      if (!eventData) {
+        const { data: evConfig } = await supabase
+          .from("event_config")
+          .select("nombre_evento, fecha_evento, lugar_evento, mensaje_whatsapp")
+          .limit(1)
+          .maybeSingle();
+        if (evConfig) {
+          eventData = {
+            nombre: evConfig.nombre_evento,
+            fecha_evento: evConfig.fecha_evento,
+            lugar_evento: evConfig.lugar_evento,
+            mensaje_whatsapp: evConfig.mensaje_whatsapp,
+          };
+        }
+      }
+
+      const eventName  = eventData?.nombre || "Evento";
+      const eventPlace = eventData?.lugar_evento || "";
+      let eventDate = "";
+      let eventTime = "";
+
+      if (eventData?.fecha_evento) {
+        try {
+          const d = new Date(eventData.fecha_evento);
+          eventDate = d.toLocaleDateString("es-CO", {
             weekday: "long", year: "numeric", month: "long", day: "numeric",
-          })
-        : "";
-      const eventTime = evConfig?.fecha_evento
-        ? new Date(evConfig.fecha_evento).toLocaleTimeString("es-CO", {
+          });
+          eventTime = d.toLocaleTimeString("es-CO", {
             hour: "2-digit", minute: "2-digit",
-          })
-        : "";
+          });
+        } catch (_) {}
+      }
 
-      const lines = [
-        `🎉 *${eventName.toUpperCase()}*`,
-        ``,
-        `Hola *${r.nombres} ${r.apellidos}*,`,
-        `¡Tu invitación está lista! 🎊`,
-        ``,
-      ];
-      if (eventDate)  lines.push(`📅 *Fecha:* ${eventDate}${eventTime ? " · " + eventTime : ""}`);
-      if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
-      lines.push(``, `📄 *Descarga tu invitación:*`, downloadUrl);
-      const message = lines.join("\n");
+      let message = "";
+      if (eventData?.mensaje_whatsapp && eventData.mensaje_whatsapp.trim() !== "") {
+        let template = eventData.mensaje_whatsapp;
+        template = template
+          .replace(/{nombres}/gi, r.nombres || "")
+          .replace(/{nombre}/gi, r.nombres || "")
+          .replace(/{apellidos}/gi, r.apellidos || "")
+          .replace(/{evento}/gi, eventName)
+          .replace(/{nombre_evento}/gi, eventName)
+          .replace(/{fecha}/gi, eventDate ? `${eventDate}${eventTime ? " · " + eventTime : ""}` : "")
+          .replace(/{hora}/gi, eventTime || "")
+          .replace(/{lugar}/gi, eventPlace || "")
+          .replace(/{documento}/gi, r.numero_documento || "")
+          .replace(/{numero_documento}/gi, r.numero_documento || "")
+          .replace(/{cedula}/gi, r.numero_documento || "");
+
+        if (/{enlace}|{link}|{url}/i.test(template)) {
+          message = template
+            .replace(/{enlace}/gi, downloadUrl)
+            .replace(/{link}/gi, downloadUrl)
+            .replace(/{url}/gi, downloadUrl);
+        } else {
+          message = `${template.trim()}\n\n📄 *Descarga tu invitación:* ${downloadUrl}`;
+        }
+      } else {
+        const lines = [
+          `🎉 *${eventName.toUpperCase()}*`,
+          ``,
+          `Hola *${r.nombres} ${r.apellidos || ""}*`.trim() + `,`,
+          `¡Tu invitación está lista! 🎊`,
+          ``,
+        ];
+        if (eventDate)  lines.push(`📅 *Fecha:* ${eventDate}${eventTime ? " · " + eventTime : ""}`);
+        if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
+        lines.push(``, `📄 *Descarga tu invitación:*`, downloadUrl);
+        message = lines.join("\n");
+      }
 
       const res = await fetch(`${waUrl.value}/send`, {
         method: "POST",
@@ -398,8 +452,38 @@ const AdminDashboard = () => {
       });
 
       const data = await res.json();
-      if (res.ok) toast.success(`WhatsApp enviado a ${r.telefono}`);
-      else toast.error("Error: " + (data.error || "No se pudo enviar"));
+      if (res.ok) {
+        toast.success(`WhatsApp reenviado a ${r.telefono}`);
+        try {
+          const cleanPhone = r.telefono.replace(/[^\d]/g, "");
+          const nowTs = Math.floor(Date.now() / 1000);
+          const fullName = `${r.nombres || ""} ${r.apellidos || ""}`.trim() || cleanPhone;
+
+          const existingChats = loadStoredChats();
+          const exists = existingChats.some((c) => c.id === cleanPhone);
+          let updatedChats: any[];
+          if (exists) {
+            updatedChats = existingChats.map((c) =>
+              c.id === cleanPhone ? { ...c, name: fullName, lastMessage: message, timestamp: nowTs } : c
+            );
+          } else {
+            updatedChats = [{ id: cleanPhone, name: fullName, lastMessage: message, timestamp: nowTs }, ...existingChats];
+          }
+          saveStoredChats(updatedChats);
+
+          const currentMap = loadStoredMessagesMap();
+          const prevMsgs = currentMap[cleanPhone] || [];
+          const newMsg = {
+            id: `send-${Date.now()}`,
+            fromMe: true,
+            body: message,
+            timestamp: nowTs,
+          };
+          saveStoredMessagesMap({ ...currentMap, [cleanPhone]: [...prevMsgs, newMsg] });
+        } catch (_) {}
+      } else {
+        toast.error("Error: " + (data.error || "No se pudo enviar"));
+      }
     } catch (err: any) {
       toast.error("Error: " + err.message);
     }
@@ -1143,6 +1227,7 @@ const AdminDashboard = () => {
           </div>
         )}
         {tab === "catalogos" && <CatalogManager />}
+        {tab === "casas_de_paz" && <div className="animate-fade-in pb-8"><CasaDePazRequestsManager /></div>}
         {tab === "usuarios" && <div className="animate-fade-in pb-8"><UserManager /></div>}
         {tab === "whatsapp" && <div className="animate-fade-in pb-8"><WhatsAppManager /></div>}
         {tab === "contactos" && (
@@ -1171,6 +1256,7 @@ const AdminDashboard = () => {
         {tab === "crm" && <div className="animate-fade-in pb-8"><WhatsAppCrm initialContacts={crmContacts} /></div>}
         {tab === "chat" && <div className="animate-fade-in pb-8"><WhatsAppChat selectedContact={selectedChatContact} /></div>}
         {tab === "chatbot" && <div className="animate-fade-in pb-8"><ChatbotManager /></div>}
+        {tab === "auditorio" && <div className="animate-fade-in pb-8"><AuditorioManager /></div>}
         </main>
       </div>
 

@@ -8,6 +8,9 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { BannerCarousel } from "@/components/BannerCarousel";
 import { SplashScreen } from "@/components/SplashScreen";
+import { CasaDePazForm } from "@/components/CasaDePazForm";
+import { CasaDePazPrompt } from "@/components/CasaDePazPrompt";
+import { AuditorioBanner } from "@/components/AuditorioBanner";
 
 export const EventCatalogPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -133,8 +136,12 @@ export const EventCatalogPage = () => {
         </div>
       </section>
 
+      {/* Banner Alquiler del Auditorio */}
+      <AuditorioBanner />
+
+
       {/* Grid de Tarjetas de Eventos en Tarjetas Blancas Pulcras */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
+      <main id="eventos-grid" className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h3 className="text-xl sm:text-2xl font-black font-heading text-slate-900">Próximos Eventos Disponibles</h3>
@@ -251,6 +258,12 @@ export const EventCatalogPage = () => {
           </div>
         )}
       </main>
+
+      {/* Formulario Casa de Paz */}
+      <CasaDePazForm />
+
+      {/* Popup flotante "¿Sin Casa de Paz?" */}
+      <CasaDePazPrompt />
 
       {/* Footer Limpio */}
       <footer className="border-t border-slate-200/80 bg-white px-6 py-6 text-center text-xs text-slate-500">

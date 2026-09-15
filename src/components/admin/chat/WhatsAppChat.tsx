@@ -169,7 +169,7 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
 
       if (url) {
         checkServerStatus(url);
-        fetchChats(url, token);
+        fetchChats(url, token, true);
       } else {
         setStatus("disconnected");
       }
@@ -206,85 +206,19 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
     }
   }, [selectedContact]);
 
-  // 🔄 RECEPTOR EN TIEMPO REAL: Auto-polling de mensajes entrantes cada 3.5 segundos
+  // 🔄 RECEPTOR EN TIEMPO REAL: Auto-polling silencioso de mensajes entrantes cada 4 segundos
   useEffect(() => {
     if (status !== "connected" || !waConfig.url) return;
 
     const interval = setInterval(async () => {
-      fetchChats(waConfig.url, waConfig.token);
+      // Sincronización silenciosa de lista de chats sin disparar spinners
+      fetchChats(waConfig.url, waConfig.token, false);
 
       if (activeChat) {
-        try {
-          const cleanUrl = waConfig.url.replace(/\/$/, "");
-          const res = await fetch(`${cleanUrl}/chats/${encodeURIComponent(activeChat.id)}/messages`, {
-            headers: { Authorization: `Bearer ${waConfig.token}` },
-          });
-
-          if (res.ok) {
-            const raw = await res.json();
-            const data = Array.isArray(raw) ? raw : (raw.messages || []);
-            if (Array.isArray(data) && data.length > 0) {
-              const formatted: Message[] = data.map((m: any) => ({
-                id: String(m.id || Date.now()),
-                fromMe: Boolean(m.fromMe),
-                body: m.body || m.text || "",
-                timestamp: typeof m.timestamp === "number" ? m.timestamp : Math.floor(new Date(m.timestamp).getTime() / 1000),
-              }));
-
-              setMessages((prevMsgs) => {
-                const lastPrev = prevMsgs[prevMsgs.length - 1];
-                const lastNew = formatted[formatted.length - 1];
-
-                if (lastNew && (!lastPrev || lastNew.id !== lastPrev.id || lastNew.body !== lastPrev.body)) {
-                  if (!lastNew.fromMe && prevMsgs.length > 0) {
-                    toast.info(`💬 Nuevo mensaje de ${activeChat.name || activeChat.id}: "${lastNew.body.slice(0, 35)}..."`);
-                    
-                    if (aiBotActive) {
-                      processWhatsAppMessageIntent(lastNew.body, activeChat.id).then(({ replyText, rsvpStatus }) => {
-                        if (replyText) {
-                          const botMsg: Message = {
-                            id: `bot-reply-${Date.now()}`,
-                            fromMe: true,
-                            body: replyText,
-                            timestamp: Math.floor(Date.now() / 1000),
-                          };
-                          setMessages((curr) => [...curr, botMsg]);
-
-                          // 🚀 ENVIAR RESPUESTA DEL BOT POR WHATSAPP REAL
-                          if (waConfig.url) {
-                            const cleanUrl = waConfig.url.replace(/\/$/, "");
-                            fetch(`${cleanUrl}/send`, {
-                              method: "POST",
-                              headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${waConfig.token}`,
-                              },
-                              body: JSON.stringify({
-                                phone: activeChat.id,
-                                message: replyText,
-                              }),
-                            }).then((r) => {
-                              if (r.ok) {
-                                toast.success("🤖 Respuesta del Chatbot IA enviada a WhatsApp");
-                              }
-                            });
-                          }
-
-                          if (rsvpStatus) {
-                            toast.success(`RSVP auto-registrado: ${rsvpStatus.toUpperCase()}`);
-                          }
-                        }
-                      });
-                    }
-                  }
-                }
-                return formatted;
-              });
-            }
-          }
-        } catch (_) {}
+        // Sincronización silenciosa de mensajes del chat activo
+        fetchMessages(activeChat.id, true);
       }
-    }, 3500);
+    }, 4000);
 
     return () => clearInterval(interval);
   }, [status, waConfig.url, waConfig.token, activeChat?.id, aiBotActive]);
@@ -297,13 +231,23 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
         .in("key", ["WA_CLOUD_CHATS", "WA_CLOUD_MESSAGES"]);
 
       const cloudChatsRaw = data?.find((d) => d.key === "WA_CLOUD_CHATS")?.value;
+      const cloudMessagesRaw = data?.find((d) => d.key === "WA_CLOUD_MESSAGES")?.value;
 
       if (cloudChatsRaw) {
-        const parsed = JSON.parse(cloudChatsRaw);
-        setChats(parsed);
-        localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(parsed));
+        try {
+          const parsed = JSON.parse(cloudChatsRaw);
+          setChats(parsed);
+          localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(parsed));
+        } catch (_) {}
       } else {
         setChats(loadStoredChats());
+      }
+
+      if (cloudMessagesRaw) {
+        try {
+          const parsedMap = JSON.parse(cloudMessagesRaw);
+          localStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify(parsedMap));
+        } catch (_) {}
       }
     } catch {
       setChats(loadStoredChats());
@@ -322,25 +266,33 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
     }
   };
 
-  const fetchChats = async (url = waConfig.url, token = waConfig.token) => {
+  const fetchChats = async (url = waConfig.url, token = waConfig.token, isInitial = false) => {
     if (!url) return;
-    setLoadingChats(true);
+    if (isInitial && chats.length === 0) setLoadingChats(true);
     try {
       const res = await fetch(`${url.replace(/\/$/, "")}/chats`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
         const raw = await res.json();
-        const data = Array.isArray(raw) ? raw : (raw.chats || []);
+        const data = Array.isArray(raw) ? raw : (raw.chats || raw.data || raw.result || []);
         if (Array.isArray(data)) {
           setChats((prev) => {
             const map = new Map<string, Chat>();
             prev.forEach((c) => map.set(c.id, c));
             data.forEach((c) => {
-              const id = String(c.id || c.phone);
-              map.set(id, { id, name: c.name || id, lastMessage: c.lastMessage || c.body, timestamp: c.timestamp, unreadCount: c.unreadCount || c.unread });
+              const cleanId = String(c.id || c.phone || "").replace(/@.+$/, "");
+              const id = cleanId || String(c.id || c.phone);
+              const existing = map.get(id) || map.get(String(c.id));
+              map.set(id, {
+                id,
+                name: c.name && c.name !== id && c.name !== c.id ? c.name : (existing?.name || id),
+                lastMessage: c.lastMessage || c.body || c.message || existing?.lastMessage,
+                timestamp: c.timestamp || existing?.timestamp,
+                unreadCount: c.unreadCount || c.unread || 0,
+              });
             });
-            const merged = Array.from(map.values());
+            const merged = Array.from(map.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             saveStoredChats(merged);
             return merged;
           });
@@ -349,42 +301,132 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
     } catch (err) {
       console.warn("Uso de conversaciones almacenadas previamente");
     } finally {
-      setLoadingChats(false);
+      if (isInitial) setLoadingChats(false);
     }
   };
 
-  const fetchMessages = async (chatId: string) => {
+  const fetchMessages = async (chatId: string, isSilent = false, passedChat?: Chat | null) => {
+    if (!chatId) return;
+    const cleanId = chatId.replace(/[^\d]/g, "");
+
+    // 1. Mostrar de inmediato lo que haya en caché local o cloud
     const map = loadStoredMessagesMap();
-    if (map[chatId] && map[chatId].length > 0) {
-      setMessages(map[chatId]);
+    let cached = map[chatId] || (cleanId ? map[cleanId] : null) || [];
+
+    // Si aún no hay mensajes en el mapa pero el chat tiene un lastMessage registrado
+    const targetChat = passedChat || chats.find((c) => c.id === chatId || (cleanId && c.id === cleanId)) || activeChat;
+    if (cached.length === 0 && targetChat?.lastMessage) {
+      cached = [
+        {
+          id: `last-${targetChat.id}-${targetChat.timestamp || Date.now()}`,
+          fromMe: true,
+          body: targetChat.lastMessage,
+          timestamp: targetChat.timestamp || Math.floor(Date.now() / 1000),
+        },
+      ];
+      map[chatId] = cached;
+      if (cleanId) map[cleanId] = cached;
+      saveStoredMessagesMap(map);
+    }
+
+    if (cached.length > 0 && !isSilent) {
+      setMessages(cached);
     }
 
     if (!waConfig.url) return;
-    setLoadingMessages(true);
+    if (!isSilent && cached.length === 0) {
+      setLoadingMessages(true);
+    }
+
     try {
       const cleanUrl = waConfig.url.replace(/\/$/, "");
-      const res = await fetch(`${cleanUrl}/chats/${encodeURIComponent(chatId)}/messages`, {
+
+      // Probar formatos de identificación (ID directo, número limpio, @s.whatsapp.net, @c.us)
+      let res = await fetch(`${cleanUrl}/chats/${encodeURIComponent(chatId)}/messages`, {
         headers: { Authorization: `Bearer ${waConfig.token}` },
       });
+
+      if (!res.ok && cleanId && cleanId !== chatId) {
+        res = await fetch(`${cleanUrl}/chats/${encodeURIComponent(cleanId)}/messages`, {
+          headers: { Authorization: `Bearer ${waConfig.token}` },
+        });
+      }
+      if (!res.ok && cleanId) {
+        res = await fetch(`${cleanUrl}/chats/${encodeURIComponent(cleanId + "@s.whatsapp.net")}/messages`, {
+          headers: { Authorization: `Bearer ${waConfig.token}` },
+        });
+      }
+      if (!res.ok && cleanId) {
+        res = await fetch(`${cleanUrl}/chats/${encodeURIComponent(cleanId + "@c.us")}/messages`, {
+          headers: { Authorization: `Bearer ${waConfig.token}` },
+        });
+      }
+
       if (res.ok) {
         const raw = await res.json();
-        const data = Array.isArray(raw) ? raw : (raw.messages || []);
-        if (Array.isArray(data)) {
+        const data = Array.isArray(raw) ? raw : (raw.messages || raw.data || raw.result || []);
+        if (Array.isArray(data) && data.length > 0) {
           const formatted: Message[] = data.map((m: any) => ({
-            id: String(m.id || Date.now()),
+            id: String(m.id || Date.now() + Math.random()),
             fromMe: Boolean(m.fromMe),
-            body: m.body || m.text || "",
-            timestamp: typeof m.timestamp === "number" ? m.timestamp : Math.floor(new Date(m.timestamp).getTime() / 1000),
+            body: m.body || m.text || m.message || "",
+            timestamp: typeof m.timestamp === "number" ? m.timestamp : Math.floor(new Date(m.timestamp || Date.now()).getTime() / 1000),
           }));
-          setMessages(formatted);
-          const updatedMap = { ...loadStoredMessagesMap(), [chatId]: formatted };
-          saveStoredMessagesMap(updatedMap);
+
+          setMessages((prevMsgs) => {
+            const lastPrev = prevMsgs[prevMsgs.length - 1];
+            const lastNew = formatted[formatted.length - 1];
+
+            if (lastNew && (!lastPrev || lastNew.id !== lastPrev.id || lastNew.body !== lastPrev.body)) {
+              if (!lastNew.fromMe && prevMsgs.length > 0 && isSilent) {
+                toast.info(`💬 Nuevo mensaje de ${activeChat?.name || activeChat?.id || chatId}: "${lastNew.body.slice(0, 35)}..."`);
+
+                if (aiBotActive && activeChat) {
+                  processWhatsAppMessageIntent(lastNew.body, activeChat.id).then(({ replyText, rsvpStatus }) => {
+                    if (replyText) {
+                      const botMsg: Message = {
+                        id: `bot-reply-${Date.now()}`,
+                        fromMe: true,
+                        body: replyText,
+                        timestamp: Math.floor(Date.now() / 1000),
+                      };
+                      setMessages((curr) => [...curr, botMsg]);
+
+                      if (waConfig.url) {
+                        fetch(`${cleanUrl}/send`, {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${waConfig.token}`,
+                          },
+                          body: JSON.stringify({
+                            phone: activeChat.id,
+                            message: replyText,
+                          }),
+                        });
+                      }
+
+                      if (rsvpStatus) {
+                        toast.success(`RSVP auto-registrado: ${rsvpStatus.toUpperCase()}`);
+                      }
+                    }
+                  });
+                }
+              }
+            }
+            return formatted;
+          });
+
+          const currentMap = loadStoredMessagesMap();
+          currentMap[chatId] = formatted;
+          if (cleanId) currentMap[cleanId] = formatted;
+          saveStoredMessagesMap(currentMap);
         }
       }
     } catch (err) {
       console.warn("Uso de caché local para mensajes de", chatId);
     } finally {
-      setLoadingMessages(false);
+      if (!isSilent) setLoadingMessages(false);
     }
   };
 
@@ -815,7 +857,7 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                       key={chat.id}
                       onClick={() => {
                         setActiveChat(chat);
-                        fetchMessages(chat.id);
+                        fetchMessages(chat.id, false, chat);
                       }}
                       className={`w-full p-3.5 text-left transition-colors flex items-start justify-between gap-3 cursor-pointer group ${
                         isSelected
