@@ -19,7 +19,7 @@ import { AttendanceReport } from "@/components/admin/AttendanceReport";
 import { DashboardStats } from "@/components/admin/DashboardStats";
 import { WhatsAppCrm } from "@/components/admin/WhatsAppCrm";
 import { WhatsAppManager } from "@/components/admin/WhatsAppManager";
-import { WhatsAppChat } from "@/components/admin/chat/WhatsAppChat";
+import { WhatsAppChat, loadStoredChats, saveStoredChats, loadStoredMessagesMap, saveStoredMessagesMap } from "@/components/admin/chat/WhatsAppChat";
 import { ChatbotManager } from "@/components/admin/ChatbotManager";
 import { WhatsAppContacts, StoredContact } from "@/components/admin/WhatsAppContacts";
 import { EventManager } from "@/components/admin/EventManager";
@@ -450,8 +450,38 @@ const AdminDashboard = () => {
       });
 
       const data = await res.json();
-      if (res.ok) toast.success(`WhatsApp reenviado a ${r.telefono}`);
-      else toast.error("Error: " + (data.error || "No se pudo enviar"));
+      if (res.ok) {
+        toast.success(`WhatsApp reenviado a ${r.telefono}`);
+        try {
+          const cleanPhone = r.telefono.replace(/[^\d]/g, "");
+          const nowTs = Math.floor(Date.now() / 1000);
+          const fullName = `${r.nombres || ""} ${r.apellidos || ""}`.trim() || cleanPhone;
+
+          const existingChats = loadStoredChats();
+          const exists = existingChats.some((c) => c.id === cleanPhone);
+          let updatedChats: any[];
+          if (exists) {
+            updatedChats = existingChats.map((c) =>
+              c.id === cleanPhone ? { ...c, name: fullName, lastMessage: message, timestamp: nowTs } : c
+            );
+          } else {
+            updatedChats = [{ id: cleanPhone, name: fullName, lastMessage: message, timestamp: nowTs }, ...existingChats];
+          }
+          saveStoredChats(updatedChats);
+
+          const currentMap = loadStoredMessagesMap();
+          const prevMsgs = currentMap[cleanPhone] || [];
+          const newMsg = {
+            id: `send-${Date.now()}`,
+            fromMe: true,
+            body: message,
+            timestamp: nowTs,
+          };
+          saveStoredMessagesMap({ ...currentMap, [cleanPhone]: [...prevMsgs, newMsg] });
+        } catch (_) {}
+      } else {
+        toast.error("Error: " + (data.error || "No se pudo enviar"));
+      }
     } catch (err: any) {
       toast.error("Error: " + err.message);
     }

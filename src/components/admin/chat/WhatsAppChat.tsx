@@ -231,13 +231,23 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
         .in("key", ["WA_CLOUD_CHATS", "WA_CLOUD_MESSAGES"]);
 
       const cloudChatsRaw = data?.find((d) => d.key === "WA_CLOUD_CHATS")?.value;
+      const cloudMessagesRaw = data?.find((d) => d.key === "WA_CLOUD_MESSAGES")?.value;
 
       if (cloudChatsRaw) {
-        const parsed = JSON.parse(cloudChatsRaw);
-        setChats(parsed);
-        localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(parsed));
+        try {
+          const parsed = JSON.parse(cloudChatsRaw);
+          setChats(parsed);
+          localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(parsed));
+        } catch (_) {}
       } else {
         setChats(loadStoredChats());
+      }
+
+      if (cloudMessagesRaw) {
+        try {
+          const parsedMap = JSON.parse(cloudMessagesRaw);
+          localStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify(parsedMap));
+        } catch (_) {}
       }
     } catch {
       setChats(loadStoredChats());
@@ -295,13 +305,30 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
     }
   };
 
-  const fetchMessages = async (chatId: string, isSilent = false) => {
+  const fetchMessages = async (chatId: string, isSilent = false, passedChat?: Chat | null) => {
     if (!chatId) return;
     const cleanId = chatId.replace(/[^\d]/g, "");
 
-    // 1. Mostrar de inmediato lo que haya en caché local o cloud para evitar pantalla en blanco
+    // 1. Mostrar de inmediato lo que haya en caché local o cloud
     const map = loadStoredMessagesMap();
-    const cached = map[chatId] || (cleanId ? map[cleanId] : null) || [];
+    let cached = map[chatId] || (cleanId ? map[cleanId] : null) || [];
+
+    // Si aún no hay mensajes en el mapa pero el chat tiene un lastMessage registrado
+    const targetChat = passedChat || chats.find((c) => c.id === chatId || (cleanId && c.id === cleanId)) || activeChat;
+    if (cached.length === 0 && targetChat?.lastMessage) {
+      cached = [
+        {
+          id: `last-${targetChat.id}-${targetChat.timestamp || Date.now()}`,
+          fromMe: true,
+          body: targetChat.lastMessage,
+          timestamp: targetChat.timestamp || Math.floor(Date.now() / 1000),
+        },
+      ];
+      map[chatId] = cached;
+      if (cleanId) map[cleanId] = cached;
+      saveStoredMessagesMap(map);
+    }
+
     if (cached.length > 0 && !isSilent) {
       setMessages(cached);
     }
@@ -830,7 +857,7 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                       key={chat.id}
                       onClick={() => {
                         setActiveChat(chat);
-                        fetchMessages(chat.id);
+                        fetchMessages(chat.id, false, chat);
                       }}
                       className={`w-full p-3.5 text-left transition-colors flex items-start justify-between gap-3 cursor-pointer group ${
                         isSelected
