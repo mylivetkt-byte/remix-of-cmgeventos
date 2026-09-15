@@ -11,8 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Menu, UserPlus, Send, Bot } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Menu, UserPlus, Send, Bot, Home, Building2 } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
+import { CasaDePazRequestsManager } from "@/components/admin/CasaDePazRequestsManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
 import { AttendanceReport } from "@/components/admin/AttendanceReport";
 import { DashboardStats } from "@/components/admin/DashboardStats";
@@ -23,12 +24,13 @@ import { ChatbotManager } from "@/components/admin/ChatbotManager";
 import { WhatsAppContacts, StoredContact } from "@/components/admin/WhatsAppContacts";
 import { EventManager } from "@/components/admin/EventManager";
 import { UserManager } from "@/components/admin/UserManager";
+import { AuditorioManager } from "@/components/admin/AuditorioManager";
 import { UserRole, ROLE_LABELS, ROLE_PERMISSIONS_MAP } from "@/integrations/supabase/user-role-types";
 import { useCatalog } from "@/hooks/useCatalogs";
 import { sendCheckInWhatsAppNotification } from "@/lib/whatsapp-bot";
 import { toast } from "sonner";
 
-type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "whatsapp" | "usuarios" | "crm" | "chat" | "contactos" | "chatbot";
+type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "casas_de_paz" | "whatsapp" | "usuarios" | "crm" | "chat" | "contactos" | "chatbot" | "auditorio";
 
 function csvCell(val: unknown): string {
   const str = val == null ? "" : String(val);
@@ -98,12 +100,14 @@ const AdminDashboard = () => {
     { id: "registros", label: "Registros", icon: <Users className="w-5 h-5" />, roles: ["super_admin", "coordinador", "lider_red"] },
     { id: "asistencia", label: "Asistencia", icon: <QrCode className="w-5 h-5" />, roles: ["super_admin", "coordinador"] },
     { id: "catalogos", label: "Catálogos", icon: <List className="w-5 h-5" />, roles: ["super_admin"] },
+    { id: "casas_de_paz", label: "Casas de Paz (Leads)", icon: <Home className="w-5 h-5 text-emerald-600" />, roles: ["super_admin", "coordinador", "lider_red"] },
     { id: "usuarios", label: "Usuarios & Roles", icon: <ShieldCheck className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "whatsapp", label: "WhatsApp & Brevo", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "contactos", label: "Agenda Contactos", icon: <Users className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "crm", label: "Envío Masivo", icon: <Send className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "chat", label: "Chat WhatsApp", icon: <MessageCircle className="w-5 h-5" />, roles: ["super_admin"] },
     { id: "chatbot", label: "Chatbot IA 24/7", icon: <Bot className="w-5 h-5 text-teal-600" />, roles: ["super_admin", "coordinador"] },
+    { id: "auditorio", label: "Auditorio", icon: <Building2 className="w-5 h-5 text-amber-600" />, roles: ["super_admin", "coordinador"] },
   ];
 
   // Sincronizar rol según usuario logueado
@@ -1143,6 +1147,7 @@ const AdminDashboard = () => {
           </div>
         )}
         {tab === "catalogos" && <CatalogManager />}
+        {tab === "casas_de_paz" && <div className="animate-fade-in pb-8"><CasaDePazRequestsManager /></div>}
         {tab === "usuarios" && <div className="animate-fade-in pb-8"><UserManager /></div>}
         {tab === "whatsapp" && <div className="animate-fade-in pb-8"><WhatsAppManager /></div>}
         {tab === "contactos" && (
@@ -1171,6 +1176,7 @@ const AdminDashboard = () => {
         {tab === "crm" && <div className="animate-fade-in pb-8"><WhatsAppCrm initialContacts={crmContacts} /></div>}
         {tab === "chat" && <div className="animate-fade-in pb-8"><WhatsAppChat selectedContact={selectedChatContact} /></div>}
         {tab === "chatbot" && <div className="animate-fade-in pb-8"><ChatbotManager /></div>}
+        {tab === "auditorio" && <div className="animate-fade-in pb-8"><AuditorioManager /></div>}
         </main>
       </div>
 

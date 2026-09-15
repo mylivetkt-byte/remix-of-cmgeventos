@@ -32,6 +32,159 @@ export type Database = {
         }
         Relationships: []
       }
+      auditorio_config: {
+        Row: {
+          activo: boolean
+          capacidad: string | null
+          condiciones: string | null
+          correo_contacto: string | null
+          created_at: string
+          descripcion: string | null
+          direccion: string | null
+          fotos: Json
+          id: string
+          moneda: string
+          mostrar_precio: boolean
+          precio: number | null
+          subtitulo: string | null
+          telefono_contacto: string | null
+          texto_tarifas: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          capacidad?: string | null
+          condiciones?: string | null
+          correo_contacto?: string | null
+          created_at?: string
+          descripcion?: string | null
+          direccion?: string | null
+          fotos?: Json
+          id?: string
+          moneda?: string
+          mostrar_precio?: boolean
+          precio?: number | null
+          subtitulo?: string | null
+          telefono_contacto?: string | null
+          texto_tarifas?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          capacidad?: string | null
+          condiciones?: string | null
+          correo_contacto?: string | null
+          created_at?: string
+          descripcion?: string | null
+          direccion?: string | null
+          fotos?: Json
+          id?: string
+          moneda?: string
+          mostrar_precio?: boolean
+          precio?: number | null
+          subtitulo?: string | null
+          telefono_contacto?: string | null
+          texto_tarifas?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      auditorio_solicitudes: {
+        Row: {
+          correo: string | null
+          created_at: string
+          estado: string
+          fecha_evento: string | null
+          hora_fin: string | null
+          hora_inicio: string | null
+          id: string
+          mensaje: string | null
+          nombre: string
+          notas: string | null
+          num_asistentes: number | null
+          organizacion: string | null
+          telefono: string
+          tipo_evento: string | null
+          updated_at: string
+        }
+        Insert: {
+          correo?: string | null
+          created_at?: string
+          estado?: string
+          fecha_evento?: string | null
+          hora_fin?: string | null
+          hora_inicio?: string | null
+          id?: string
+          mensaje?: string | null
+          nombre: string
+          notas?: string | null
+          num_asistentes?: number | null
+          organizacion?: string | null
+          telefono: string
+          tipo_evento?: string | null
+          updated_at?: string
+        }
+        Update: {
+          correo?: string | null
+          created_at?: string
+          estado?: string
+          fecha_evento?: string | null
+          hora_fin?: string | null
+          hora_inicio?: string | null
+          id?: string
+          mensaje?: string | null
+          nombre?: string
+          notas?: string | null
+          num_asistentes?: number | null
+          organizacion?: string | null
+          telefono?: string
+          tipo_evento?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      casa_de_paz_solicitudes: {
+        Row: {
+          barrio: string
+          correo: string | null
+          created_at: string
+          direccion: string
+          estado: string | null
+          id: string
+          nombre: string
+          notas: string | null
+          telefono: string
+          updated_at: string
+        }
+        Insert: {
+          barrio: string
+          correo?: string | null
+          created_at?: string
+          direccion: string
+          estado?: string | null
+          id?: string
+          nombre: string
+          notas?: string | null
+          telefono: string
+          updated_at?: string
+        }
+        Update: {
+          barrio?: string
+          correo?: string | null
+          created_at?: string
+          direccion?: string
+          estado?: string | null
+          id?: string
+          nombre?: string
+          notas?: string | null
+          telefono?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       catalog_barrio: {
         Row: {
           activo: boolean
@@ -730,6 +883,248 @@ export type Database = {
           },
         ]
       }
+      evento_libres_para_amar_registrations: {
+        Row: {
+          apellidos: string
+          asistio: boolean
+          barrio: string
+          cdp_id: string | null
+          correo: string
+          created_at: string
+          direccion: string
+          edad: number
+          estado_civil_id: string | null
+          event_id: string | null
+          fecha_asistencia: string | null
+          fecha_nacimiento: string
+          id: string
+          nombre_invitador: string | null
+          nombres: string
+          numero_documento: string
+          pdf_url: string | null
+          qr_code: string | null
+          red_id: string | null
+          sexo_id: string | null
+          telefono: string
+          tipo_documento_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          apellidos: string
+          asistio?: boolean
+          barrio: string
+          cdp_id?: string | null
+          correo: string
+          created_at?: string
+          direccion: string
+          edad: number
+          estado_civil_id?: string | null
+          event_id?: string | null
+          fecha_asistencia?: string | null
+          fecha_nacimiento: string
+          id?: string
+          nombre_invitador?: string | null
+          nombres: string
+          numero_documento: string
+          pdf_url?: string | null
+          qr_code?: string | null
+          red_id?: string | null
+          sexo_id?: string | null
+          telefono: string
+          tipo_documento_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          apellidos?: string
+          asistio?: boolean
+          barrio?: string
+          cdp_id?: string | null
+          correo?: string
+          created_at?: string
+          direccion?: string
+          edad?: number
+          estado_civil_id?: string | null
+          event_id?: string | null
+          fecha_asistencia?: string | null
+          fecha_nacimiento?: string
+          id?: string
+          nombre_invitador?: string | null
+          nombres?: string
+          numero_documento?: string
+          pdf_url?: string | null
+          qr_code?: string | null
+          red_id?: string | null
+          sexo_id?: string | null
+          telefono?: string
+          tipo_documento_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evento_libres_para_amar_registrations_cdp_id_fkey"
+            columns: ["cdp_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_cdp"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_libres_para_amar_registrations_estado_civil_id_fkey"
+            columns: ["estado_civil_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_estado_civil"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_libres_para_amar_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_libres_para_amar_registrations_red_id_fkey"
+            columns: ["red_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_red"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_libres_para_amar_registrations_sexo_id_fkey"
+            columns: ["sexo_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_sexo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_libres_para_amar_registrations_tipo_documento_id_fkey"
+            columns: ["tipo_documento_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_tipo_documento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evento_mega_casa_de_paz_registrations: {
+        Row: {
+          apellidos: string
+          asistio: boolean
+          barrio: string
+          cdp_id: string | null
+          correo: string
+          created_at: string
+          direccion: string
+          edad: number
+          estado_civil_id: string | null
+          event_id: string | null
+          fecha_asistencia: string | null
+          fecha_nacimiento: string
+          id: string
+          nombre_invitador: string | null
+          nombres: string
+          numero_documento: string
+          pdf_url: string | null
+          qr_code: string | null
+          red_id: string | null
+          sexo_id: string | null
+          telefono: string
+          tipo_documento_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          apellidos: string
+          asistio?: boolean
+          barrio: string
+          cdp_id?: string | null
+          correo: string
+          created_at?: string
+          direccion: string
+          edad: number
+          estado_civil_id?: string | null
+          event_id?: string | null
+          fecha_asistencia?: string | null
+          fecha_nacimiento: string
+          id?: string
+          nombre_invitador?: string | null
+          nombres: string
+          numero_documento: string
+          pdf_url?: string | null
+          qr_code?: string | null
+          red_id?: string | null
+          sexo_id?: string | null
+          telefono: string
+          tipo_documento_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          apellidos?: string
+          asistio?: boolean
+          barrio?: string
+          cdp_id?: string | null
+          correo?: string
+          created_at?: string
+          direccion?: string
+          edad?: number
+          estado_civil_id?: string | null
+          event_id?: string | null
+          fecha_asistencia?: string | null
+          fecha_nacimiento?: string
+          id?: string
+          nombre_invitador?: string | null
+          nombres?: string
+          numero_documento?: string
+          pdf_url?: string | null
+          qr_code?: string | null
+          red_id?: string | null
+          sexo_id?: string | null
+          telefono?: string
+          tipo_documento_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evento_mega_casa_de_paz_registrations_cdp_id_fkey"
+            columns: ["cdp_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_cdp"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_mega_casa_de_paz_registrations_estado_civil_id_fkey"
+            columns: ["estado_civil_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_estado_civil"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_mega_casa_de_paz_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_mega_casa_de_paz_registrations_red_id_fkey"
+            columns: ["red_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_red"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_mega_casa_de_paz_registrations_sexo_id_fkey"
+            columns: ["sexo_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_sexo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_mega_casa_de_paz_registrations_tipo_documento_id_fkey"
+            columns: ["tipo_documento_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_tipo_documento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evento_retiro_de_lideres_de_casa_de_paz_registrations: {
         Row: {
           apellidos: string
@@ -1099,11 +1494,13 @@ export type Database = {
           asunto_correo: string
           banner_url: string | null
           barrio_como_combo: boolean
+          bloques_orden: Json
           color_primario: string
           color_secundario: string
           correo_remitente: string
           created_at: string
           descripcion: string | null
+          enviar_whatsapp_checkin: boolean
           es_de_pago: boolean | null
           fecha: string | null
           fecha_evento: string | null
@@ -1115,10 +1512,14 @@ export type Database = {
           lugar: string | null
           lugar_evento: string | null
           mensaje_correo: string
+          mensaje_personalizado: string | null
           mensaje_whatsapp: string
+          mensaje_whatsapp_checkin: string | null
           moneda: string | null
           nombre: string
+          pdf_whatsapp_checkin_url: string | null
           precio: number | null
+          proteccion_datos: string | null
           requiere_checkin: boolean
           requiere_comprobante: boolean | null
           slug: string | null
@@ -1129,11 +1530,13 @@ export type Database = {
           asunto_correo?: string
           banner_url?: string | null
           barrio_como_combo?: boolean
+          bloques_orden?: Json
           color_primario?: string
           color_secundario?: string
           correo_remitente?: string
           created_at?: string
           descripcion?: string | null
+          enviar_whatsapp_checkin?: boolean
           es_de_pago?: boolean | null
           fecha?: string | null
           fecha_evento?: string | null
@@ -1145,10 +1548,14 @@ export type Database = {
           lugar?: string | null
           lugar_evento?: string | null
           mensaje_correo?: string
+          mensaje_personalizado?: string | null
           mensaje_whatsapp?: string
+          mensaje_whatsapp_checkin?: string | null
           moneda?: string | null
           nombre?: string
+          pdf_whatsapp_checkin_url?: string | null
           precio?: number | null
+          proteccion_datos?: string | null
           requiere_checkin?: boolean
           requiere_comprobante?: boolean | null
           slug?: string | null
@@ -1159,11 +1566,13 @@ export type Database = {
           asunto_correo?: string
           banner_url?: string | null
           barrio_como_combo?: boolean
+          bloques_orden?: Json
           color_primario?: string
           color_secundario?: string
           correo_remitente?: string
           created_at?: string
           descripcion?: string | null
+          enviar_whatsapp_checkin?: boolean
           es_de_pago?: boolean | null
           fecha?: string | null
           fecha_evento?: string | null
@@ -1175,10 +1584,14 @@ export type Database = {
           lugar?: string | null
           lugar_evento?: string | null
           mensaje_correo?: string
+          mensaje_personalizado?: string | null
           mensaje_whatsapp?: string
+          mensaje_whatsapp_checkin?: string | null
           moneda?: string | null
           nombre?: string
+          pdf_whatsapp_checkin_url?: string | null
           precio?: number | null
+          proteccion_datos?: string | null
           requiere_checkin?: boolean
           requiere_comprobante?: boolean | null
           slug?: string | null
@@ -1657,12 +2070,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1686,11 +2099,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1711,11 +2124,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1736,11 +2149,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1753,11 +2166,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
