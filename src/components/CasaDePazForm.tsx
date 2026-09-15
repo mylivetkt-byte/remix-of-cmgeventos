@@ -108,7 +108,7 @@ export const CasaDePazForm: React.FC<CasaDePazFormProps> = ({ className = "" }) 
   };
 
   return (
-    <section className={`w-full max-w-4xl mx-auto px-4 sm:px-6 my-12 ${className}`}>
+    <section id="casa-de-paz" className={`w-full max-w-4xl mx-auto px-4 sm:px-6 my-12 scroll-mt-24 ${className}`}>
       {/* Contenedor con efecto offset amarillo exacto como el afiche */}
       <div className="relative">
         {/* Capa de fondo amarilla desplazada */}

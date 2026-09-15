@@ -32,6 +32,159 @@ export type Database = {
         }
         Relationships: []
       }
+      auditorio_config: {
+        Row: {
+          activo: boolean
+          capacidad: string | null
+          condiciones: string | null
+          correo_contacto: string | null
+          created_at: string
+          descripcion: string | null
+          direccion: string | null
+          fotos: Json
+          id: string
+          moneda: string
+          mostrar_precio: boolean
+          precio: number | null
+          subtitulo: string | null
+          telefono_contacto: string | null
+          texto_tarifas: string | null
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          capacidad?: string | null
+          condiciones?: string | null
+          correo_contacto?: string | null
+          created_at?: string
+          descripcion?: string | null
+          direccion?: string | null
+          fotos?: Json
+          id?: string
+          moneda?: string
+          mostrar_precio?: boolean
+          precio?: number | null
+          subtitulo?: string | null
+          telefono_contacto?: string | null
+          texto_tarifas?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          capacidad?: string | null
+          condiciones?: string | null
+          correo_contacto?: string | null
+          created_at?: string
+          descripcion?: string | null
+          direccion?: string | null
+          fotos?: Json
+          id?: string
+          moneda?: string
+          mostrar_precio?: boolean
+          precio?: number | null
+          subtitulo?: string | null
+          telefono_contacto?: string | null
+          texto_tarifas?: string | null
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      auditorio_solicitudes: {
+        Row: {
+          correo: string | null
+          created_at: string
+          estado: string
+          fecha_evento: string | null
+          hora_fin: string | null
+          hora_inicio: string | null
+          id: string
+          mensaje: string | null
+          nombre: string
+          notas: string | null
+          num_asistentes: number | null
+          organizacion: string | null
+          telefono: string
+          tipo_evento: string | null
+          updated_at: string
+        }
+        Insert: {
+          correo?: string | null
+          created_at?: string
+          estado?: string
+          fecha_evento?: string | null
+          hora_fin?: string | null
+          hora_inicio?: string | null
+          id?: string
+          mensaje?: string | null
+          nombre: string
+          notas?: string | null
+          num_asistentes?: number | null
+          organizacion?: string | null
+          telefono: string
+          tipo_evento?: string | null
+          updated_at?: string
+        }
+        Update: {
+          correo?: string | null
+          created_at?: string
+          estado?: string
+          fecha_evento?: string | null
+          hora_fin?: string | null
+          hora_inicio?: string | null
+          id?: string
+          mensaje?: string | null
+          nombre?: string
+          notas?: string | null
+          num_asistentes?: number | null
+          organizacion?: string | null
+          telefono?: string
+          tipo_evento?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      casa_de_paz_solicitudes: {
+        Row: {
+          barrio: string
+          correo: string | null
+          created_at: string
+          direccion: string
+          estado: string | null
+          id: string
+          nombre: string
+          notas: string | null
+          telefono: string
+          updated_at: string
+        }
+        Insert: {
+          barrio: string
+          correo?: string | null
+          created_at?: string
+          direccion: string
+          estado?: string | null
+          id?: string
+          nombre: string
+          notas?: string | null
+          telefono: string
+          updated_at?: string
+        }
+        Update: {
+          barrio?: string
+          correo?: string | null
+          created_at?: string
+          direccion?: string
+          estado?: string | null
+          id?: string
+          nombre?: string
+          notas?: string | null
+          telefono?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       catalog_barrio: {
         Row: {
           activo: boolean
