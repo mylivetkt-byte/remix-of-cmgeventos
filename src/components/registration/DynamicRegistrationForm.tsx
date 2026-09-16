@@ -113,10 +113,15 @@ export function DynamicRegistrationForm({ eventId, onSuccess }: Props) {
 
       const calculatedAge = age !== null ? age : 18;
 
+      const extractedApellidos = values["apellidos"] ||
+        [values["primer_apellido"], values["segundo_apellido"]].filter(Boolean).join(" ") ||
+        values["apellido"] ||
+        "";
+
       const payload: any = {
         event_id: eventId,
         nombres: values["nombres"] || values["nombre"] || "Asistente",
-        apellidos: values["apellidos"] || values["primer_apellido"] || values["apellido"] || "",
+        apellidos: extractedApellidos,
         numero_documento: values["numero_documento"] || values["documento"] || `REG-${Date.now()}`,
         correo: (values["correo"] || values["email"] || "").toLowerCase(),
         telefono: values["telefono"] || values["celular"] || "",
@@ -133,6 +138,8 @@ export function DynamicRegistrationForm({ eventId, onSuccess }: Props) {
         comprobante_pago_url: values["comprobante_pago_url"] || null,
         estado_pago: values["comprobante_pago_url"] ? "pendiente_verificacion" : "registrado",
       };
+
+      const attendeeFullName = [payload.nombres, payload.apellidos].filter(Boolean).join(" ").trim() || "Asistente";
 
       const { data, error } = await supabase.from("registrations").insert(payload).select().single();
 
@@ -165,12 +172,12 @@ export function DynamicRegistrationForm({ eventId, onSuccess }: Props) {
             toast.success("¡Registro exitoso a este nuevo evento!");
             sendInstantWhatsAppTicket({
               phone: payload.telefono,
-              name: `${payload.nombres} ${payload.apellidos}`.trim(),
+              name: attendeeFullName,
               registrationId: updatedReg.id,
               eventId,
             }).catch(() => {});
             onSuccess({
-              nombres: `${payload.nombres} ${payload.apellidos}`.trim(),
+              nombres: attendeeFullName,
               pdfUrl: null,
               registrationId: updatedReg.id,
             });
@@ -190,13 +197,13 @@ export function DynamicRegistrationForm({ eventId, onSuccess }: Props) {
 
       sendInstantWhatsAppTicket({
         phone: payload.telefono,
-        name: `${payload.nombres} ${payload.apellidos}`.trim(),
+        name: attendeeFullName,
         registrationId: data.id,
         eventId,
       }).catch(() => {});
 
       onSuccess({
-        nombres: `${payload.nombres} ${payload.apellidos}`.trim(),
+        nombres: attendeeFullName,
         pdfUrl: null,
         registrationId: data.id,
       });

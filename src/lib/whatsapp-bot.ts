@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { normalizePhone } from "./whatsapp-crm";
+import { formatEventDateTime } from "./date-utils";
 
 export interface InstantTicketPayload {
   phone: string;
@@ -62,9 +63,9 @@ export async function sendInstantWhatsAppTicket(payload: InstantTicketPayload): 
   if (!cleanPhone || cleanPhone.length < 8) return false;
 
   const downloadUrl = `${window.location.origin}/descargar/${payload.registrationId}`;
-  let eventTitle = payload.eventName || "Doxa Eventos";
+  let eventTitle = payload.eventName || "Evento CMG";
   let eventPlace = payload.eventPlace || "";
-  let eventDate = payload.eventDate || "";
+  let rawDate = payload.eventDate || "";
   let customMessageTemplate: string | null = null;
 
   if (payload.eventId) {
@@ -79,25 +80,37 @@ export async function sendInstantWhatsAppTicket(payload: InstantTicketPayload): 
         if (evt.nombre) eventTitle = evt.nombre;
         if (evt.lugar_evento) eventPlace = evt.lugar_evento;
         if (evt.mensaje_whatsapp) customMessageTemplate = evt.mensaje_whatsapp;
-        if (evt.fecha_evento && !eventDate) {
-          const d = new Date(evt.fecha_evento);
-          eventDate = d.toLocaleDateString("es-CO", {
-            weekday: "long", year: "numeric", month: "long", day: "numeric",
-          });
-        }
+        if (evt.fecha_evento) rawDate = evt.fecha_evento;
       }
     } catch (_) {}
   }
 
+  const dt = formatEventDateTime(rawDate);
+  const eventDateText = dt.fullDateText || dt.eventDate || rawDate;
+
+  const attendeeName = payload.name || "Asistente";
+
   let messageText = "";
   if (customMessageTemplate && customMessageTemplate.trim() !== "") {
     let template = customMessageTemplate
-      .replace(/{nombres}/gi, payload.name || "")
-      .replace(/{nombre}/gi, payload.name || "")
+      .replace(/{nombre_completo}/gi, attendeeName)
+      .replace(/{nombre_asistente}/gi, attendeeName)
+      .replace(/{asistente}/gi, attendeeName)
+      .replace(/{nombres}/gi, attendeeName)
+      .replace(/{nombre}/gi, attendeeName)
+      .replace(/{apellidos}/gi, "")
+      .replace(/{apellido}/gi, "")
       .replace(/{evento}/gi, eventTitle)
       .replace(/{nombre_evento}/gi, eventTitle)
-      .replace(/{fecha}/gi, eventDate)
-      .replace(/{lugar}/gi, eventPlace);
+      .replace(/{fecha}/gi, eventDateText)
+      .replace(/{fecha_evento}/gi, dt.eventDate || eventDateText)
+      .replace(/{hora}/gi, dt.eventTime || "")
+      .replace(/{hora_evento}/gi, dt.eventTime || "")
+      .replace(/{lugar}/gi, eventPlace)
+      .replace(/{lugar_evento}/gi, eventPlace)
+      .replace(/{codigo}/gi, (payload.registrationId || "").slice(0, 8).toUpperCase())
+      .replace(/{codigo_registro}/gi, (payload.registrationId || "").slice(0, 8).toUpperCase())
+      .replace(/{id}/gi, payload.registrationId || "");
 
     if (/{enlace}|{link}|{url}/i.test(template)) {
       messageText = template
@@ -105,10 +118,20 @@ export async function sendInstantWhatsAppTicket(payload: InstantTicketPayload): 
         .replace(/{link}/gi, downloadUrl)
         .replace(/{url}/gi, downloadUrl);
     } else {
-      messageText = `${template.trim()}\n\n📄 *Descarga tu invitación:* ${downloadUrl}`;
+      messageText = `${template.trim()}\n\n📄 *Descarga tu invitación a ${eventTitle} aquí:*\n${downloadUrl}`;
     }
   } else {
-    messageText = `¡Hola ${payload.name}! 🎉\n\nTu registro para *${eventTitle}* ha sido confirmado exitosamente.\n\n🎟️ *Descarga tu pase de entrada y Código QR aquí:*\n${downloadUrl}\n\n${payload.eventDate || eventDate ? `📅 *Fecha:* ${payload.eventDate || eventDate}\n` : ""}${payload.eventPlace || eventPlace ? `📍 *Lugar:* ${payload.eventPlace || eventPlace}\n` : ""}¡Te esperamos en ${eventTitle}!`;
+    const lines = [
+      `🎉 *${eventTitle.toUpperCase()}*`,
+      ``,
+      `Hola *${attendeeName}*,`,
+      `¡Tu registro ha sido confirmado exitosamente! 🎊`,
+      ``,
+    ];
+    if (eventDateText) lines.push(`📅 *Fecha:* ${eventDateText}`);
+    if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
+    lines.push(``, `🎟️ *Descarga tu pase de entrada y Código QR:*`, downloadUrl);
+    messageText = lines.join("\n");
   }
 
   try {
@@ -191,14 +214,8 @@ export async function processWhatsAppMessageIntent(
       const evt = eventsData[0] as any;
       eventInfo.nombre = evt.nombre || eventInfo.nombre;
       if (evt.fecha_evento) {
-        eventInfo.fecha = new Date(evt.fecha_evento).toLocaleString("es-CO", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
+        const dt = formatEventDateTime(evt.fecha_evento);
+        eventInfo.fecha = dt.fullDateText || dt.eventDate || eventInfo.fecha;
       }
       if (evt.lugar_evento) eventInfo.lugar = evt.lugar_evento;
     }
@@ -222,16 +239,20 @@ export async function processWhatsAppMessageIntent(
   if (text.includes("pase") || text.includes("qr") || text.includes("entrada") || text.includes("invitacion") || text.includes("invitación") || text.includes("mi pase")) {
     try {
       const { data: reg } = await (supabase.from("registrations") as any)
-        .select("id, nombres")
+        .select("id, nombres, apellidos")
         .or(`telefono.eq.${cleanPhone},telefono.eq.${senderPhone}`)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (reg) {
+        const attendeeName = [reg.nombres, reg.apellidos]
+          .map((s) => (s ? String(s).trim() : ""))
+          .filter((s) => s.length > 0 && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined")
+          .join(" ") || "Asistente";
         const downloadUrl = `${window.location.origin}/descargar/${reg.id}`;
         return {
-          replyText: `🎟️ *Hola ${reg.nombres}*\n\nAquí tienes tu enlace personal para descargar tu pase de entrada y Código QR:\n👇\n${downloadUrl}`,
+          replyText: `🎟️ *Hola ${attendeeName}*\n\nAquí tienes tu enlace personal para descargar tu pase de entrada y Código QR:\n👇\n${downloadUrl}`,
         };
       }
     } catch (_) {}

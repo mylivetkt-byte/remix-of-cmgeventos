@@ -11,6 +11,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { CasaDePazForm } from "@/components/CasaDePazForm";
 import { CasaDePazPrompt } from "@/components/CasaDePazPrompt";
 import { AuditorioBanner } from "@/components/AuditorioBanner";
+import { formatEventDateTime } from "@/lib/date-utils";
 
 export const EventCatalogPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,20 +26,8 @@ export const EventCatalogPage = () => {
 
   const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return "Fecha por confirmar";
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString("es-ES", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return dateStr;
-    }
+    const dt = formatEventDateTime(dateStr);
+    return dt.fullDateText || dt.eventDate || "Fecha por confirmar";
   };
 
   return (

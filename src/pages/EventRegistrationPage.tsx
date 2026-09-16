@@ -9,6 +9,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, MapPin, Ticket, AlertCircle, Sparkles } from "lucide-react";
+import { formatEventDateTime } from "@/lib/date-utils";
 
 interface SuccessData {
   nombres: string;
@@ -24,27 +25,36 @@ export const EventRegistrationPage = () => {
 
   const formatDate = (dateStr?: string | null) => {
     if (!dateStr) return null;
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString("es-ES", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return dateStr;
-    }
+    const dt = formatEventDateTime(dateStr);
+    return dt.fullDateText || dt.eventDate;
   };
 
   const getWhatsAppUrl = () => {
     if (!successData || !event) return "";
-    const msg = event.mensaje_whatsapp || "Hola, aquí está mi invitación al evento.";
+    const dt = formatEventDateTime(event.fecha_evento);
     const downloadUrl = `${window.location.origin}/descargar/${successData.registrationId}`;
-    return `https://wa.me/?text=${encodeURIComponent(`${msg} ${downloadUrl}`)}`;
+    const rawMsg = event.mensaje_whatsapp || "Hola, aquí está mi invitación al evento.";
+    
+    let text = rawMsg
+      .replace(/{nombres}/gi, successData.nombres || "")
+      .replace(/{nombre}/gi, successData.nombres || "")
+      .replace(/{nombre_completo}/gi, successData.nombres || "")
+      .replace(/{asistente}/gi, successData.nombres || "")
+      .replace(/{evento}/gi, event.nombre || "Evento")
+      .replace(/{nombre_evento}/gi, event.nombre || "Evento")
+      .replace(/{fecha}/gi, dt.fullDateText || dt.eventDate)
+      .replace(/{lugar}/gi, event.lugar_evento || "");
+
+    if (/{enlace}|{link}|{url}/i.test(text)) {
+      text = text
+        .replace(/{enlace}/gi, downloadUrl)
+        .replace(/{link}/gi, downloadUrl)
+        .replace(/{url}/gi, downloadUrl);
+    } else {
+      text = `${text.trim()}\n\n📄 *Descarga tu invitación:* ${downloadUrl}`;
+    }
+
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
   };
 
   if (isLoading) {

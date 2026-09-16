@@ -3,19 +3,25 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Download, Loader2, AlertCircle } from "lucide-react";
+import { formatFullName } from "@/lib/date-utils";
 
 const DownloadInvitation = () => {
   const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchRegistration = async () => {
       if (!id) {
-        setError("Enlace inválido");
-        setLoading(false);
+        if (isMounted) {
+          setError("Enlace inválido");
+          setLoading(false);
+        }
         return;
       }
 
@@ -26,15 +32,59 @@ const DownloadInvitation = () => {
         .single();
 
       if (fetchErr || !data) {
-        setError("Invitación no encontrada");
-      } else {
-        setName(`${data.nombres} ${data.apellidos}`);
-        setPdfUrl(data.pdf_url);
+        if (isMounted) {
+          setError("Invitación no encontrada");
+          setLoading(false);
+        }
+        return;
       }
-      setLoading(false);
+
+      if (isMounted) {
+        setName(formatFullName(data.nombres, data.apellidos));
+      }
+
+      if (data.pdf_url) {
+        if (isMounted) {
+          setPdfUrl(data.pdf_url);
+          setLoading(false);
+        }
+      } else {
+        // PDF not generated yet: generate on demand
+        if (isMounted) {
+          setGenerating(true);
+          setLoading(false);
+        }
+        try {
+          const { data: genData, error: genErr } = await supabase.functions.invoke("generate-invitation", {
+            body: { registrationId: id },
+          });
+          if (!genErr && genData?.pdfUrl && isMounted) {
+            setPdfUrl(genData.pdfUrl);
+          } else {
+            // Polling fallback
+            for (let i = 0; i < 8; i++) {
+              await new Promise((r) => setTimeout(r, 2000));
+              const { data: recheck } = await supabase
+                .from("registrations")
+                .select("pdf_url")
+                .eq("id", id)
+                .single();
+              if (recheck?.pdf_url && isMounted) {
+                setPdfUrl(recheck.pdf_url);
+                break;
+              }
+            }
+          }
+        } catch (_) {}
+        if (isMounted) setGenerating(false);
+      }
     };
 
     fetchRegistration();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   if (loading) {
@@ -76,8 +126,13 @@ const DownloadInvitation = () => {
               Descargar Invitación
             </a>
           </Button>
+        ) : generating ? (
+          <Button size="lg" className="w-full" disabled>
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            Generando pase oficial...
+          </Button>
         ) : (
-          <p className="text-muted-foreground">La invitación aún se está generando. Intenta de nuevo en unos segundos.</p>
+          <p className="text-muted-foreground">La invitación aún se está generando. Por favor intenta en unos segundos.</p>
         )}
       </div>
     </div>
