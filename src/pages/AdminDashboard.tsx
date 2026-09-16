@@ -28,6 +28,7 @@ import { AuditorioManager } from "@/components/admin/AuditorioManager";
 import { UserRole, ROLE_LABELS, ROLE_PERMISSIONS_MAP } from "@/integrations/supabase/user-role-types";
 import { useCatalog } from "@/hooks/useCatalogs";
 import { sendCheckInWhatsAppNotification } from "@/lib/whatsapp-bot";
+import { formatEventDateTime, formatFullName } from "@/lib/date-utils";
 import { toast } from "sonner";
 
 type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "casas_de_paz" | "whatsapp" | "usuarios" | "crm" | "chat" | "contactos" | "chatbot" | "auditorio";
@@ -261,13 +262,27 @@ const AdminDashboard = () => {
 
   // Reenviar Email
   const resendEmail = async (r: any) => {
+    if (!r.correo) {
+      toast.error("Este registro no tiene correo electrónico asignado.");
+      return;
+    }
+    const toastId = toast.loading(`Enviando invitación por correo a ${r.correo}...`);
     try {
-      const { error } = await supabase.functions.invoke("send-brevo-email", {
-        body: { registrationId: r.id },
-      });
-      if (error) toast.error("Error al reenviar: " + error.message);
+      if (!r.pdf_url) {
+        const { error: genErr } = await supabase.functions.invoke("generate-invitation", {
+          body: { registrationId: r.id },
+        });
+        if (genErr) throw genErr;
+      } else {
+        const { error: sendErr } = await supabase.functions.invoke("send-brevo-email", {
+          body: { registrationId: r.id },
+        });
+        if (sendErr) throw sendErr;
+      }
+      toast.success(`Invitación enviada exitosamente a ${r.correo}`, { id: toastId });
+      refresh();
     } catch (err: any) {
-      toast.error("Error: " + err.message);
+      toast.error("Error al reenviar correo: " + (err.message || "Error desconocido"), { id: toastId });
     }
   };
 
@@ -387,38 +402,36 @@ const AdminDashboard = () => {
         }
       }
 
-      const eventName  = eventData?.nombre || "Evento";
-      const eventPlace = eventData?.lugar_evento || "";
-      let eventDate = "";
-      let eventTime = "";
-
-      if (eventData?.fecha_evento) {
-        try {
-          const d = new Date(eventData.fecha_evento);
-          eventDate = d.toLocaleDateString("es-CO", {
-            weekday: "long", year: "numeric", month: "long", day: "numeric",
-          });
-          eventTime = d.toLocaleTimeString("es-CO", {
-            hour: "2-digit", minute: "2-digit",
-          });
-        } catch (_) {}
-      }
+      const attendeeFullName = formatFullName(r.nombres, r.apellidos);
+      const dt = formatEventDateTime(eventData?.fecha_evento);
+      const eventDate = dt.eventDate;
+      const eventTime = dt.eventTime;
 
       let message = "";
       if (eventData?.mensaje_whatsapp && eventData.mensaje_whatsapp.trim() !== "") {
         let template = eventData.mensaje_whatsapp;
         template = template
-          .replace(/{nombres}/gi, r.nombres || "")
-          .replace(/{nombre}/gi, r.nombres || "")
+          .replace(/{nombre_completo}/gi, attendeeFullName)
+          .replace(/{nombre_asistente}/gi, attendeeFullName)
+          .replace(/{asistente}/gi, attendeeFullName)
+          .replace(/{nombres}/gi, r.nombres || attendeeFullName)
+          .replace(/{nombre}/gi, r.nombres || attendeeFullName)
           .replace(/{apellidos}/gi, r.apellidos || "")
+          .replace(/{apellido}/gi, r.apellidos || "")
           .replace(/{evento}/gi, eventName)
           .replace(/{nombre_evento}/gi, eventName)
-          .replace(/{fecha}/gi, eventDate ? `${eventDate}${eventTime ? " · " + eventTime : ""}` : "")
+          .replace(/{fecha}/gi, dt.fullDateText || eventDate)
+          .replace(/{fecha_evento}/gi, eventDate || "")
           .replace(/{hora}/gi, eventTime || "")
+          .replace(/{hora_evento}/gi, eventTime || "")
           .replace(/{lugar}/gi, eventPlace || "")
+          .replace(/{lugar_evento}/gi, eventPlace || "")
           .replace(/{documento}/gi, r.numero_documento || "")
           .replace(/{numero_documento}/gi, r.numero_documento || "")
-          .replace(/{cedula}/gi, r.numero_documento || "");
+          .replace(/{cedula}/gi, r.numero_documento || "")
+          .replace(/{codigo}/gi, (r.id || "").slice(0, 8).toUpperCase())
+          .replace(/{codigo_registro}/gi, (r.id || "").slice(0, 8).toUpperCase())
+          .replace(/{id}/gi, r.id || "");
 
         if (/{enlace}|{link}|{url}/i.test(template)) {
           message = template
@@ -426,17 +439,17 @@ const AdminDashboard = () => {
             .replace(/{link}/gi, downloadUrl)
             .replace(/{url}/gi, downloadUrl);
         } else {
-          message = `${template.trim()}\n\n📄 *Descarga tu invitación:* ${downloadUrl}`;
+          message = `${template.trim()}\n\n📄 *Descarga tu invitación a ${eventName} aquí:*\n${downloadUrl}`;
         }
       } else {
         const lines = [
           `🎉 *${eventName.toUpperCase()}*`,
           ``,
-          `Hola *${r.nombres} ${r.apellidos || ""}*`.trim() + `,`,
+          `Hola *${attendeeFullName}*,`,
           `¡Tu invitación está lista! 🎊`,
           ``,
         ];
-        if (eventDate)  lines.push(`📅 *Fecha:* ${eventDate}${eventTime ? " · " + eventTime : ""}`);
+        if (eventDate)  lines.push(`📅 *Fecha:* ${dt.fullDateText || eventDate}`);
         if (eventPlace) lines.push(`📍 *Lugar:* ${eventPlace}`);
         lines.push(``, `📄 *Descarga tu invitación:*`, downloadUrl);
         message = lines.join("\n");

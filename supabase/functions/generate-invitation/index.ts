@@ -68,6 +68,61 @@ Deno.serve(async (req) => {
       });
     }
 
+function formatEventDate(fechaStr?: string | null): { dateStr: string; timeStr: string; fullStr: string } {
+  if (!fechaStr || typeof fechaStr !== "string" || !fechaStr.trim()) {
+    return { dateStr: "", timeStr: "", fullStr: "" };
+  }
+  const clean = fechaStr.trim();
+  try {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+      const [y, m, d] = clean.split("-").map(Number);
+      const dateObj = new Date(y, m - 1, d, 12, 0, 0);
+      let formatted = dateObj.toLocaleDateString("es-CO", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      if (formatted) formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+      return { dateStr: formatted, timeStr: "", fullStr: formatted };
+    }
+
+    const dateObj = new Date(clean);
+    if (isNaN(dateObj.getTime())) {
+      return { dateStr: clean, timeStr: "", fullStr: clean };
+    }
+
+    let formattedDate = dateObj.toLocaleDateString("es-CO", {
+      timeZone: "America/Bogota",
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    if (formattedDate) formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+
+    let formattedTime = "";
+    const hasTime = clean.includes("T") &&
+      !clean.endsWith("T00:00:00.000Z") &&
+      !clean.endsWith("T00:00:00Z") &&
+      !clean.endsWith("T00:00");
+
+    if (hasTime) {
+      formattedTime = dateObj.toLocaleTimeString("es-CO", {
+        timeZone: "America/Bogota",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    }
+
+    const fullStr = formattedTime ? `${formattedDate} • ${formattedTime}` : formattedDate;
+    return { dateStr: formattedDate, timeStr: formattedTime, fullStr };
+  } catch {
+    return { dateStr: clean, timeStr: "", fullStr: clean };
+  }
+}
+
     // ── Datos del Evento ─────────────────────────────────────────────
     let eventName    = "Evento CMG";
     let eventPlace   = "";
@@ -78,9 +133,11 @@ Deno.serve(async (req) => {
     let secondaryHex = "#D4AF37";
     let emailMessage = "Te invitamos cordialmente a este evento especial.";
 
+    let evtFound = false;
     if (reg.event_id) {
       const { data: evt } = await supabase.from("events").select("*").eq("id", reg.event_id).maybeSingle();
       if (evt) {
+        evtFound     = true;
         eventName    = evt.nombre || "Evento CMG";
         eventPlace   = evt.lugar_evento || "";
         eventImage   = evt.banner_url || evt.logo_url || null;
@@ -88,14 +145,14 @@ Deno.serve(async (req) => {
         secondaryHex = evt.color_secundario || secondaryHex;
         emailMessage = evt.mensaje_correo || emailMessage;
         if (evt.fecha_evento) {
-          const d = new Date(evt.fecha_evento);
-          eventDate = d.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-          eventTime = d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", hour12: true });
+          const dt = formatEventDate(evt.fecha_evento);
+          eventDate = dt.dateStr;
+          eventTime = dt.timeStr;
         }
       }
     }
 
-    if (!reg.event_id || !eventName || eventName === "Evento CMG") {
+    if (!evtFound) {
       const { data: config } = await supabase.from("event_config").select("*").limit(1).maybeSingle();
       if (config) {
         eventName    = config.nombre_evento || eventName;
@@ -103,9 +160,9 @@ Deno.serve(async (req) => {
         eventImage   = config.logo_url || eventImage;
         emailMessage = config.mensaje_correo || emailMessage;
         if (config.fecha_evento) {
-          const d = new Date(config.fecha_evento);
-          eventDate = d.toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-          eventTime = d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", hour12: true });
+          const dt = formatEventDate(config.fecha_evento);
+          eventDate = dt.dateStr;
+          eventTime = dt.timeStr;
         }
       }
     }
@@ -230,7 +287,11 @@ Deno.serve(async (req) => {
 
     // ── Nombre del asistente (serif, verde, protagonista) ─────────
     let curY = TY + headerH + 11;
-    const fullName = `${reg.nombres} ${reg.apellidos}`.toUpperCase();
+    const fullName = [reg.nombres, reg.apellidos]
+      .map((s) => (s ? String(s).trim() : ""))
+      .filter((s) => s.length > 0 && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined")
+      .join(" ")
+      .toUpperCase() || "ASISTENTE";
     doc.setFont("times", "bold");
     doc.setTextColor(...GREEN);
     let fontSize = 24;

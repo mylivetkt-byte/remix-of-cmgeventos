@@ -54,6 +54,61 @@ Deno.serve(async (req) => {
       });
     }
 
+function formatEventDate(fechaStr?: string | null): { dateStr: string; timeStr: string; fullStr: string } {
+  if (!fechaStr || typeof fechaStr !== "string" || !fechaStr.trim()) {
+    return { dateStr: "", timeStr: "", fullStr: "" };
+  }
+  const clean = fechaStr.trim();
+  try {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+      const [y, m, d] = clean.split("-").map(Number);
+      const dateObj = new Date(y, m - 1, d, 12, 0, 0);
+      let formatted = dateObj.toLocaleDateString("es-CO", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      if (formatted) formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+      return { dateStr: formatted, timeStr: "", fullStr: formatted };
+    }
+
+    const dateObj = new Date(clean);
+    if (isNaN(dateObj.getTime())) {
+      return { dateStr: clean, timeStr: "", fullStr: clean };
+    }
+
+    let formattedDate = dateObj.toLocaleDateString("es-CO", {
+      timeZone: "America/Bogota",
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    if (formattedDate) formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+
+    let formattedTime = "";
+    const hasTime = clean.includes("T") &&
+      !clean.endsWith("T00:00:00.000Z") &&
+      !clean.endsWith("T00:00:00Z") &&
+      !clean.endsWith("T00:00");
+
+    if (hasTime) {
+      formattedTime = dateObj.toLocaleTimeString("es-CO", {
+        timeZone: "America/Bogota",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    }
+
+    const fullStr = formattedTime ? `${formattedDate} • ${formattedTime}` : formattedDate;
+    return { dateStr: formattedDate, timeStr: formattedTime, fullStr };
+  } catch {
+    return { dateStr: clean, timeStr: "", fullStr: clean };
+  }
+}
+
     // Obtener mensaje de WhatsApp específico del evento
     let waMsg = "";
     let eventName = "Evento";
@@ -61,6 +116,7 @@ Deno.serve(async (req) => {
     let eventDate = "";
     let eventTime = "";
 
+    let evtFound = false;
     if (reg.event_id) {
       const { data: evt } = await supabase
         .from("events")
@@ -69,20 +125,19 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (evt) {
+        evtFound = true;
         if (evt.mensaje_whatsapp) waMsg = evt.mensaje_whatsapp;
         if (evt.nombre) eventName = evt.nombre;
         if (evt.lugar_evento) eventPlace = evt.lugar_evento;
         if (evt.fecha_evento) {
-          const d = new Date(evt.fecha_evento);
-          eventDate = d.toLocaleDateString("es-CO", {
-            weekday: "long", year: "numeric", month: "long", day: "numeric",
-          });
-          eventTime = d.toLocaleTimeString("es-CO", {
-            hour: "2-digit", minute: "2-digit",
-          });
+          const dt = formatEventDate(evt.fecha_evento);
+          eventDate = dt.dateStr;
+          eventTime = dt.timeStr;
         }
       }
-    } else {
+    }
+
+    if (!evtFound) {
       const { data: config } = await supabase
         .from("event_config").select("mensaje_whatsapp, nombre_evento, fecha_evento, lugar_evento").limit(1).maybeSingle();
 
@@ -90,13 +145,9 @@ Deno.serve(async (req) => {
       if (config?.nombre_evento) eventName = config.nombre_evento;
       if (config?.lugar_evento) eventPlace = config.lugar_evento;
       if (config?.fecha_evento) {
-        const d = new Date(config.fecha_evento);
-        eventDate = d.toLocaleDateString("es-CO", {
-          weekday: "long", year: "numeric", month: "long", day: "numeric",
-        });
-        eventTime = d.toLocaleTimeString("es-CO", {
-          hour: "2-digit", minute: "2-digit",
-        });
+        const dt = formatEventDate(config.fecha_evento);
+        eventDate = dt.dateStr;
+        eventTime = dt.timeStr;
       }
     }
 
@@ -104,20 +155,35 @@ Deno.serve(async (req) => {
     const appUrl = Deno.env.get("APP_URL") || "https://cmgeventos.lovable.app";
     const downloadUrl = reg.pdf_url || `${appUrl}/descargar/${registrationId}`;
 
+    const attendeeFullName = [reg.nombres, reg.apellidos]
+      .map((s) => (s ? String(s).trim() : ""))
+      .filter((s) => s.length > 0 && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined")
+      .join(" ") || "Asistente";
+
     let message = "";
     if (waMsg && waMsg.trim() !== "") {
       let template = waMsg
-        .replace(/{nombres}/gi, reg.nombres || "")
-        .replace(/{nombre}/gi, reg.nombres || "")
+        .replace(/{nombre_completo}/gi, attendeeFullName)
+        .replace(/{nombre_asistente}/gi, attendeeFullName)
+        .replace(/{asistente}/gi, attendeeFullName)
+        .replace(/{nombres}/gi, reg.nombres || attendeeFullName)
+        .replace(/{nombre}/gi, reg.nombres || attendeeFullName)
         .replace(/{apellidos}/gi, reg.apellidos || "")
+        .replace(/{apellido}/gi, reg.apellidos || "")
         .replace(/{evento}/gi, eventName)
         .replace(/{nombre_evento}/gi, eventName)
         .replace(/{fecha}/gi, eventDate ? `${eventDate}${eventTime ? " · " + eventTime : ""}` : "")
+        .replace(/{fecha_evento}/gi, eventDate || "")
         .replace(/{hora}/gi, eventTime || "")
+        .replace(/{hora_evento}/gi, eventTime || "")
         .replace(/{lugar}/gi, eventPlace || "")
+        .replace(/{lugar_evento}/gi, eventPlace || "")
         .replace(/{documento}/gi, reg.numero_documento || "")
         .replace(/{numero_documento}/gi, reg.numero_documento || "")
-        .replace(/{cedula}/gi, reg.numero_documento || "");
+        .replace(/{cedula}/gi, reg.numero_documento || "")
+        .replace(/{codigo}/gi, registrationId.slice(0, 8).toUpperCase())
+        .replace(/{codigo_registro}/gi, registrationId.slice(0, 8).toUpperCase())
+        .replace(/{id}/gi, registrationId);
 
       if (/{enlace}|{link}|{url}/i.test(template)) {
         message = template
@@ -131,7 +197,7 @@ Deno.serve(async (req) => {
       const lines = [
         `🎉 *${eventName.toUpperCase()}*`,
         ``,
-        `Hola *${reg.nombres} ${reg.apellidos || ""}*`.trim() + `,`,
+        `Hola *${attendeeFullName}*,`,
         `¡Tu invitación está lista! 🎊`,
         ``,
       ];

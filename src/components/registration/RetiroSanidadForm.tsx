@@ -184,11 +184,16 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
         return;
       }
 
+      const attendeeApellidos = [form.primer_apellido.trim(), form.segundo_apellido.trim()]
+        .filter(Boolean)
+        .join(" ");
+      const attendeeFullName = `${form.nombres.trim()} ${attendeeApellidos}`.trim();
+
       await supabase.from("registrations").upsert(
         {
           event_id: eventId || null,
-          nombres: `${form.nombres.trim()} ${form.primer_apellido.trim()}`,
-          apellidos: form.segundo_apellido.trim() || form.primer_apellido.trim(),
+          nombres: form.nombres.trim(),
+          apellidos: attendeeApellidos,
           correo: form.correo.trim().toLowerCase(),
           telefono: form.celular.trim(),
           numero_documento: form.numero_documento.trim(),
@@ -214,13 +219,13 @@ export function RetiroSanidadForm({ eventId, onSuccess }: Props) {
 
       sendInstantWhatsAppTicket({
         phone: form.celular,
-        name: `${form.nombres} ${form.primer_apellido}`.trim(),
+        name: attendeeFullName,
         registrationId,
         eventId,
       }).catch(() => {});
 
       onSuccess({
-        nombres: `${form.nombres} ${form.primer_apellido}`,
+        nombres: attendeeFullName,
         pdfUrl: null,
         registrationId: registrationId,
       });

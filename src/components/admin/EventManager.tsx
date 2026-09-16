@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare, ListChecks, DollarSign, CreditCard, ArrowUp, ArrowDown, GripVertical, X, Check, ListPlus, RefreshCw } from "lucide-react";
+import { toDateTimeLocalInput, formatEventDateTime } from "@/lib/date-utils";
 
 interface CustomField {
   key: string;
@@ -238,13 +239,7 @@ export const EventManager = () => {
     setLogoPreview(evt.logo_url || null);
     setBannerPreview(evt.banner_url || null);
 
-    let dateVal = "";
-    if (evt.fecha_evento) {
-      try {
-        const d = new Date(evt.fecha_evento);
-        dateVal = d.toISOString().slice(0, 16);
-      } catch {}
-    }
+    const dateVal = toDateTimeLocalInput(evt.fecha_evento);
 
     setFormData({
       nombre: evt.nombre || "",
@@ -1671,7 +1666,7 @@ export const EventManager = () => {
                 {evt.fecha_evento && (
                   <div className="flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                    <span>{new Date(evt.fecha_evento).toLocaleDateString("es-ES")}</span>
+                    <span>{formatEventDateTime(evt.fecha_evento).fullDateText || formatEventDateTime(evt.fecha_evento).eventDate}</span>
                   </div>
                 )}
                 {evt.lugar_evento && (

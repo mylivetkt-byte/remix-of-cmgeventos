@@ -49,6 +49,61 @@ Deno.serve(async (req) => {
       });
     }
 
+function formatEventDate(fechaStr?: string | null): { dateStr: string; timeStr: string; fullStr: string } {
+  if (!fechaStr || typeof fechaStr !== "string" || !fechaStr.trim()) {
+    return { dateStr: "", timeStr: "", fullStr: "" };
+  }
+  const clean = fechaStr.trim();
+  try {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+      const [y, m, d] = clean.split("-").map(Number);
+      const dateObj = new Date(y, m - 1, d, 12, 0, 0);
+      let formatted = dateObj.toLocaleDateString("es-CO", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      if (formatted) formatted = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+      return { dateStr: formatted, timeStr: "", fullStr: formatted };
+    }
+
+    const dateObj = new Date(clean);
+    if (isNaN(dateObj.getTime())) {
+      return { dateStr: clean, timeStr: "", fullStr: clean };
+    }
+
+    let formattedDate = dateObj.toLocaleDateString("es-CO", {
+      timeZone: "America/Bogota",
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    if (formattedDate) formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+
+    let formattedTime = "";
+    const hasTime = clean.includes("T") &&
+      !clean.endsWith("T00:00:00.000Z") &&
+      !clean.endsWith("T00:00:00Z") &&
+      !clean.endsWith("T00:00");
+
+    if (hasTime) {
+      formattedTime = dateObj.toLocaleTimeString("es-CO", {
+        timeZone: "America/Bogota",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
+    }
+
+    const fullStr = formattedTime ? `${formattedDate} • ${formattedTime}` : formattedDate;
+    return { dateStr: formattedDate, timeStr: formattedTime, fullStr };
+  } catch {
+    return { dateStr: clean, timeStr: "", fullStr: clean };
+  }
+}
+
     let eventName    = "Evento";
     let emailSubject = "Tu invitación al evento";
     let emailMessage = "Te invitamos a nuestro evento especial.";
@@ -58,6 +113,7 @@ Deno.serve(async (req) => {
     let eventDate    = "";
     let eventTime    = "";
 
+    let evtFound = false;
     if (reg.event_id) {
       const { data: evt } = await supabase
         .from("events")
@@ -66,6 +122,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (evt) {
+        evtFound     = true;
         eventName    = evt.nombre || "Evento";
         emailSubject = evt.asunto_correo || `Tu invitación a ${eventName}`;
         emailMessage = evt.mensaje_correo || "Te invitamos a nuestro evento especial.";
@@ -74,18 +131,14 @@ Deno.serve(async (req) => {
         logoUrl      = evt.logo_url || null;
 
         if (evt.fecha_evento) {
-          const d = new Date(evt.fecha_evento);
-          eventDate = d.toLocaleDateString("es-CO", {
-            weekday: "long", year: "numeric", month: "long", day: "numeric",
-          });
-          eventTime = d.toLocaleTimeString("es-CO", {
-            hour: "2-digit", minute: "2-digit",
-          });
+          const dt = formatEventDate(evt.fecha_evento);
+          eventDate = dt.dateStr;
+          eventTime = dt.timeStr;
         }
       }
     }
 
-    if (!reg.event_id) {
+    if (!evtFound) {
       const { data: config } = await supabase
         .from("event_config")
         .select("*")
@@ -100,13 +153,9 @@ Deno.serve(async (req) => {
         senderEmail  = config.correo_remitente || "cmgeventos0@gmail.com";
         logoUrl      = config.logo_url || null;
         if (config.fecha_evento) {
-          const d = new Date(config.fecha_evento);
-          eventDate = d.toLocaleDateString("es-CO", {
-            weekday: "long", year: "numeric", month: "long", day: "numeric",
-          });
-          eventTime = d.toLocaleTimeString("es-CO", {
-            hour: "2-digit", minute: "2-digit",
-          });
+          const dt = formatEventDate(config.fecha_evento);
+          eventDate = dt.dateStr;
+          eventTime = dt.timeStr;
         }
       }
     }
@@ -148,14 +197,35 @@ Deno.serve(async (req) => {
         </td>
       </tr>
 
+    const attendeeFullName = [reg.nombres, reg.apellidos]
+      .map((s) => (s ? String(s).trim() : ""))
+      .filter((s) => s.length > 0 && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined")
+      .join(" ") || "Estimado(a) Asistente";
+
+    const formattedMessage = emailMessage
+      .replace(/{nombre_completo}/gi, attendeeFullName)
+      .replace(/{nombre_asistente}/gi, attendeeFullName)
+      .replace(/{asistente}/gi, attendeeFullName)
+      .replace(/{nombres}/gi, reg.nombres || attendeeFullName)
+      .replace(/{nombre}/gi, reg.nombres || attendeeFullName)
+      .replace(/{apellidos}/gi, reg.apellidos || "")
+      .replace(/{apellido}/gi, reg.apellidos || "")
+      .replace(/{evento}/gi, eventName)
+      .replace(/{nombre_evento}/gi, eventName)
+      .replace(/{fecha}/gi, eventDate ? `${eventDate}${eventTime ? " · " + eventTime : ""}` : "")
+      .replace(/{hora}/gi, eventTime || "")
+      .replace(/{lugar}/gi, eventPlace || "")
+      .replace(/{codigo}/gi, registrationId.slice(0, 8).toUpperCase())
+      .replace(/{codigo_registro}/gi, registrationId.slice(0, 8).toUpperCase());
+
       <!-- CUERPO BLANCO -->
       <tr>
         <td style="background:#ffffff;padding:40px 44px;">
           <p style="color:#888;margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:2px;">Estimado(a)</p>
-          <h2 style="color:#083E30;margin:0 0 6px;font-size:26px;font-weight:800;">${reg.nombres} ${reg.apellidos}</h2>
+          <h2 style="color:#083E30;margin:0 0 6px;font-size:26px;font-weight:800;">${attendeeFullName}</h2>
           <div style="height:2px;width:60px;background:#CFAA37;margin-bottom:22px;border-radius:2px;"></div>
 
-          <p style="color:#444;line-height:1.85;margin:0 0 28px;font-size:15px;">${emailMessage}</p>
+          <p style="color:#444;line-height:1.85;margin:0 0 28px;font-size:15px;">${formattedMessage}</p>
 
           ${eventDate || eventPlace ? `
           <table width="100%" cellpadding="0" cellspacing="0" style="background:#f6fbf8;border:1px solid #d4ece3;border-left:4px solid #083E30;border-radius:8px;margin-bottom:28px;">
@@ -212,7 +282,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         sender: { name: eventName, email: senderEmail },
-        to: [{ email: reg.correo, name: `${reg.nombres} ${reg.apellidos}` }],
+        to: [{ email: reg.correo, name: attendeeFullName }],
         subject: emailSubject,
         htmlContent,
       }),
