@@ -406,6 +406,8 @@ const AdminDashboard = () => {
       const dt = formatEventDateTime(eventData?.fecha_evento);
       const eventDate = dt.eventDate;
       const eventTime = dt.eventTime;
+      const eventName = eventData?.nombre || (r as any).catalog_event?.nombre || "Evento";
+      const eventPlace = eventData?.lugar_evento || "";
 
       let message = "";
       if (eventData?.mensaje_whatsapp && eventData.mensaje_whatsapp.trim() !== "") {
@@ -455,13 +457,15 @@ const AdminDashboard = () => {
         message = lines.join("\n");
       }
 
-      const res = await fetch(`${waUrl.value}/send`, {
+      const cleanPhone = (r.telefono || "").replace(/[^\d]/g, "");
+      const serverUrl = waUrl.value.replace(/\/$/, "");
+      const res = await fetch(`${serverUrl}/send`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${waToken.value}`,
         },
-        body: JSON.stringify({ phone: r.telefono, message }),
+        body: JSON.stringify({ phone: cleanPhone, message }),
       });
 
       const data = await res.json();
