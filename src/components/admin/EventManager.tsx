@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Plus, Calendar, MapPin, CheckCircle2, XCircle, ExternalLink, Sparkles, Pencil, Trash2, Upload, Image as ImageIcon, Settings2, Mail, MessageSquare, ListChecks, DollarSign, CreditCard, ArrowUp, ArrowDown, GripVertical, X, Check, ListPlus, RefreshCw } from "lucide-react";
-import { toDateTimeLocalInput, formatEventDateTime } from "@/lib/date-utils";
+import { toDateTimeLocalInput, formatEventDateTime, toColombiaISO } from "@/lib/date-utils";
 
 interface CustomField {
   key: string;
@@ -495,7 +495,7 @@ export const EventManager = () => {
         nombre: data.nombre,
         slug: slugClean,
         descripcion: data.descripcion,
-        fecha_evento: data.fecha_evento ? new Date(data.fecha_evento).toISOString() : null,
+        fecha_evento: toColombiaISO(data.fecha_evento),
         lugar_evento: data.lugar_evento,
         logo_url: data.logo_url || null,
         banner_url: data.banner_url || null,

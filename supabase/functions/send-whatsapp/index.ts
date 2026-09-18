@@ -62,8 +62,9 @@ function formatEventDate(fechaStr?: string | null): { dateStr: string; timeStr: 
   try {
     if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
       const [y, m, d] = clean.split("-").map(Number);
-      const dateObj = new Date(y, m - 1, d, 12, 0, 0);
+      const dateObj = new Date(Date.UTC(y, m - 1, d, 17, 0, 0)); // 12:00 mediodía en Colombia
       let formatted = dateObj.toLocaleDateString("es-CO", {
+        timeZone: "America/Bogota",
         weekday: "long",
         year: "numeric",
         month: "long",
@@ -73,7 +74,15 @@ function formatEventDate(fechaStr?: string | null): { dateStr: string; timeStr: 
       return { dateStr: formatted, timeStr: "", fullStr: formatted };
     }
 
-    const dateObj = new Date(clean);
+    let parseable = clean;
+    if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?$/.test(clean)) {
+      parseable = clean.replace(" ", "T");
+      if (!clean.includes("Z") && !clean.includes("+") && !clean.includes("-", 10)) {
+        parseable = `${parseable.length === 16 ? parseable + ":00" : parseable}-05:00`;
+      }
+    }
+
+    const dateObj = new Date(parseable);
     if (isNaN(dateObj.getTime())) {
       return { dateStr: clean, timeStr: "", fullStr: clean };
     }
@@ -87,20 +96,13 @@ function formatEventDate(fechaStr?: string | null): { dateStr: string; timeStr: 
     });
     if (formattedDate) formattedDate = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
 
-    let formattedTime = "";
-    const hasTime = clean.includes("T") &&
-      !clean.endsWith("T00:00:00.000Z") &&
-      !clean.endsWith("T00:00:00Z") &&
-      !clean.endsWith("T00:00");
-
-    if (hasTime) {
-      formattedTime = dateObj.toLocaleTimeString("es-CO", {
-        timeZone: "America/Bogota",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
-    }
+    const timeFormatter = new Intl.DateTimeFormat("es-CO", {
+      timeZone: "America/Bogota",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    const formattedTime = timeFormatter.format(dateObj).replace(/\u00a0/g, " ");
 
     const fullStr = formattedTime ? `${formattedDate} • ${formattedTime}` : formattedDate;
     return { dateStr: formattedDate, timeStr: formattedTime, fullStr };

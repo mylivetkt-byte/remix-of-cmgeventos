@@ -43,7 +43,14 @@ export const EventRegistrationPage = () => {
       .replace(/{evento}/gi, event.nombre || "Evento")
       .replace(/{nombre_evento}/gi, event.nombre || "Evento")
       .replace(/{fecha}/gi, dt.fullDateText || dt.eventDate)
-      .replace(/{lugar}/gi, event.lugar_evento || "");
+      .replace(/{fecha_evento}/gi, dt.eventDate || "")
+      .replace(/{hora}/gi, dt.eventTime || "")
+      .replace(/{hora_evento}/gi, dt.eventTime || "")
+      .replace(/{lugar}/gi, event.lugar_evento || "")
+      .replace(/{lugar_evento}/gi, event.lugar_evento || "")
+      .replace(/{codigo}/gi, (successData.registrationId || "").slice(0, 8).toUpperCase())
+      .replace(/{codigo_registro}/gi, (successData.registrationId || "").slice(0, 8).toUpperCase())
+      .replace(/{id}/gi, successData.registrationId || "");
 
     if (/{enlace}|{link}|{url}/i.test(text)) {
       text = text

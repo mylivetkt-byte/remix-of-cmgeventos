@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Loader2, Save, Upload, ImageIcon, Eye, EyeOff, Key } from "lucide-react";
+import { toDateTimeLocalInput, toColombiaISO } from "@/lib/date-utils";
 
 export function EventConfigManager() {
   const queryClient = useQueryClient();
@@ -39,7 +39,7 @@ export function EventConfigManager() {
         .update({
           nombre_evento: values.nombre_evento,
           descripcion: values.descripcion || null,
-          fecha_evento: values.fecha_evento || null,
+          fecha_evento: toColombiaISO(values.fecha_evento),
           lugar_evento: values.lugar_evento || null,
           logo_url: values.logo_url || null,
           correo_remitente: values.correo_remitente,
@@ -68,7 +68,7 @@ export function EventConfigManager() {
   if (isLoading) {
     return (
       <div className="flex justify-center py-10">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -76,7 +76,8 @@ export function EventConfigManager() {
   if (!currentForm) return <p className="text-muted-foreground text-center py-10">No se encontró configuración</p>;
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-lg">
+    <div className="space-y-6 max-w-2xl">
+      {/* Aviso informativo de configuración por evento */}
       <div className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-xs text-amber-950 space-y-1 shadow-sm">
         <div className="font-bold text-amber-900 flex items-center gap-1.5 text-sm">
           💡 Configuración Individual de Correos por Evento
@@ -99,7 +100,7 @@ export function EventConfigManager() {
           </div>
           <div>
             <Label>Fecha del Evento</Label>
-            <Input type="datetime-local" value={currentForm.fecha_evento ? currentForm.fecha_evento.slice(0, 16) : ""} onChange={(e) => set("fecha_evento", e.target.value)} />
+            <Input type="datetime-local" value={toDateTimeLocalInput(currentForm.fecha_evento)} onChange={(e) => set("fecha_evento", e.target.value)} />
           </div>
           <div>
             <Label>Lugar del Evento</Label>
