@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Menu, UserPlus, Send, Bot, Home, Building2 } from "lucide-react";
+import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Menu, UserPlus, Send, Bot, Home, Building2, Eye, ExternalLink, Copy, Check, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { CasaDePazRequestsManager } from "@/components/admin/CasaDePazRequestsManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
@@ -78,6 +78,33 @@ const AdminDashboard = () => {
   const [regenerating, setRegenerating] = useState(false);
   const [selectedChatContact, setSelectedChatContact] = useState<{ name: string; phone: string } | null>(null);
   const [crmContacts, setCrmContacts] = useState<any[]>([]);
+
+  // Estados para Visor de Pase / Invitación
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+  const [viewerReg, setViewerReg] = useState<any>(null);
+  const [generatingSinglePdf, setGeneratingSinglePdf] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // Estados para Modal de Progreso de Regeneración
+  const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
+  const [regenProgress, setRegenProgress] = useState<{
+    current: number;
+    total: number;
+    currentPerson: string;
+    currentEvent: string;
+    success: number;
+    failed: number;
+    isComplete: boolean;
+  }>({
+    current: 0,
+    total: 0,
+    currentPerson: "",
+    currentEvent: "",
+    success: 0,
+    failed: 0,
+    isComplete: false,
+  });
+  const abortRegenRef = useRef(false);
 
   // Estados para Modal de Control de Pagos
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -506,25 +533,94 @@ const AdminDashboard = () => {
     }
   };
 
-  // Regenerar todos los PDFs
+  // Abrir visor de invitación
+  const openInvitationViewer = (r: any) => {
+    setViewerReg(r);
+    setIsViewerOpen(true);
+    setCopiedLink(false);
+  };
+
+  // Regenerar pase individual desde el visor
+  const handleRegenerateSinglePdf = async (regId: string) => {
+    setGeneratingSinglePdf(true);
+    try {
+      const { data: resData, error } = await supabase.functions.invoke("generate-invitation", {
+        body: { registrationId: regId },
+      });
+      if (error) throw error;
+      toast.success("Pase PDF regenerado correctamente");
+      if (resData?.pdfUrl) {
+        setViewerReg((prev: any) => prev ? { ...prev, pdf_url: resData.pdfUrl } : null);
+      }
+      refresh();
+    } catch (err: any) {
+      toast.error("Error al regenerar: " + (err.message || "Error desconocido"));
+    } finally {
+      setGeneratingSinglePdf(false);
+    }
+  };
+
+  // Regenerar todos los PDFs con seguimiento de progreso en tiempo real
   const regenerateAllPDFs = async () => {
     if (data.length === 0) return;
+    abortRegenRef.current = false;
+    setIsRegenerateModalOpen(true);
     setRegenerating(true);
-    let success = 0;
-    let failed = 0;
-    for (const r of data) {
+
+    const total = data.length;
+    let successCount = 0;
+    let failedCount = 0;
+
+    setRegenProgress({
+      current: 0,
+      total,
+      currentPerson: "",
+      currentEvent: "",
+      success: 0,
+      failed: 0,
+      isComplete: false,
+    });
+
+    for (let i = 0; i < total; i++) {
+      if (abortRegenRef.current) {
+        toast.message("Regeneración pausada / cancelada");
+        break;
+      }
+
+      const r = data[i];
+      const personName = `${r.nombres || ""} ${r.apellidos || ""}`.trim() || "Asistente";
+      const evtName = eventsList.data?.find((e) => e.id === r.event_id)?.nombre || "Evento General";
+
+      setRegenProgress((prev) => ({
+        ...prev,
+        current: i + 1,
+        currentPerson: personName,
+        currentEvent: evtName,
+      }));
+
       try {
         const { error } = await supabase.functions.invoke("generate-invitation", {
           body: { registrationId: r.id },
         });
-        if (error) failed++;
-        else success++;
+        if (error) failedCount++;
+        else successCount++;
       } catch {
-        failed++;
+        failedCount++;
       }
+
+      setRegenProgress((prev) => ({
+        ...prev,
+        success: successCount,
+        failed: failedCount,
+      }));
     }
+
+    setRegenProgress((prev) => ({
+      ...prev,
+      isComplete: true,
+    }));
     setRegenerating(false);
-    toast.success(`PDFs regenerados: ${success} exitosos, ${failed} fallidos`);
+    toast.success(`Proceso finalizado: ${successCount} exitosos, ${failedCount} fallidos`);
     refresh();
   };
 
@@ -1196,6 +1292,10 @@ const AdminDashboard = () => {
                             )}
                             {/* Botones al final de la fila */}
                             <div className="ml-auto flex gap-1.5 flex-shrink-0">
+                              <button onClick={() => openInvitationViewer(r)} title="Ver Pase Oficial / Invitación PDF"
+                                className="w-8 h-8 rounded-lg flex items-center justify-center bg-teal-600 hover:bg-teal-500 text-white shadow transition-colors">
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
                               {Boolean(eventsList.data?.find((e) => e.id === r.event_id)?.es_de_pago) && (
                                 <button onClick={() => openPaymentModal(r)} title="Registrar / Editar Pago"
                                   className="h-8 px-2.5 rounded-lg flex items-center gap-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow transition-colors">
@@ -1491,6 +1591,207 @@ const AdminDashboard = () => {
             <Button onClick={handleSavePayment} disabled={savingPayment} className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-8 py-2.5 text-sm sm:text-base rounded-xl shadow-md">
               {savingPayment ? "Guardando..." : "Guardar Estado de Pago"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── MODAL VISOR DE INVITACIÓN / PASE OFICIAL ── */}
+      <Dialog open={isViewerOpen} onOpenChange={setIsViewerOpen}>
+        <DialogContent className="max-w-2xl bg-white border-slate-200 text-slate-900 rounded-2xl shadow-2xl p-6">
+          <DialogHeader className="border-b border-slate-200 pb-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-teal-100 flex items-center justify-center text-teal-800">
+                  <Eye className="w-5 h-5" />
+                </div>
+                <div>
+                  <DialogTitle className="text-lg font-bold text-slate-900">
+                    Pase de Entrada Oficial
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-slate-500">
+                    {viewerReg ? `${viewerReg.nombres || ""} ${viewerReg.apellidos || ""}` : ""} · Doc: {viewerReg?.numero_documento || "N/A"}
+                  </DialogDescription>
+                </div>
+              </div>
+              {viewerReg?.event_id && (
+                <span className="bg-amber-100 text-amber-900 font-extrabold text-xs px-3 py-1 rounded-full border border-amber-300">
+                  {eventsList.data?.find((e) => e.id === viewerReg.event_id)?.nombre || "Evento General"}
+                </span>
+              )}
+            </div>
+          </DialogHeader>
+
+          <div className="py-3">
+            {viewerReg?.pdf_url ? (
+              <div className="relative rounded-xl border border-slate-200 bg-slate-100 overflow-hidden shadow-inner flex flex-col items-center justify-center">
+                <iframe
+                  src={`${viewerReg.pdf_url}#toolbar=0&navpanes=0`}
+                  title="Pase PDF"
+                  className="w-full h-[480px] rounded-xl bg-white"
+                />
+              </div>
+            ) : (
+              <div className="py-12 px-4 text-center rounded-xl bg-slate-50 border border-slate-200 flex flex-col items-center justify-center">
+                <AlertTriangle className="w-10 h-10 text-amber-500 mb-3" />
+                <p className="font-bold text-slate-800 text-base mb-1">El pase PDF aún no ha sido generado</p>
+                <p className="text-xs text-slate-500 mb-4">Haz clic abajo para generar el pase oficial inmediatamente.</p>
+                <Button
+                  onClick={() => viewerReg && handleRegenerateSinglePdf(viewerReg.id)}
+                  disabled={generatingSinglePdf}
+                  className="bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${generatingSinglePdf ? "animate-spin" : ""}`} />
+                  {generatingSinglePdf ? "Generando pase..." : "Generar Pase Ahora"}
+                </Button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between flex-wrap gap-2 pt-3 border-t border-slate-200">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (!viewerReg) return;
+                  const link = `${window.location.origin}/descargar/${viewerReg.id}`;
+                  navigator.clipboard.writeText(link);
+                  setCopiedLink(true);
+                  toast.success("Enlace copiado al portapapeles");
+                  setTimeout(() => setCopiedLink(false), 2000);
+                }}
+                className="text-xs font-semibold rounded-xl border-slate-300"
+              >
+                {copiedLink ? <Check className="w-3.5 h-3.5 mr-1 text-green-600" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                {copiedLink ? "Copiado" : "Copiar Enlace"}
+              </Button>
+
+              {viewerReg?.pdf_url && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="text-xs font-semibold rounded-xl border-slate-300 text-teal-800 hover:text-teal-900"
+                >
+                  <a href={viewerReg.pdf_url} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                    Abrir PDF
+                  </a>
+                </Button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => viewerReg && handleRegenerateSinglePdf(viewerReg.id)}
+                disabled={generatingSinglePdf}
+                className="text-xs font-semibold rounded-xl border-slate-300 text-slate-700"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1 ${generatingSinglePdf ? "animate-spin" : ""}`} />
+                {generatingSinglePdf ? "Regenerando..." : "Regenerar Pase"}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => viewerReg && sendWhatsApp(viewerReg)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm"
+              >
+                <MessageCircle className="w-3.5 h-3.5 mr-1" />
+                Enviar WhatsApp
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── MODAL DE PROGRESO DE REGENERACIÓN EN TIEMPO REAL ── */}
+      <Dialog open={isRegenerateModalOpen} onOpenChange={(open) => {
+        if (!regenerating) setIsRegenerateModalOpen(open);
+      }}>
+        <DialogContent className="max-w-lg bg-white border-slate-200 text-slate-900 rounded-2xl shadow-2xl p-6">
+          <DialogHeader className="border-b border-slate-200 pb-3">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${regenProgress.isComplete ? "bg-emerald-100 text-emerald-700" : "bg-teal-100 text-teal-800"}`}>
+                {regenProgress.isComplete ? <CheckCircle2 className="w-6 h-6" /> : <RefreshCw className={`w-5 h-5 ${regenerating ? "animate-spin" : ""}`} />}
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-slate-900">
+                  {regenProgress.isComplete ? "Pases Regenerados Exitosamente" : "Regenerando Pases Oficiales"}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500">
+                  {regenProgress.isComplete
+                    ? "Se han actualizado todos los pases con la fecha, hora y configuración actual."
+                    : "Actualizando archivos PDF con los datos y diseño corregidos..."}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="py-4 space-y-4">
+            {/* Barra de progreso */}
+            <div>
+              <div className="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+                <span>Progreso ({regenProgress.current} de {regenProgress.total})</span>
+                <span>{regenProgress.total > 0 ? Math.round((regenProgress.current / regenProgress.total) * 100) : 0}%</span>
+              </div>
+              <div className="w-full bg-slate-200 h-3.5 rounded-full overflow-hidden p-0.5 border border-slate-300">
+                <div
+                  className="bg-gradient-to-r from-teal-600 to-emerald-500 h-full rounded-full transition-all duration-300 shadow-sm"
+                  style={{ width: `${regenProgress.total > 0 ? Math.min(100, Math.round((regenProgress.current / regenProgress.total) * 100)) : 0}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Asistente actual siendo modificado */}
+            {!regenProgress.isComplete && (
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-xs animate-fade-in">
+                <div className="flex items-center gap-2 text-teal-800 font-bold">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Modificando pase de:</span>
+                </div>
+                <p className="font-extrabold text-sm text-slate-900 pl-5">
+                  {regenProgress.currentPerson || "Preparando lote..."}
+                </p>
+                <p className="text-slate-500 pl-5 text-[11px]">
+                  Evento: <span className="font-semibold text-slate-700">{regenProgress.currentEvent}</span>
+                </p>
+              </div>
+            )}
+
+            {/* Estadísticas de estado */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-center">
+                <p className="text-xs font-bold text-emerald-800">✅ Exitosos</p>
+                <p className="text-xl font-extrabold text-emerald-900">{regenProgress.success}</p>
+              </div>
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-center">
+                <p className="text-xs font-bold text-rose-800">❌ Fallidos / Omitidos</p>
+                <p className="text-xl font-extrabold text-rose-900">{regenProgress.failed}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+            {regenerating ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  abortRegenRef.current = true;
+                }}
+                className="font-bold text-xs rounded-xl"
+              >
+                Pausar / Cancelar
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setIsRegenerateModalOpen(false)}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-6 rounded-xl"
+              >
+                Cerrar
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
