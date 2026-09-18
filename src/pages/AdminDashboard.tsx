@@ -1117,26 +1117,45 @@ const AdminDashboard = () => {
                                   Pendiente
                                 </span>
                             }
-                            {r.estado_pago === "Pagado Completo" && (
-                              <span className="inline-flex items-center gap-1 bg-emerald-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow">
-                                🟢 Pagado Completo
-                              </span>
-                            )}
-                            {r.estado_pago === "Abonado" && (
-                              <span className="inline-flex items-center gap-1 bg-amber-400 text-slate-950 text-xs px-2.5 py-0.5 rounded-full font-black shadow">
-                                🟡 Abonado (${Number(r.monto_pagado || 0).toLocaleString("es-CO")})
-                              </span>
-                            )}
-                            {r.estado_pago === "Becado" && (
-                              <span className="inline-flex items-center gap-1 bg-purple-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow">
-                                🎓 Becado / Exento
-                              </span>
-                            )}
-                            {(!r.estado_pago || r.estado_pago === "Pendiente") && (
-                              <span className="inline-flex items-center gap-1 bg-slate-700/80 text-slate-300 text-xs px-2 py-0.5 rounded-full">
-                                🔴 Pendiente Pago
-                              </span>
-                            )}
+                            {(() => {
+                              const currentEvt = eventsList.data?.find((e) => e.id === r.event_id);
+                              const isPaidEvent = Boolean(currentEvt?.es_de_pago && (Number(currentEvt?.precio || 0) > 0));
+
+                              if (!isPaidEvent) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 bg-teal-900/50 text-teal-300 border border-teal-700/40 text-[11px] px-2.5 py-0.5 rounded-full font-semibold">
+                                    🆓 Gratuito
+                                  </span>
+                                );
+                              }
+
+                              if (r.estado_pago === "Pagado Completo" || r.estado_pago === "pagado") {
+                                return (
+                                  <span className="inline-flex items-center gap-1 bg-emerald-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow">
+                                    🟢 Pagado Completo
+                                  </span>
+                                );
+                              }
+                              if (r.estado_pago === "Abonado") {
+                                return (
+                                  <span className="inline-flex items-center gap-1 bg-amber-400 text-slate-950 text-xs px-2.5 py-0.5 rounded-full font-black shadow">
+                                    🟡 Abonado (${Number(r.monto_pagado || 0).toLocaleString("es-CO")})
+                                  </span>
+                                );
+                              }
+                              if (r.estado_pago === "Becado") {
+                                return (
+                                  <span className="inline-flex items-center gap-1 bg-purple-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold shadow">
+                                    🎓 Becado / Exento
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="inline-flex items-center gap-1 bg-rose-950/70 text-rose-300 border border-rose-800/60 text-xs px-2 py-0.5 rounded-full font-medium">
+                                  🔴 Pendiente Pago
+                                </span>
+                              );
+                            })()}
                             <span className="text-xs text-slate-400 ml-auto">{new Date(r.created_at).toLocaleDateString("es-CO")}</span>
                           </div>
 
@@ -1177,10 +1196,12 @@ const AdminDashboard = () => {
                             )}
                             {/* Botones al final de la fila */}
                             <div className="ml-auto flex gap-1.5 flex-shrink-0">
-                              <button onClick={() => openPaymentModal(r)} title="Registrar / Editar Pago"
-                                className="h-8 px-2.5 rounded-lg flex items-center gap-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow transition-colors">
-                                💰 Pago
-                              </button>
+                              {Boolean(eventsList.data?.find((e) => e.id === r.event_id)?.es_de_pago) && (
+                                <button onClick={() => openPaymentModal(r)} title="Registrar / Editar Pago"
+                                  className="h-8 px-2.5 rounded-lg flex items-center gap-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow transition-colors">
+                                  💰 Pago
+                                </button>
+                              )}
                               <button onClick={() => openEdit(r)} title="Editar"
                                 className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white shadow transition-colors">
                                 <Pencil className="w-3.5 h-3.5" />

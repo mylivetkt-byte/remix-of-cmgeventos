@@ -134,6 +134,7 @@ export function RegistrationForm({ eventId, onSuccess }: Props) {
         cdp_id: form.cdp_id,
         red_id: form.red_id,
         nombre_invitador: form.nombre_invitador.trim() || null,
+        estado_pago: "registrado",
       }).select().single();
 
       if (error) {
