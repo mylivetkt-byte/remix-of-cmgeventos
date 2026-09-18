@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Download, Loader2, AlertCircle } from "lucide-react";
 import { formatFullName } from "@/lib/date-utils";
+import { generateAndUploadInvitationPdf } from "@/lib/pdf-generator";
 
 const DownloadInvitation = () => {
   const { id } = useParams<{ id: string }>();
@@ -55,25 +56,9 @@ const DownloadInvitation = () => {
           setLoading(false);
         }
         try {
-          const { data: genData, error: genErr } = await supabase.functions.invoke("generate-invitation", {
-            body: { registrationId: id },
-          });
-          if (!genErr && genData?.pdfUrl && isMounted) {
-            setPdfUrl(genData.pdfUrl);
-          } else {
-            // Polling fallback
-            for (let i = 0; i < 8; i++) {
-              await new Promise((r) => setTimeout(r, 2000));
-              const { data: recheck } = await supabase
-                .from("registrations")
-                .select("pdf_url")
-                .eq("id", id)
-                .single();
-              if (recheck?.pdf_url && isMounted) {
-                setPdfUrl(recheck.pdf_url);
-                break;
-              }
-            }
+          const res = await generateAndUploadInvitationPdf(id);
+          if (res.success && res.pdfUrl && isMounted) {
+            setPdfUrl(res.pdfUrl);
           }
         } catch (_) {}
         if (isMounted) setGenerating(false);

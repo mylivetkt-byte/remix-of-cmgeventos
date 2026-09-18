@@ -8,6 +8,7 @@ import { useEventFields } from "@/hooks/useEvents";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { sendInstantWhatsAppTicket } from "@/lib/whatsapp-bot";
+import { generateAndUploadInvitationPdf } from "@/lib/pdf-generator";
 import { Loader2, UserPlus, ShieldCheck } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
@@ -191,9 +192,7 @@ export function DynamicRegistrationForm({ eventId, onSuccess }: Props) {
 
       toast.success("¡Registro exitoso!");
 
-      supabase.functions.invoke("generate-invitation", {
-        body: { registrationId: data.id },
-      }).catch(() => {});
+      generateAndUploadInvitationPdf(data.id).catch(() => {});
 
       sendInstantWhatsAppTicket({
         phone: payload.telefono,

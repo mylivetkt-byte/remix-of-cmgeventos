@@ -29,6 +29,7 @@ import { UserRole, ROLE_LABELS, ROLE_PERMISSIONS_MAP } from "@/integrations/supa
 import { useCatalog } from "@/hooks/useCatalogs";
 import { sendCheckInWhatsAppNotification } from "@/lib/whatsapp-bot";
 import { formatEventDateTime, formatFullName } from "@/lib/date-utils";
+import { generateAndUploadInvitationPdf } from "@/lib/pdf-generator";
 import { toast } from "sonner";
 
 type Tab = "dashboard" | "eventos" | "registros" | "asistencia" | "catalogos" | "casas_de_paz" | "whatsapp" | "usuarios" | "crm" | "chat" | "contactos" | "chatbot" | "auditorio";
@@ -296,16 +297,13 @@ const AdminDashboard = () => {
     const toastId = toast.loading(`Enviando invitación por correo a ${r.correo}...`);
     try {
       if (!r.pdf_url) {
-        const { error: genErr } = await supabase.functions.invoke("generate-invitation", {
-          body: { registrationId: r.id },
-        });
-        if (genErr) throw genErr;
-      } else {
-        const { error: sendErr } = await supabase.functions.invoke("send-brevo-email", {
-          body: { registrationId: r.id },
-        });
-        if (sendErr) throw sendErr;
+        const res = await generateAndUploadInvitationPdf(r.id);
+        if (!res.success) throw new Error(res.error || "Error generando pase");
       }
+      const { error: sendErr } = await supabase.functions.invoke("send-brevo-email", {
+        body: { registrationId: r.id },
+      });
+      if (sendErr) throw sendErr;
       toast.success(`Invitación enviada exitosamente a ${r.correo}`, { id: toastId });
       refresh();
     } catch (err: any) {
@@ -544,13 +542,11 @@ const AdminDashboard = () => {
   const handleRegenerateSinglePdf = async (regId: string) => {
     setGeneratingSinglePdf(true);
     try {
-      const { data: resData, error } = await supabase.functions.invoke("generate-invitation", {
-        body: { registrationId: regId },
-      });
-      if (error) throw error;
+      const res = await generateAndUploadInvitationPdf(regId);
+      if (!res.success) throw new Error(res.error || "Error al regenerar");
       toast.success("Pase PDF regenerado correctamente");
-      if (resData?.pdfUrl) {
-        setViewerReg((prev: any) => prev ? { ...prev, pdf_url: resData.pdfUrl } : null);
+      if (res.pdfUrl) {
+        setViewerReg((prev: any) => prev ? { ...prev, pdf_url: res.pdfUrl } : null);
       }
       refresh();
     } catch (err: any) {
@@ -599,10 +595,8 @@ const AdminDashboard = () => {
       }));
 
       try {
-        const { error } = await supabase.functions.invoke("generate-invitation", {
-          body: { registrationId: r.id },
-        });
-        if (error) failedCount++;
+        const res = await generateAndUploadInvitationPdf(r.id);
+        if (!res.success) failedCount++;
         else successCount++;
       } catch {
         failedCount++;
@@ -1625,6 +1619,7 @@ const AdminDashboard = () => {
             {viewerReg?.pdf_url ? (
               <div className="relative rounded-xl border border-slate-200 bg-slate-100 overflow-hidden shadow-inner flex flex-col items-center justify-center">
                 <iframe
+                  key={viewerReg.pdf_url}
                   src={`${viewerReg.pdf_url}#toolbar=0&navpanes=0`}
                   title="Pase PDF"
                   className="w-full h-[480px] rounded-xl bg-white"

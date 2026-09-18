@@ -6,6 +6,7 @@ import { DateOfBirthPicker } from "./DateOfBirthPicker";
 import { useCatalog, useEventConfig, useCdpWithRed } from "@/hooks/useCatalogs";
 import { supabase } from "@/integrations/supabase/client";
 import { sendInstantWhatsAppTicket } from "@/lib/whatsapp-bot";
+import { generateAndUploadInvitationPdf } from "@/lib/pdf-generator";
 import { Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -201,17 +202,11 @@ export function RegistrationForm({ eventId, onSuccess }: Props) {
 
       toast.success("¡Registro exitoso! Generando invitación...");
 
-      // Flujo correcto: primero genera el PDF, luego send-brevo-email se llama desde dentro
+      // Generación directa y subida del PDF oficial
       const registrationId = data.id;
-      supabase.functions
-        .invoke("generate-invitation", {
-          body: { registrationId },
-        })
-        .then(({ error: invErr }) => {
-          if (invErr) {
-            console.error("Error generating invitation:", invErr);
-          }
-        });
+      generateAndUploadInvitationPdf(registrationId).catch((err) => {
+        console.error("Error generating invitation:", err);
+      });
 
       // WhatsApp se envía automáticamente e instantáneamente al celular del registrado
       sendInstantWhatsAppTicket({
