@@ -159,112 +159,481 @@ export async function sendInstantWhatsAppTicket(payload: InstantTicketPayload): 
 }
 
 /**
- * 🤖 FEATURE 1 & 3: Chatbot Inteligente IA 24/7 y Procesador RSVP Interactivo
+ * Helper para buscar el perfil del asistente por número de teléfono
+ */
+export async function lookupAttendeeProfile(phone: string) {
+  const clean = normalizePhone(phone);
+  const raw = String(phone || "").trim();
+  const digitsOnly = raw.replace(/[^\d]/g, "");
+  const phone10 = digitsOnly.length >= 10 && digitsOnly.startsWith("57") ? digitsOnly.slice(2) : digitsOnly;
+  const phone57 = phone10.length === 10 ? `57${phone10}` : digitsOnly;
+
+  const searchTerms = Array.from(new Set([clean, raw, digitsOnly, phone10, phone57].filter(Boolean)));
+  const orFilter = searchTerms.map((t) => `telefono.eq.${t}`).join(",");
+
+  let attendee: {
+    id: string;
+    nombres: string;
+    apellidos?: string;
+    nombreCompleto: string;
+    eventId?: string | null;
+    asistio?: boolean | null;
+    estadoPago?: string | null;
+    montoPendiente?: number | null;
+    pdfUrl?: string | null;
+  } | null = null;
+
+  try {
+    const { data: regList } = await (supabase.from("registrations") as any)
+      .select("id, nombres, apellidos, event_id, asistio, estado_pago, monto_pendiente, pdf_url, created_at")
+      .or(orFilter)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (regList && regList[0]) {
+      const reg = regList[0];
+      const fullName = [reg.nombres, reg.apellidos]
+        .map((s) => (s ? String(s).trim() : ""))
+        .filter((s) => s.length > 0 && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined")
+        .join(" ") || "Asistente";
+
+      attendee = {
+        id: reg.id,
+        nombres: reg.nombres || fullName,
+        apellidos: reg.apellidos || "",
+        nombreCompleto: fullName,
+        eventId: reg.event_id,
+        asistio: reg.asistio,
+        estadoPago: reg.estado_pago,
+        montoPendiente: reg.monto_pendiente,
+        pdfUrl: reg.pdf_url,
+      };
+    }
+  } catch (_) {}
+
+  return attendee;
+}
+
+/**
+ * 🤖 FEATURE 1 & 3: Chatbot Inteligente IA 24/7 Contextual y Procesador de Intenciones
  */
 export async function processWhatsAppMessageIntent(
   incomingText: string,
   senderPhone: string
 ): Promise<{ replyText: string; rsvpStatus?: "confirmado" | "cancelado" }> {
-  const text = incomingText.toLowerCase().trim();
-  const cleanPhone = normalizePhone(senderPhone);
+  const rawText = incomingText.trim();
+  const text = rawText.toLowerCase();
+  const origin = typeof window !== "undefined" ? window.location.origin : "https://cmgeventos.lovable.app";
 
-  // 1. Detección de RSVP Interactivo (Respuesta "1" o "2")
-  if (text === "1" || text.includes("sí") || text.includes("si") || text.includes("confirmar") || text.includes("asistiré")) {
-    try {
-      await (supabase.from("registrations") as any)
-        .update({ asistio: true, estado_rsvp: "confirmado" })
-        .or(`telefono.eq.${cleanPhone},telefono.eq.${senderPhone}`);
-    } catch (_) {}
+  // 1. Identificar perfil del asistente en base de datos
+  const attendee = await lookupAttendeeProfile(senderPhone);
+  const attendeeName = attendee?.nombreCompleto || attendee?.nombres || "";
+  const greetingName = attendeeName ? `*${attendeeName}*` : "amigo(a)";
+
+  // 2. Obtener datos del evento del asistente O del último evento activo
+  let currentEvent: {
+    id?: string;
+    nombre: string;
+    fechaTexto: string;
+    lugar: string;
+    descripcion?: string;
+    esDePago?: boolean;
+    precio?: number;
+    moneda?: string;
+    instruccionesPago?: string;
+  } = {
+    nombre: "Evento Centro Mundial de Gloria",
+    fechaTexto: "Próximamente",
+    lugar: "Auditorio CMG",
+  };
+
+  try {
+    if (attendee?.eventId) {
+      const { data: evt } = await supabase
+        .from("events")
+        .select("id, nombre, fecha_evento, lugar_evento, lugar, descripcion, es_de_pago, precio, moneda, instrucciones_pago")
+        .eq("id", attendee.eventId)
+        .maybeSingle();
+
+      if (evt) {
+        const dt = formatEventDateTime(evt.fecha_evento || "");
+        currentEvent = {
+          id: evt.id,
+          nombre: evt.nombre || currentEvent.nombre,
+          fechaTexto: dt.fullDateText || dt.eventDate || "Consultar horario oficial",
+          lugar: evt.lugar_evento || evt.lugar || currentEvent.lugar,
+          descripcion: evt.descripcion || undefined,
+          esDePago: Boolean(evt.es_de_pago),
+          precio: evt.precio || undefined,
+          moneda: evt.moneda || "COP",
+          instruccionesPago: evt.instrucciones_pago || undefined,
+        };
+      }
+    } else {
+      // Buscar evento activo más reciente
+      const { data: activeEvents } = await supabase
+        .from("events")
+        .select("id, nombre, fecha_evento, lugar_evento, lugar, descripcion, es_de_pago, precio, moneda, instrucciones_pago")
+        .eq("activo", true)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (activeEvents && activeEvents[0]) {
+        const evt = activeEvents[0];
+        const dt = formatEventDateTime(evt.fecha_evento || "");
+        currentEvent = {
+          id: evt.id,
+          nombre: evt.nombre || currentEvent.nombre,
+          fechaTexto: dt.fullDateText || dt.eventDate || "Consultar horario oficial",
+          lugar: evt.lugar_evento || evt.lugar || currentEvent.lugar,
+          descripcion: evt.descripcion || undefined,
+          esDePago: Boolean(evt.es_de_pago),
+          precio: evt.precio || undefined,
+          moneda: evt.moneda || "COP",
+          instruccionesPago: evt.instrucciones_pago || undefined,
+        };
+      }
+    }
+  } catch (_) {}
+
+  // 3. Obtener configuración general del auditorio / sede
+  let auditorioDireccion = "Centro Mundial de Gloria";
+  let auditorioTelefono = "";
+  try {
+    const { data: audData } = await supabase
+      .from("auditorio_config")
+      .select("direccion, telefono_contacto")
+      .limit(1)
+      .maybeSingle();
+    if (audData?.direccion) auditorioDireccion = audData.direccion;
+    if (audData?.telefono_contacto) auditorioTelefono = audData.telefono_contacto;
+  } catch (_) {}
+
+  const downloadUrl = attendee ? `${origin}/descargar/${attendee.id}` : origin;
+
+  // =========================================================================
+  // 4. INTENCIONES ESPECÍFICAS
+  // =========================================================================
+
+  // A. INTENCIÓN: Confirmar Asistencia RSVP ("1", "sí", "confirmo", "asistiré", etc.)
+  const isRsvpYes =
+    text === "1" ||
+    text === "1." ||
+    /^(si|sí|claro|confirmo|confirmar|asistire|asistiré|cuenta conmigo|alla estare|allá estaré|voy a ir|si voy|estare|estaré)$/i.test(text) ||
+    text.includes("si confirmo") ||
+    text.includes("sí confirmo") ||
+    text.includes("confirmo mi asistencia") ||
+    text.includes("si asistire") ||
+    text.includes("sí asistiré");
+
+  if (isRsvpYes) {
+    if (attendee?.id) {
+      try {
+        await (supabase.from("registrations") as any)
+          .update({ asistio: true, estado_rsvp: "confirmado" })
+          .eq("id", attendee.id);
+      } catch (_) {}
+
+      return {
+        replyText: `✅ ¡Excelente, ${greetingName}! Tu asistencia para *${currentEvent.nombre}* ha sido CONFIRMADA con éxito 🎉.\n\n📅 *Fecha:* ${currentEvent.fechaTexto}\n📍 *Lugar:* ${currentEvent.lugar}\n🎟️ *Tu Pase QR:* ${downloadUrl}\n\n¡Te esperamos con los brazos abiertos! Recuerda llegar con 20 minutos de anticipación.`,
+        rsvpStatus: "confirmado",
+      };
+    }
 
     return {
-      replyText: `✅ ¡Excelente! Tu asistencia ha sido CONFIRMADA. Muchas gracias por avisarnos. ¡Nos vemos en el evento! 🎟️`,
+      replyText: `✅ ¡Muchas gracias por tu confirmación! 🎉\n\nTe esperamos en *${currentEvent.nombre}*.\n📅 *Fecha:* ${currentEvent.fechaTexto}\n📍 *Lugar:* ${currentEvent.lugar}\n\nSi aún no tienes tu pase QR de entrada, puedes generarlo aquí:\n👉 ${origin}`,
       rsvpStatus: "confirmado",
     };
   }
 
-  if (text === "2" || text.includes("no") || text.includes("cancelar") || text.includes("no podré") || text.includes("no puedo")) {
-    try {
-      await (supabase.from("registrations") as any)
-        .update({ estado_rsvp: "cancelado" })
-        .or(`telefono.eq.${cleanPhone},telefono.eq.${senderPhone}`);
-    } catch (_) {}
+  // B. INTENCIÓN: Declinar / Cancelar Asistencia RSVP ("2", "no", "no podré", "cancelo", etc.)
+  const isRsvpNo =
+    text === "2" ||
+    text === "2." ||
+    /^(no|cancelar|cancelo|no podre|no podré|no puedo|no voy|no podre ir|no podré ir)$/i.test(text) ||
+    text.includes("no podre asistir") ||
+    text.includes("no podré asistir") ||
+    text.includes("cancelo mi asistencia") ||
+    text.includes("no voy a poder");
+
+  if (isRsvpNo) {
+    if (attendee?.id) {
+      try {
+        await (supabase.from("registrations") as any)
+          .update({ asistio: false, estado_rsvp: "cancelado" })
+          .eq("id", attendee.id);
+      } catch (_) {}
+
+      return {
+        replyText: `❌ Entendido, ${greetingName}. Hemos registrado que no podrás asistir a *${currentEvent.nombre}* en esta ocasión.\n\n¡Esperamos contar contigo en nuestros próximos eventos y reuniones! Que Dios te bendiga grandemente. 🙏✨`,
+        rsvpStatus: "cancelado",
+      };
+    }
 
     return {
-      replyText: `❌ Entendido. Hemos registrado que no podrás asistir a esta ocasión. ¡Esperamos contar contigo en el próximo evento!`,
+      replyText: `❌ Entendido. Hemos tomado nota de que no podrás asistir. ¡Esperamos verte pronto en un próximo evento! Bendiciones.`,
       rsvpStatus: "cancelado",
     };
   }
 
-  // 2. Buscar último evento activo en Supabase para obtener fechas y ubicación reales
-  let eventInfo = {
-    nombre: "Doxa Eventos",
-    fecha: "Consultar catálogo oficial",
-    lugar: "Centro Mundial de Gloria",
-  };
+  // C. INTENCIÓN: Petición de Oración / Ayuda Espiritual / Consejería / Sanidad / Familia
+  const isPrayer =
+    text.includes("peticion") ||
+    text.includes("petición") ||
+    text.includes("oracion") ||
+    text.includes("oración") ||
+    text.includes("oren") ||
+    text.includes("orar") ||
+    text.includes("recen") ||
+    text.includes("ayuda espiritual") ||
+    text.includes("consejeria") ||
+    text.includes("consejería") ||
+    text.includes("pastor") ||
+    text.includes("enfermo") ||
+    text.includes("enfermedad") ||
+    text.includes("sanidad") ||
+    text.includes("clamor") ||
+    text.includes("intercesion") ||
+    text.includes("intercesión") ||
+    text.includes("necesito oracion") ||
+    text.includes("por favor oren");
 
-  try {
-    const { data: eventsData } = await supabase
-      .from("events" as any)
-      .select("*")
-      .eq("activo", true)
-      .order("created_at", { ascending: false })
-      .limit(1);
+  if (isPrayer) {
+    return {
+      replyText: `🙏 *Petición de Oración y Acompañamiento Espiritual*\n\nHola ${greetingName}, en *Centro Mundial de Gloria / Doxa Eventos* creemos firmemente en el poder de la oración y en que Dios tiene cuidado de cada detalle de tu vida.\n\n✨ Tu motivo de oración ha sido recibido con mucho amor y nuestro equipo pastoral e intercesores estarán orando e intercediendo por ti, tu salud, tu familia y tus necesidades.\n\n📖 *"Y esta es la confianza que tenemos en él, que si pedimos alguna cosa conforme a su voluntad, él nos oye."* (1 Juan 5:14)\n\n🕊️ Si requieres consejería pastoral directa o deseas conectarte con una Casa de Paz en tu sector, háznoslo saber y con gusto te contactaremos. ¡Declaramos bendición y paz sobre tu vida!`,
+    };
+  }
 
-    if (eventsData && eventsData[0]) {
-      const evt = eventsData[0] as any;
-      eventInfo.nombre = evt.nombre || eventInfo.nombre;
-      if (evt.fecha_evento) {
-        const dt = formatEventDateTime(evt.fecha_evento);
-        eventInfo.fecha = dt.fullDateText || dt.eventDate || eventInfo.fecha;
-      }
-      if (evt.lugar_evento) eventInfo.lugar = evt.lugar_evento;
+  // D. INTENCIÓN: Ubicación / Dirección / Cómo llegar / Dónde es
+  const isLocation =
+    text.includes("donde") ||
+    text.includes("dónde") ||
+    text.includes("lugar") ||
+    text.includes("ubicacion") ||
+    text.includes("ubicación") ||
+    text.includes("direccion") ||
+    text.includes("dirección") ||
+    text.includes("como llego") ||
+    text.includes("cómo llego") ||
+    text.includes("donde queda") ||
+    text.includes("dónde queda") ||
+    text.includes("mapa") ||
+    text.includes("sitio");
+
+  if (isLocation) {
+    const eventLocation = currentEvent.lugar || auditorioDireccion;
+    if (attendee) {
+      return {
+        replyText: `📍 *Ubicación del Evento: ${currentEvent.nombre}*\n\n🏢 *Lugar:* ${eventLocation}\n\n🚗 *Recomendaciones:*\n• Te sugerimos llegar 20 minutos antes para un ingreso ágil.\n• Presenta tu código QR descargado en tu teléfono al ingresar.\n\n🎟️ *Descargar tu Pase:* ${downloadUrl}`,
+      };
     }
-  } catch (_) {}
 
-  // 3. Intenciones de Horarios / Fechas
-  if (text.includes("hora") || text.includes("fecha") || text.includes("cuando") || text.includes("cuándo") || text.includes("horario")) {
     return {
-      replyText: `📅 *${eventInfo.nombre}*\n\nEl evento está programado para:\n👉 *${eventInfo.fecha}*\n\n¡Te recomendamos llegar 20 minutos antes para tu ingreso!`,
+      replyText: `📍 *Ubicación de Nuestros Eventos*\n\n🏢 *Sede Principal / Auditorio:*\n${eventLocation}\n\n🚗 Te recomendamos llegar con anticipación para facilitar el estacionamiento y acceso.\n\n👉 Consulta detalles de eventos e inscripciones aquí:\n${origin}`,
     };
   }
 
-  // 4. Intenciones de Ubicación / Dirección / Cómo llegar
-  if (text.includes("donde") || text.includes("dónde") || text.includes("lugar") || text.includes("ubicacion") || text.includes("ubicación") || text.includes("direccion") || text.includes("dirección")) {
-    return {
-      replyText: `📍 *Ubicación del Evento*\n\nTe esperamos en:\n🏢 *${eventInfo.lugar}*\n\nRecuerda presentar tu código QR en la entrada para un acceso rápido.`,
-    };
-  }
+  // E. INTENCIÓN: Fecha / Horario / Cuándo es / Horas
+  const isSchedule =
+    text.includes("hora") ||
+    text.includes("horario") ||
+    text.includes("fecha") ||
+    text.includes("cuando") ||
+    text.includes("cuándo") ||
+    text.includes("que dia") ||
+    text.includes("qué día") ||
+    text.includes("a que hora") ||
+    text.includes("a qué hora");
 
-  // 5. Intenciones de Pase QR / Entradas
-  if (text.includes("pase") || text.includes("qr") || text.includes("entrada") || text.includes("invitacion") || text.includes("invitación") || text.includes("mi pase")) {
+  if (isSchedule) {
+    if (attendee) {
+      return {
+        replyText: `📅 *Fecha y Horario: ${currentEvent.nombre}*\n\n⏰ *Programación:* ${currentEvent.fechaTexto}\n📍 *Lugar:* ${currentEvent.lugar}\n\nℹ️ Las puertas se abrirán con anticipación. ¡Te recomendamos tener a mano tu código QR!\n👉 *Pase:* ${downloadUrl}`,
+      };
+    }
+
+    // Listar próximos eventos activos
     try {
-      const { data: reg } = await (supabase.from("registrations") as any)
-        .select("id, nombres, apellidos")
-        .or(`telefono.eq.${cleanPhone},telefono.eq.${senderPhone}`)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { data: allEvts } = await supabase
+        .from("events")
+        .select("nombre, fecha_evento, lugar_evento")
+        .eq("activo", true)
+        .order("fecha_evento", { ascending: true })
+        .limit(3);
 
-      if (reg) {
-        const attendeeName = [reg.nombres, reg.apellidos]
-          .map((s) => (s ? String(s).trim() : ""))
-          .filter((s) => s.length > 0 && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined")
-          .join(" ") || "Asistente";
-        const downloadUrl = `${window.location.origin}/descargar/${reg.id}`;
+      if (allEvts && allEvts.length > 0) {
+        const listText = allEvts
+          .map((e) => {
+            const dt = formatEventDateTime(e.fecha_evento || "");
+            return `• *${e.nombre}*\n  📅 ${dt.fullDateText || dt.eventDate || "Próximamente"}\n  📍 ${e.lugar_evento || "Auditorio CMG"}`;
+          })
+          .join("\n\n");
+
         return {
-          replyText: `🎟️ *Hola ${attendeeName}*\n\nAquí tienes tu enlace personal para descargar tu pase de entrada y Código QR:\n👇\n${downloadUrl}`,
+          replyText: `📅 *Próximos Eventos Programados:*\n\n${listText}\n\n👉 Inscríbete y obtén tu pase gratuito en:\n${origin}`,
         };
       }
     } catch (_) {}
 
     return {
-      replyText: `🎟️ *Pases de Entrada*\n\nPuedes ver e inscribirte a los eventos en nuestro catálogo oficial:\n${window.location.origin}`,
+      replyText: `📅 *${currentEvent.nombre}*\n\n⏰ *Fecha:* ${currentEvent.fechaTexto}\n📍 *Lugar:* ${currentEvent.lugar}\n\n👉 Inscríbete y obtén tu pase en:\n${origin}`,
     };
   }
 
-  // 6. Respuesta predeterminada amigable (Fallback)
+  // F. INTENCIÓN: Pase QR / Ticket / Entrada / Invitación / Descargar
+  const isTicket =
+    text.includes("pase") ||
+    text.includes("qr") ||
+    text.includes("entrada") ||
+    text.includes("ticket") ||
+    text.includes("invitacion") ||
+    text.includes("invitación") ||
+    text.includes("mi pase") ||
+    text.includes("mi codigo") ||
+    text.includes("mi código") ||
+    text.includes("descargar") ||
+    text.includes("carnet") ||
+    text.includes("escarapela");
+
+  if (isTicket) {
+    if (attendee) {
+      const estadoStr = attendee.asistio ? "Confirmado ✅" : "Registrado 🎟️";
+      let extraPago = "";
+      if (currentEvent.esDePago) {
+        extraPago = attendee.estadoPago === "aprobado" || attendee.estadoPago === "pagado"
+          ? "\n💳 *Estado de Pago:* Aprobado / Pagado ✅"
+          : "\n💳 *Estado de Pago:* Pendiente de verificación ⏳";
+      }
+
+      return {
+        replyText: `🎟️ *Tu Pase de Entrada QR*\n\nHola ${greetingName}, aquí tienes tu pase personal para *${currentEvent.nombre}*:\n\n👉 *Descargar Invitación y Código QR:*\n${downloadUrl}\n\n📌 *Estado:* ${estadoStr}${extraPago}\n\n💡 *Tip:* Guarda la imagen del código QR en tu galería o toma una captura de pantalla para un acceso rápido.`,
+      };
+    }
+
+    return {
+      replyText: `🎟️ *Pases de Entrada y Códigos QR*\n\nNo encontramos un registro asociado a este número. Puedes inscribirte gratuitamente y generar tu pase QR oficial en:\n👉 ${origin}`,
+    };
+  }
+
+  // G. INTENCIÓN: Precios / Pagos / Métodos de Pago / Bancos / Nequi / Comprobantes
+  const isPayment =
+    text.includes("precio") ||
+    text.includes("costo") ||
+    text.includes("cuanto vale") ||
+    text.includes("cuánto vale") ||
+    text.includes("valor") ||
+    text.includes("pago") ||
+    text.includes("pagar") ||
+    text.includes("cuenta") ||
+    text.includes("nequi") ||
+    text.includes("daviplata") ||
+    text.includes("bancolombia") ||
+    text.includes("transferencia") ||
+    text.includes("comprobante") ||
+    text.includes("gratis") ||
+    text.includes("gratuito");
+
+  if (isPayment) {
+    if (currentEvent.esDePago) {
+      const priceStr = currentEvent.precio
+        ? new Intl.NumberFormat("es-CO", { style: "currency", currency: currentEvent.moneda || "COP", maximumFractionDigits: 0 }).format(currentEvent.precio)
+        : "Consultar tarifa";
+
+      const instructions = currentEvent.instruccionesPago
+        ? `\n\n📌 *Instrucciones de Pago:*\n${currentEvent.instruccionesPago}`
+        : "";
+
+      return {
+        replyText: `💳 *Información de Pago: ${currentEvent.nombre}*\n\n💰 *Valor de la Entrada:* ${priceStr}${instructions}\n\nUna vez realizado tu pago, puedes subir tu comprobante desde el formulario de registro o responder a este chat adjuntando la captura.`,
+      };
+    }
+
+    return {
+      replyText: `🎉 *Evento Gratuito*\n\nLa entrada a *${currentEvent.nombre}* es *100% GRATUITA*. Solo necesitas registrarte previamente para obtener tu pase con Código QR.\n\n👉 Regístrate aquí:\n${origin}`,
+    };
+  }
+
+  // H. INTENCIÓN: Casas de Paz / Grupos en Casa / Redes
+  const isCdp =
+    text.includes("casa de paz") ||
+    text.includes("casas de paz") ||
+    text.includes("cdp") ||
+    text.includes("grupo en casa") ||
+    text.includes("celula") ||
+    text.includes("célula") ||
+    text.includes("red de") ||
+    text.includes("barrio");
+
+  if (isCdp) {
+    return {
+      replyText: `🏡 *Casas de Paz - Centro Mundial de Gloria*\n\nLas Casas de Paz son grupos de bendición y comunión en los hogares donde oramos, compartimos la palabra y nos apoyamos mutuamente.\n\n✨ ¿Deseas unirte a una Casa de Paz cercana a tu barrio o abrir una en tu casa?\nEscríbenos tu barrio y ciudad, y un líder de tu sector se pondrá en contacto contigo. ¡Eres muy bienvenido!`,
+    };
+  }
+
+  // I. INTENCIÓN: Alquiler de Auditorio / Eventos Externos
+  const isAuditorio =
+    text.includes("alquiler") ||
+    text.includes("alquilar") ||
+    text.includes("rentar auditorio") ||
+    text.includes("arrendar") ||
+    text.includes("cotizacion") ||
+    text.includes("cotización") ||
+    text.includes("espacio");
+
+  if (isAuditorio) {
+    return {
+      replyText: `🏢 *Alquiler y Solicitud del Auditorio CMG*\n\nContamos con un auditorio moderno, climatizado, con excelente acústica, pantallas LED y sonido profesional para eventos corporativos, congresos y seminarios.\n\n📍 *Ubicación:* ${auditorioDireccion}\n📞 *Contacto Directo:* ${auditorioTelefono || "Contáctanos por este medio"}\n\n👉 Puedes solicitar una cotización o fecha en nuestro portal de auditorio.`,
+    };
+  }
+
+  // J. INTENCIÓN: Saludos / Agradecimientos / Despedidas / Bendiciones
+  const isGreeting =
+    /^(hola|buenos dias|buenos días|buenas tardes|buenas noches|saludos|hey|alo|aló)$/i.test(text) ||
+    text === "hola" ||
+    text === "buenos dias" ||
+    text === "buenas tardes";
+
+  const isThanksOrBlessing =
+    text.includes("gracias") ||
+    text.includes("muchas gracias") ||
+    text.includes("dios te bendiga") ||
+    text.includes("dios le pague") ||
+    text.includes("bendiciones") ||
+    text.includes("amen") ||
+    text.includes("amén") ||
+    text.includes("hasta luego") ||
+    text.includes("chao") ||
+    text.includes("adios");
+
+  if (isThanksOrBlessing) {
+    return {
+      replyText: `🙏 ¡Con muchísimo gusto, ${greetingName}! Que Dios derrame abundantes bendiciones sobre tu vida y tu hogar. ✨\n\nSi necesitas algo más respecto a tus eventos, pases QR o peticiones de oración, aquí estaremos 24/7 para servirte.`,
+    };
+  }
+
+  if (isGreeting) {
+    if (attendee) {
+      return {
+        replyText: `¡Hola ${greetingName}! 👋 Gracias por escribirnos a *Centro Mundial de Gloria / Doxa Eventos*.\n\n📌 *Estás inscrito(a) en:* ${currentEvent.nombre}\n📅 *Fecha:* ${currentEvent.fechaTexto}\n\n🤖 *¿En qué te puedo ayudar hoy?*\n• *1* para confirmar tu asistencia o *2* para declinar\n• Preguntarme por la *ubicación o cómo llegar*\n• Pedir tu *pase QR* de entrada\n• Compartirme una *petición de oración*`,
+      };
+    }
+
+    return {
+      replyText: `¡Hola! 👋 Bienvenido(a) al Asistente Virtual de *Centro Mundial de Gloria / Doxa Eventos*.\n\n🤖 *Puedo ayudarte con:*\n• Información y horarios del próximo evento: *${currentEvent.nombre}*\n• Ubicación y dirección de nuestra sede\n• Obtener tu pase de entrada QR\n• Peticiones de oración y acompañamiento pastoral\n\n¿En qué te podemos apoyar hoy?`,
+    };
+  }
+
+  // =========================================================================
+  // 5. RESPUESTA INTELIGENTE DE FALLBACK PERSONALIZADA
+  // =========================================================================
+  if (attendee) {
+    return {
+      replyText: `Hola ${greetingName} 👋. Hemos recibido tu mensaje.\n\n📌 Para tu evento *${currentEvent.nombre}* (${currentEvent.fechaTexto}):\n\n• Responde *1* para confirmar tu asistencia o *2* para cancelar\n• Escribe *Ubicación* para ver la dirección exacta\n• Escribe *Pase* para recibir tu código QR\n• Escribe *Oración* si tienes una petición o necesidad espiritual\n\nSi necesitas atención personalizada, un asesor te responderá pronto.`,
+    };
+  }
+
   return {
-    replyText: `Hola 👋. Gracias por escribirnos a *Doxa Eventos / Centro Mundial de Gloria*.\n\n🤖 Puedo ayudarte con:\n• *1* para confirmar tu asistencia o *2* para declinar\n• Preguntarme por la *fecha* u *horario* del evento\n• Preguntarme por la *ubicación*\n• Pedirme tu *pase QR* de entrada`,
+    replyText: `Hola 👋. Gracias por comunicarte con *Centro Mundial de Gloria / Doxa Eventos*.\n\n🤖 *Puedo responderte al instante sobre:*\n• *Fecha y Horario* de próximos eventos\n• *Ubicación y Dirección* de nuestro auditorio\n• *Pase QR* o cómo inscribirte\n• *Peticiones de Oración* y ayuda pastoral\n• Información sobre *Casas de Paz*\n\n¿Qué información necesitas?`,
   };
 }
 
