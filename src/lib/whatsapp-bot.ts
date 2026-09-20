@@ -369,14 +369,19 @@ export async function generateOmniRouteReply(
 
   // Construir información del asistente
   const attendeeInfo = attendee
-    ? `- Nombre del Asistente: ${attendee.nombreCompleto}
-- Teléfono: ${attendee.telefono}
-- ID Registro: ${attendee.id}
+    ? `- Estado en el Sistema: REGISTRADO OFICIALMENTE ✅
+- Nombre del Asistente: ${attendee.nombreCompleto}
+- Teléfono: ${attendee.telefono || "Asignado"}
+- ID de Registro: ${attendee.id}
+- Evento al que está inscrito: ${currentEvent.nombre} (${currentEvent.fechaTexto})
+- Lugar del Evento: ${currentEvent.lugar || auditorioDireccion}
 - Estado de Asistencia (RSVP): ${rsvpDetected === "confirmado" ? "CONFIRMADO AHORA MISMO ✅" : rsvpDetected === "cancelado" ? "CANCELADO / DECLINADO ❌" : attendee.asistio ? "CONFIRMADO PREVIAMENTE ✅" : "Pendiente de confirmar"}
 - Estado de Pago: ${attendee.estadoPago || "N/A"}
-- Enlace oficial de descarga de su Pase QR / Invitación: ${downloadUrl}`
-    : `- Asistente: No registrado previamente en el sistema con este número de WhatsApp (Nuevo visitante).
-- Enlace general para registrarse y obtener pase QR: ${origin}`;
+- Enlace oficial a su Pase QR / Entrada: ${downloadUrl}
+- SI PREGUNTA SI ESTÁ INSCRITO: Confírmale con alegría que SÍ está debidamente inscrito(a) como *${attendee.nombreCompleto}* para *${currentEvent.nombre}* y facilítale su pase QR (${downloadUrl}).`
+    : `- Estado en el Sistema: NO REGISTRADO CON ESTE NÚMERO (Nuevo visitante).
+- Enlace general para registrarse: ${origin}
+- SI PREGUNTA SI ESTÁ INSCRITO: Explícale con amabilidad que con este número de WhatsApp aún no encontramos una inscripción para *${currentEvent.nombre}*, e invítale a registrarse gratis en: ${origin}`;
 
   const upcomingText = upcomingEvents && upcomingEvents.length > 0
     ? upcomingEvents.map((e) => `• ${e.nombre} - Fecha: ${e.fechaTexto} - Lugar: ${e.lugar}${e.descripcion ? ` - Detalle: ${e.descripcion}` : ""}`).join("\n")
@@ -442,6 +447,9 @@ DIRECTRICES CLAVE DE RESPUESTA:
       cleanEndpoint = cleanEndpoint.replace(/^http:\/\//i, "https://");
     }
 
+    // Aseguramos que el contexto llegue al modelo incluso si el proxy o proveedor descarta role: "system"
+    const combinedUserContent = `[CONTEXTO OBLIGATORIO Y GUÍA DE RESPUESTA DE CENTRO MUNDIAL DE GLORIA]:\n${systemInstruction}\n\n[MENSAJE DEL ASISTENTE POR WHATSAPP]:\n"${userMessage}"\n\nResponde como el Asistente Oficial de Centro Mundial de Gloria siguiendo estrictamente el contexto anterior:`;
+
     const res = await fetch(cleanEndpoint, {
       method: "POST",
       headers: {
@@ -457,9 +465,12 @@ DIRECTRICES CLAVE DE RESPUESTA:
             role: "system",
             content: systemInstruction,
           },
-          { role: "user", content: userMessage },
+          {
+            role: "user",
+            content: combinedUserContent,
+          },
         ],
-        temperature: 0.5,
+        temperature: 0.3,
         max_tokens: 500,
       }),
       signal: controller.signal,

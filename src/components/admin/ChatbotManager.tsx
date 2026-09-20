@@ -744,7 +744,11 @@ export function ChatbotManager() {
                 setMessages([
                   {
                     sender: "bot",
-                    text: "👋 ¡Hola! Soy el Asistente Virtual Inteligente IA de Centro Mundial de Gloria. ¿En qué te puedo ayudar hoy?",
+                    text: `👋 ¡Hola! Soy el Asistente Virtual Inteligente de Centro Mundial de Gloria.\n\n${
+                      currentAttendeeProfile
+                        ? `¡Hola *${currentAttendeeProfile.nombres}*! Te reconozco en nuestro sistema. ¿En qué te puedo colaborar hoy?`
+                        : "Bienvenido(a). ¿En qué te puedo ayudar hoy con respecto a nuestros eventos, cultos o iglesia?"
+                    }`,
                     time: "Ahora",
                     isAiGenerated: true,
                   },
@@ -754,6 +758,26 @@ export function ChatbotManager() {
             >
               <RefreshCw className="w-3.5 h-3.5 mr-1" /> Limpiar
             </Button>
+          </div>
+
+          {/* BARRA DE ASISTENTE ACTIVO EN SIMULADOR */}
+          <div className="bg-teal-900/90 text-white px-3.5 py-2 text-[11px] flex flex-wrap items-center justify-between gap-2 border-b border-teal-800 shrink-0">
+            <div className="flex items-center gap-2">
+              <User className="w-3.5 h-3.5 text-teal-300" />
+              <span>Simulando a:</span>
+              <strong className="text-teal-200">
+                {currentAttendeeProfile
+                  ? `${currentAttendeeProfile.nombreCompleto} (${testPhone})`
+                  : `Nuevo Visitante (${testPhone})`}
+              </strong>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab("attendee")}
+              className="text-[10px] text-teal-200 hover:text-white underline font-semibold"
+            >
+              Cambiar Asistente →
+            </button>
           </div>
 
           {/* BOTONES DE PREGUNTAS RÁPIDAS */}
