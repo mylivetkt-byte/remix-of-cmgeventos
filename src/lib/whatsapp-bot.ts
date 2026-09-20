@@ -414,9 +414,14 @@ INSTRUCCIONES CLAVE DE RESPUESTA:
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 9000); // 9 segundos timeout
 
-    const cleanEndpoint = config.baseUrl.endsWith("/chat/completions")
+    let cleanEndpoint = config.baseUrl.endsWith("/chat/completions")
       ? config.baseUrl
       : `${config.baseUrl}/chat/completions`;
+
+    // Si el sitio web está sobre HTTPS, convertir http:// a https:// automáticamente para evitar bloqueo Mixed Content
+    if (typeof window !== "undefined" && window.location.protocol === "https:" && cleanEndpoint.startsWith("http://")) {
+      cleanEndpoint = cleanEndpoint.replace(/^http:\/\//i, "https://");
+    }
 
     const res = await fetch(cleanEndpoint, {
       method: "POST",

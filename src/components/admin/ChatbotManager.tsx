@@ -121,10 +121,16 @@ export function ChatbotManager() {
   const handleSaveAiConfig = async () => {
     setSavingAi(true);
     try {
+      let finalBaseUrl = aiBaseUrl.trim();
+      if (window.location.protocol === "https:" && finalBaseUrl.startsWith("http://")) {
+        finalBaseUrl = finalBaseUrl.replace(/^http:\/\//i, "https://");
+        setAiBaseUrl(finalBaseUrl);
+      }
+
       await saveOmniRouteConfig({
-        apiKey: aiApiKey,
-        baseUrl: aiBaseUrl,
-        model: aiModel,
+        apiKey: aiApiKey.trim(),
+        baseUrl: finalBaseUrl,
+        model: aiModel.trim(),
         systemPrompt: aiSystemPrompt,
         enabled: aiEnabled,
       });
@@ -148,19 +154,15 @@ export function ChatbotManager() {
     const startTime = performance.now();
 
     try {
-      const cleanEndpoint = aiBaseUrl.endsWith("/chat/completions")
-        ? aiBaseUrl
-        : `${aiBaseUrl.replace(/\/$/, "")}/chat/completions`;
-
-      if (window.location.protocol === "https:" && cleanEndpoint.startsWith("http://")) {
-        setAiTestResult({
-          success: false,
-          message: "Bloqueo de Contenido Mixto (Mixed Content): Tu web usa HTTPS y el navegador prohíbe conectar a URLs inseguras 'http://'. Por favor cambia la URL a 'https://'.",
-          latency: 0,
-        });
-        toast.error("Error: Debes usar un Endpoint seguro con 'https://'");
-        return;
+      let finalBaseUrl = aiBaseUrl.trim();
+      if (window.location.protocol === "https:" && finalBaseUrl.startsWith("http://")) {
+        finalBaseUrl = finalBaseUrl.replace(/^http:\/\//i, "https://");
+        setAiBaseUrl(finalBaseUrl);
       }
+
+      const cleanEndpoint = finalBaseUrl.endsWith("/chat/completions")
+        ? finalBaseUrl
+        : `${finalBaseUrl.replace(/\/$/, "")}/chat/completions`;
 
       const res = await fetch(cleanEndpoint, {
         method: "POST",
