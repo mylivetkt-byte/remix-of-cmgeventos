@@ -228,51 +228,7 @@ export async function lookupAttendeeProfile(phone: string) {
     }
   } catch (_) {}
 
-  // 2. Buscar en tablas específicas de eventos
-  const specificTables = [
-    "retiro_sanidad_2026_registrations",
-    "retiro_sanidad_registrations",
-    "evento_default_registrations",
-    "evento_libres_para_amar_registrations",
-    "evento_mega_casa_de_paz_registrations",
-    "evento_entrenamiento_intensivo_para_lideres_cdp_registrations",
-    "evento_fiesta_de_bienvenida_registrations",
-    "evento_retiro_de_lideres_de_casa_de_paz_registrations",
-    "evento_retiro_de_sanidad_interior_y_liberacion_registrations",
-    "evento_seminario_biblico_registrations",
-  ];
 
-  for (const table of specificTables) {
-    try {
-      const orCondition = phoneTokens.map((p) => `telefono.eq.${p}`).join(",");
-      const { data: specList } = await (supabase.from(table) as any)
-        .select("id, nombres, apellidos, primer_apellido, segundo_apellido, event_id, asistio, pdf_url, created_at")
-        .or(orCondition)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      if (specList && specList[0]) {
-        const item = specList[0];
-        const lastNames = item.apellidos || [item.primer_apellido, item.segundo_apellido].filter(Boolean).join(" ");
-        const fullName = [item.nombres, lastNames]
-          .map((s) => (s ? String(s).trim() : ""))
-          .filter((s) => s.length > 0 && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined")
-          .join(" ") || "Asistente";
-
-        return {
-          id: item.id,
-          nombres: item.nombres || fullName,
-          apellidos: lastNames || "",
-          nombreCompleto: fullName,
-          eventId: item.event_id,
-          asistio: item.asistio,
-          estadoPago: null,
-          montoPendiente: null,
-          pdfUrl: item.pdf_url,
-        };
-      }
-    } catch (_) {}
-  }
 
   // 3. Buscar en solicitudes de casas de paz o auditorio
   try {

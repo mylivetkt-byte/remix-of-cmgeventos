@@ -152,6 +152,16 @@ export function ChatbotManager() {
         ? aiBaseUrl
         : `${aiBaseUrl.replace(/\/$/, "")}/chat/completions`;
 
+      if (window.location.protocol === "https:" && cleanEndpoint.startsWith("http://")) {
+        setAiTestResult({
+          success: false,
+          message: "Bloqueo de Contenido Mixto (Mixed Content): Tu web usa HTTPS y el navegador prohíbe conectar a URLs inseguras 'http://'. Por favor cambia la URL a 'https://'.",
+          latency: 0,
+        });
+        toast.error("Error: Debes usar un Endpoint seguro con 'https://'");
+        return;
+      }
+
       const res = await fetch(cleanEndpoint, {
         method: "POST",
         headers: {
@@ -192,12 +202,15 @@ export function ChatbotManager() {
       }
     } catch (err: any) {
       const elapsed = Math.round(performance.now() - startTime);
+      const isMixedContent = window.location.protocol === "https:" && aiBaseUrl.startsWith("http://");
       setAiTestResult({
         success: false,
-        message: `Error de red: ${err.message}`,
+        message: isMixedContent
+          ? "Bloqueado por el navegador: No se puede conectar a 'http://' desde una página HTTPS. Usa 'https://' en el Endpoint."
+          : `Error de red: ${err.message}`,
         latency: elapsed,
       });
-      toast.error("Error al conectar con el servidor IA.");
+      toast.error(isMixedContent ? "Endpoint debe usar https://" : "Error al conectar con el servidor IA.");
     } finally {
       setTestingAi(false);
     }
