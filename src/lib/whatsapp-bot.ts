@@ -159,17 +159,32 @@ export async function sendInstantWhatsAppTicket(payload: InstantTicketPayload): 
 }
 
 /**
+ * Función para limpiar y normalizar texto en español (elimina tildes, signos y espacios extra)
+ */
+export function normalizeBotText(input: string): string {
+  if (!input) return "";
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // quita tildes
+    .replace(/[¿?¡!.,;:_()\-+*#$%/\\|~`"^&<>={}[\]]/g, " ") // reemplaza signos de puntuación por espacio
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
  * Helper para buscar el perfil del asistente por número de teléfono
  */
 export async function lookupAttendeeProfile(phone: string) {
-  const clean = normalizePhone(phone);
-  const raw = String(phone || "").trim();
-  const digitsOnly = raw.replace(/[^\d]/g, "");
+  if (!phone) return null;
+  const digitsOnly = String(phone).replace(/[^\d]/g, "");
+  if (!digitsOnly || digitsOnly.length < 7) return null;
+
   const phone10 = digitsOnly.length >= 10 && digitsOnly.startsWith("57") ? digitsOnly.slice(2) : digitsOnly;
   const phone57 = phone10.length === 10 ? `57${phone10}` : digitsOnly;
 
-  const searchTerms = Array.from(new Set([clean, raw, digitsOnly, phone10, phone57].filter(Boolean)));
-  const orFilter = searchTerms.map((t) => `telefono.eq.${t}`).join(",");
+  // Lista segura de tokens numéricos puros (sin @, +, espacios ni caracteres especiales)
+  const phoneTokens = Array.from(new Set([digitsOnly, phone10, phone57].filter((p) => p && p.length >= 7)));
 
   let attendee: {
     id: string;
@@ -183,21 +198,23 @@ export async function lookupAttendeeProfile(phone: string) {
     pdfUrl?: string | null;
   } | null = null;
 
+  // 1. Buscar en tabla principal registrations
   try {
-    const { data: regList } = await (supabase.from("registrations") as any)
-      .select("id, nombres, apellidos, event_id, asistio, estado_pago, monto_pendiente, pdf_url, created_at")
-      .or(orFilter)
+    const orCondition = phoneTokens.map((p) => `telefono.eq.${p}`).join(",");
+    const { data: regList, error } = await (supabase.from("registrations") as any)
+      .select("id, nombres, apellidos, event_id, asistio, estado_pago, monto_pendiente, pdf_url, created_at, telefono")
+      .or(orCondition)
       .order("created_at", { ascending: false })
       .limit(1);
 
-    if (regList && regList[0]) {
+    if (!error && regList && regList[0]) {
       const reg = regList[0];
       const fullName = [reg.nombres, reg.apellidos]
         .map((s) => (s ? String(s).trim() : ""))
         .filter((s) => s.length > 0 && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined")
         .join(" ") || "Asistente";
 
-      attendee = {
+      return {
         id: reg.id,
         nombres: reg.nombres || fullName,
         apellidos: reg.apellidos || "",
@@ -211,7 +228,78 @@ export async function lookupAttendeeProfile(phone: string) {
     }
   } catch (_) {}
 
-  return attendee;
+  // 2. Buscar en tablas específicas de eventos
+  const specificTables = [
+    "retiro_sanidad_2026_registrations",
+    "retiro_sanidad_registrations",
+    "evento_default_registrations",
+    "evento_libres_para_amar_registrations",
+    "evento_mega_casa_de_paz_registrations",
+    "evento_entrenamiento_intensivo_para_lideres_cdp_registrations",
+    "evento_fiesta_de_bienvenida_registrations",
+    "evento_retiro_de_lideres_de_casa_de_paz_registrations",
+    "evento_retiro_de_sanidad_interior_y_liberacion_registrations",
+    "evento_seminario_biblico_registrations",
+  ];
+
+  for (const table of specificTables) {
+    try {
+      const orCondition = phoneTokens.map((p) => `telefono.eq.${p}`).join(",");
+      const { data: specList } = await (supabase.from(table) as any)
+        .select("id, nombres, apellidos, primer_apellido, segundo_apellido, event_id, asistio, pdf_url, created_at")
+        .or(orCondition)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (specList && specList[0]) {
+        const item = specList[0];
+        const lastNames = item.apellidos || [item.primer_apellido, item.segundo_apellido].filter(Boolean).join(" ");
+        const fullName = [item.nombres, lastNames]
+          .map((s) => (s ? String(s).trim() : ""))
+          .filter((s) => s.length > 0 && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined")
+          .join(" ") || "Asistente";
+
+        return {
+          id: item.id,
+          nombres: item.nombres || fullName,
+          apellidos: lastNames || "",
+          nombreCompleto: fullName,
+          eventId: item.event_id,
+          asistio: item.asistio,
+          estadoPago: null,
+          montoPendiente: null,
+          pdfUrl: item.pdf_url,
+        };
+      }
+    } catch (_) {}
+  }
+
+  // 3. Buscar en solicitudes de casas de paz o auditorio
+  try {
+    const orCondition = phoneTokens.map((p) => `telefono.eq.${p}`).join(",");
+    const { data: cdpList } = await (supabase.from("casa_de_paz_solicitudes") as any)
+      .select("id, nombre, barrio, direccion, created_at")
+      .or(orCondition)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (cdpList && cdpList[0]) {
+      const cdp = cdpList[0];
+      return {
+        id: cdp.id,
+        nombres: cdp.nombre || "Hermano(a)",
+        apellidos: "",
+        nombreCompleto: cdp.nombre || "Hermano(a)",
+        eventId: null,
+        asistio: null,
+        estadoPago: null,
+        montoPendiente: null,
+        pdfUrl: null,
+      };
+    }
+  } catch (_) {}
+
+  return null;
 }
 
 /**
@@ -221,12 +309,13 @@ export async function processWhatsAppMessageIntent(
   incomingText: string,
   senderPhone: string
 ): Promise<{ replyText: string; rsvpStatus?: "confirmado" | "cancelado" }> {
-  const rawText = incomingText.trim();
-  const text = rawText.toLowerCase();
+  const rawText = String(incomingText || "").trim();
+  const cleanPhone = String(senderPhone || "").replace(/[^\d]/g, "");
+  const norm = normalizeBotText(rawText);
   const origin = typeof window !== "undefined" ? window.location.origin : "https://cmgeventos.lovable.app";
 
   // 1. Identificar perfil del asistente en base de datos
-  const attendee = await lookupAttendeeProfile(senderPhone);
+  const attendee = await lookupAttendeeProfile(cleanPhone || senderPhone);
   const attendeeName = attendee?.nombreCompleto || attendee?.nombres || "";
   const greetingName = attendeeName ? `*${attendeeName}*` : "amigo(a)";
 
@@ -312,19 +401,22 @@ export async function processWhatsAppMessageIntent(
   const downloadUrl = attendee ? `${origin}/descargar/${attendee.id}` : origin;
 
   // =========================================================================
-  // 4. INTENCIONES ESPECÍFICAS
+  // 4. DETECCIÓN DE INTENCIONES (CON NORMALIZACIÓN ROBUSTA)
   // =========================================================================
 
-  // A. INTENCIÓN: Confirmar Asistencia RSVP ("1", "sí", "confirmo", "asistiré", etc.)
+  // A. INTENCIÓN: Confirmar Asistencia RSVP ("1", "sí", "confirmo", "asistiré", "voy a ir", etc.)
   const isRsvpYes =
-    text === "1" ||
-    text === "1." ||
-    /^(si|sí|claro|confirmo|confirmar|asistire|asistiré|cuenta conmigo|alla estare|allá estaré|voy a ir|si voy|estare|estaré)$/i.test(text) ||
-    text.includes("si confirmo") ||
-    text.includes("sí confirmo") ||
-    text.includes("confirmo mi asistencia") ||
-    text.includes("si asistire") ||
-    text.includes("sí asistiré");
+    norm === "1" ||
+    norm === "1." ||
+    norm === "1 si" ||
+    norm === "1 si confirmo" ||
+    /^(si|claro|confirmo|confirmar|confirmado|asistire|cuenta conmigo|alla estare|voy a ir|si voy|estare|me apunto)$/i.test(norm) ||
+    norm.includes("si confirmo") ||
+    norm.includes("confirmo mi asistencia") ||
+    norm.includes("si asistire") ||
+    norm.includes("si voy a ir") ||
+    norm.includes("alla nos vemos") ||
+    norm.includes("cuenta conmigo");
 
   if (isRsvpYes) {
     if (attendee?.id) {
@@ -335,7 +427,7 @@ export async function processWhatsAppMessageIntent(
       } catch (_) {}
 
       return {
-        replyText: `✅ ¡Excelente, ${greetingName}! Tu asistencia para *${currentEvent.nombre}* ha sido CONFIRMADA con éxito 🎉.\n\n📅 *Fecha:* ${currentEvent.fechaTexto}\n📍 *Lugar:* ${currentEvent.lugar}\n🎟️ *Tu Pase QR:* ${downloadUrl}\n\n¡Te esperamos con los brazos abiertos! Recuerda llegar con 20 minutos de anticipación.`,
+        replyText: `✅ ¡Excelente, ${greetingName}! Tu asistencia para *${currentEvent.nombre}* ha sido CONFIRMADA con éxito 🎉.\n\n📅 *Fecha:* ${currentEvent.fechaTexto}\n📍 *Lugar:* ${currentEvent.lugar}\n🎟️ *Tu Pase QR:* ${downloadUrl}\n\n¡Te esperamos con los brazos abiertos! Recuerda llegar 20 minutos antes para tu ingreso.`,
         rsvpStatus: "confirmado",
       };
     }
@@ -348,13 +440,15 @@ export async function processWhatsAppMessageIntent(
 
   // B. INTENCIÓN: Declinar / Cancelar Asistencia RSVP ("2", "no", "no podré", "cancelo", etc.)
   const isRsvpNo =
-    text === "2" ||
-    text === "2." ||
-    /^(no|cancelar|cancelo|no podre|no podré|no puedo|no voy|no podre ir|no podré ir)$/i.test(text) ||
-    text.includes("no podre asistir") ||
-    text.includes("no podré asistir") ||
-    text.includes("cancelo mi asistencia") ||
-    text.includes("no voy a poder");
+    norm === "2" ||
+    norm === "2." ||
+    norm === "2 no" ||
+    /^(no|cancelar|cancelo|no podre|no puedo|no voy|no podre ir|declino)$/i.test(norm) ||
+    norm.includes("no podre asistir") ||
+    norm.includes("cancelo mi asistencia") ||
+    norm.includes("no voy a poder") ||
+    norm.includes("no puedo asistir") ||
+    norm.includes("no puedo ir");
 
   if (isRsvpNo) {
     if (attendee?.id) {
@@ -378,25 +472,27 @@ export async function processWhatsAppMessageIntent(
 
   // C. INTENCIÓN: Petición de Oración / Ayuda Espiritual / Consejería / Sanidad / Familia
   const isPrayer =
-    text.includes("peticion") ||
-    text.includes("petición") ||
-    text.includes("oracion") ||
-    text.includes("oración") ||
-    text.includes("oren") ||
-    text.includes("orar") ||
-    text.includes("recen") ||
-    text.includes("ayuda espiritual") ||
-    text.includes("consejeria") ||
-    text.includes("consejería") ||
-    text.includes("pastor") ||
-    text.includes("enfermo") ||
-    text.includes("enfermedad") ||
-    text.includes("sanidad") ||
-    text.includes("clamor") ||
-    text.includes("intercesion") ||
-    text.includes("intercesión") ||
-    text.includes("necesito oracion") ||
-    text.includes("por favor oren");
+    norm.includes("peticion") ||
+    norm.includes("oracion") ||
+    norm.includes("oren") ||
+    norm.includes("orar") ||
+    norm.includes("recen") ||
+    norm.includes("rezar") ||
+    norm.includes("ayuda espiritual") ||
+    norm.includes("consejeria") ||
+    norm.includes("pastor") ||
+    norm.includes("enfermo") ||
+    norm.includes("enfermedad") ||
+    norm.includes("sanidad") ||
+    norm.includes("clamor") ||
+    norm.includes("intercesion") ||
+    norm.includes("necesito oracion") ||
+    norm.includes("pidan por") ||
+    norm.includes("oren por") ||
+    norm.includes("por favor oren") ||
+    norm.includes("motivo de oracion") ||
+    norm.includes("por mi salud") ||
+    norm.includes("por mi familia");
 
   if (isPrayer) {
     return {
@@ -406,19 +502,17 @@ export async function processWhatsAppMessageIntent(
 
   // D. INTENCIÓN: Ubicación / Dirección / Cómo llegar / Dónde es
   const isLocation =
-    text.includes("donde") ||
-    text.includes("dónde") ||
-    text.includes("lugar") ||
-    text.includes("ubicacion") ||
-    text.includes("ubicación") ||
-    text.includes("direccion") ||
-    text.includes("dirección") ||
-    text.includes("como llego") ||
-    text.includes("cómo llego") ||
-    text.includes("donde queda") ||
-    text.includes("dónde queda") ||
-    text.includes("mapa") ||
-    text.includes("sitio");
+    norm.includes("donde") ||
+    norm.includes("lugar") ||
+    norm.includes("ubicacion") ||
+    norm.includes("direccion") ||
+    norm.includes("como llego") ||
+    norm.includes("donde queda") ||
+    norm.includes("en que lugar") ||
+    norm.includes("en que direccion") ||
+    norm.includes("mapa") ||
+    norm.includes("sitio") ||
+    norm.includes("auditorio");
 
   if (isLocation) {
     const eventLocation = currentEvent.lugar || auditorioDireccion;
@@ -435,15 +529,15 @@ export async function processWhatsAppMessageIntent(
 
   // E. INTENCIÓN: Fecha / Horario / Cuándo es / Horas
   const isSchedule =
-    text.includes("hora") ||
-    text.includes("horario") ||
-    text.includes("fecha") ||
-    text.includes("cuando") ||
-    text.includes("cuándo") ||
-    text.includes("que dia") ||
-    text.includes("qué día") ||
-    text.includes("a que hora") ||
-    text.includes("a qué hora");
+    norm.includes("hora") ||
+    norm.includes("horario") ||
+    norm.includes("fecha") ||
+    norm.includes("cuando") ||
+    norm.includes("que dia") ||
+    norm.includes("a que hora") ||
+    norm.includes("a que horas") ||
+    norm.includes("cuando empieza") ||
+    norm.includes("hora de inicio");
 
   if (isSchedule) {
     if (attendee) {
@@ -482,18 +576,18 @@ export async function processWhatsAppMessageIntent(
 
   // F. INTENCIÓN: Pase QR / Ticket / Entrada / Invitación / Descargar
   const isTicket =
-    text.includes("pase") ||
-    text.includes("qr") ||
-    text.includes("entrada") ||
-    text.includes("ticket") ||
-    text.includes("invitacion") ||
-    text.includes("invitación") ||
-    text.includes("mi pase") ||
-    text.includes("mi codigo") ||
-    text.includes("mi código") ||
-    text.includes("descargar") ||
-    text.includes("carnet") ||
-    text.includes("escarapela");
+    norm.includes("pase") ||
+    norm.includes("qr") ||
+    norm.includes("entrada") ||
+    norm.includes("ticket") ||
+    norm.includes("invitacion") ||
+    norm.includes("mi pase") ||
+    norm.includes("mi codigo") ||
+    norm.includes("descargar") ||
+    norm.includes("carnet") ||
+    norm.includes("escarapela") ||
+    norm.includes("mi entrada") ||
+    norm.includes("no me llego");
 
   if (isTicket) {
     if (attendee) {
@@ -517,21 +611,20 @@ export async function processWhatsAppMessageIntent(
 
   // G. INTENCIÓN: Precios / Pagos / Métodos de Pago / Bancos / Nequi / Comprobantes
   const isPayment =
-    text.includes("precio") ||
-    text.includes("costo") ||
-    text.includes("cuanto vale") ||
-    text.includes("cuánto vale") ||
-    text.includes("valor") ||
-    text.includes("pago") ||
-    text.includes("pagar") ||
-    text.includes("cuenta") ||
-    text.includes("nequi") ||
-    text.includes("daviplata") ||
-    text.includes("bancolombia") ||
-    text.includes("transferencia") ||
-    text.includes("comprobante") ||
-    text.includes("gratis") ||
-    text.includes("gratuito");
+    norm.includes("precio") ||
+    norm.includes("costo") ||
+    norm.includes("cuanto vale") ||
+    norm.includes("valor") ||
+    norm.includes("pago") ||
+    norm.includes("pagar") ||
+    norm.includes("cuenta") ||
+    norm.includes("nequi") ||
+    norm.includes("daviplata") ||
+    norm.includes("bancolombia") ||
+    norm.includes("transferencia") ||
+    norm.includes("comprobante") ||
+    norm.includes("gratis") ||
+    norm.includes("gratuito");
 
   if (isPayment) {
     if (currentEvent.esDePago) {
@@ -555,14 +648,13 @@ export async function processWhatsAppMessageIntent(
 
   // H. INTENCIÓN: Casas de Paz / Grupos en Casa / Redes
   const isCdp =
-    text.includes("casa de paz") ||
-    text.includes("casas de paz") ||
-    text.includes("cdp") ||
-    text.includes("grupo en casa") ||
-    text.includes("celula") ||
-    text.includes("célula") ||
-    text.includes("red de") ||
-    text.includes("barrio");
+    norm.includes("casa de paz") ||
+    norm.includes("casas de paz") ||
+    norm.includes("cdp") ||
+    norm.includes("grupo en casa") ||
+    norm.includes("celula") ||
+    norm.includes("red de") ||
+    norm.includes("barrio");
 
   if (isCdp) {
     return {
@@ -572,13 +664,12 @@ export async function processWhatsAppMessageIntent(
 
   // I. INTENCIÓN: Alquiler de Auditorio / Eventos Externos
   const isAuditorio =
-    text.includes("alquiler") ||
-    text.includes("alquilar") ||
-    text.includes("rentar auditorio") ||
-    text.includes("arrendar") ||
-    text.includes("cotizacion") ||
-    text.includes("cotización") ||
-    text.includes("espacio");
+    norm.includes("alquiler") ||
+    norm.includes("alquilar") ||
+    norm.includes("rentar auditorio") ||
+    norm.includes("arrendar") ||
+    norm.includes("cotizacion") ||
+    norm.includes("espacio");
 
   if (isAuditorio) {
     return {
@@ -588,22 +679,20 @@ export async function processWhatsAppMessageIntent(
 
   // J. INTENCIÓN: Saludos / Agradecimientos / Despedidas / Bendiciones
   const isGreeting =
-    /^(hola|buenos dias|buenos días|buenas tardes|buenas noches|saludos|hey|alo|aló)$/i.test(text) ||
-    text === "hola" ||
-    text === "buenos dias" ||
-    text === "buenas tardes";
+    /^(hola|buenos dias|buenas tardes|buenas noches|saludos|hey|alo)$/i.test(norm) ||
+    norm.startsWith("hola ") ||
+    norm === "hola";
 
   const isThanksOrBlessing =
-    text.includes("gracias") ||
-    text.includes("muchas gracias") ||
-    text.includes("dios te bendiga") ||
-    text.includes("dios le pague") ||
-    text.includes("bendiciones") ||
-    text.includes("amen") ||
-    text.includes("amén") ||
-    text.includes("hasta luego") ||
-    text.includes("chao") ||
-    text.includes("adios");
+    norm.includes("gracias") ||
+    norm.includes("muchas gracias") ||
+    norm.includes("dios te bendiga") ||
+    norm.includes("dios le pague") ||
+    norm.includes("bendiciones") ||
+    norm.includes("amen") ||
+    norm.includes("hasta luego") ||
+    norm.includes("chao") ||
+    norm.includes("adios");
 
   if (isThanksOrBlessing) {
     return {

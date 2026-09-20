@@ -305,6 +305,8 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
     }
   };
 
+  const repliedMessagesRef = useRef<Set<string>>(new Set());
+
   const fetchMessages = async (chatId: string, isSilent = false, passedChat?: Chat | null) => {
     if (!chatId) return;
     const cleanId = chatId.replace(/[^\d]/g, "");
@@ -378,11 +380,18 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
             const lastNew = formatted[formatted.length - 1];
 
             if (lastNew && (!lastPrev || lastNew.id !== lastPrev.id || lastNew.body !== lastPrev.body)) {
-              if (!lastNew.fromMe && prevMsgs.length > 0 && isSilent) {
-                toast.info(`💬 Nuevo mensaje de ${activeChat?.name || activeChat?.id || chatId}: "${lastNew.body.slice(0, 35)}..."`);
+              const msgUniqueKey = `${cleanId || chatId}_${lastNew.id || lastNew.timestamp}_${lastNew.body}`;
 
-                if (aiBotActive && activeChat) {
-                  processWhatsAppMessageIntent(lastNew.body, activeChat.id).then(({ replyText, rsvpStatus }) => {
+              if (!lastNew.fromMe) {
+                if (isSilent) {
+                  toast.info(`💬 Nuevo mensaje de ${activeChat?.name || activeChat?.id || cleanId}: "${lastNew.body.slice(0, 35)}..."`);
+                }
+
+                // 🤖 Chatbot IA Respondedor Automático
+                if (aiBotActive && !repliedMessagesRef.current.has(msgUniqueKey)) {
+                  repliedMessagesRef.current.add(msgUniqueKey);
+
+                  processWhatsAppMessageIntent(lastNew.body, cleanId || chatId).then(async ({ replyText, rsvpStatus }) => {
                     if (replyText) {
                       const botMsg: Message = {
                         id: `bot-reply-${Date.now()}`,
@@ -390,20 +399,37 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                         body: replyText,
                         timestamp: Math.floor(Date.now() / 1000),
                       };
+
                       setMessages((curr) => [...curr, botMsg]);
 
                       if (waConfig.url) {
-                        fetch(`${cleanUrl}/send`, {
-                          method: "POST",
-                          headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${waConfig.token}`,
-                          },
-                          body: JSON.stringify({
-                            phone: activeChat.id,
-                            message: replyText,
-                          }),
-                        });
+                        try {
+                          // Simular presencia "escribiendo"
+                          await fetch(`${cleanUrl}/presence`, {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${waConfig.token}`,
+                            },
+                            body: JSON.stringify({ phone: cleanId || chatId, state: "composing" }),
+                          }).catch(() => {});
+
+                          await sleep(1000);
+
+                          await fetch(`${cleanUrl}/send`, {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${waConfig.token}`,
+                            },
+                            body: JSON.stringify({
+                              phone: cleanId || chatId,
+                              message: replyText,
+                            }),
+                          });
+                        } catch (sendErr) {
+                          console.error("Error al enviar respuesta automática del Chatbot:", sendErr);
+                        }
                       }
 
                       if (rsvpStatus) {
@@ -527,26 +553,7 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
           return updated;
         });
 
-        // 🤖 Si el Chatbot IA está activo y se envía una pregunta o confirmación 1/2, generar respuesta IA
-        if (aiBotActive) {
-          setTimeout(async () => {
-            const { replyText, rsvpStatus } = await processWhatsAppMessageIntent(messageText, activeChat.id);
-            if (replyText) {
-              const botMsg: Message = {
-                id: `bot-${Date.now()}`,
-                fromMe: false,
-                body: replyText,
-                timestamp: Math.floor(Date.now() / 1000),
-              };
-              setMessages((prev) => [...prev, botMsg]);
-              if (rsvpStatus) {
-                toast.success(`RSVP registrado: ${rsvpStatus.toUpperCase()}`);
-              }
-            }
-          }, 1200);
-        } else {
-          setTimeout(() => fetchMessages(activeChat.id), 800);
-        }
+        setTimeout(() => fetchMessages(activeChat.id, true), 800);
       } else {
         toast.error("Error al enviar el mensaje de WhatsApp");
       }
