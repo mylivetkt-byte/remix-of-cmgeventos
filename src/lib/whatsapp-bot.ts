@@ -349,11 +349,20 @@ export async function generateOmniRouteReply(
     origin: string;
     upcomingEvents?: any[];
     rsvpDetected?: "confirmado" | "cancelado";
+    configOverride?: Partial<OmniRouteConfig>;
   }
 ): Promise<string | null> {
-  const config = await getOmniRouteConfig();
+  const dbConfig = await getOmniRouteConfig();
+  const config = {
+    apiKey: context.configOverride?.apiKey !== undefined ? context.configOverride.apiKey : dbConfig.apiKey,
+    baseUrl: context.configOverride?.baseUrl !== undefined ? context.configOverride.baseUrl : dbConfig.baseUrl,
+    model: context.configOverride?.model !== undefined ? context.configOverride.model : dbConfig.model,
+    systemPrompt: context.configOverride?.systemPrompt !== undefined ? context.configOverride.systemPrompt : dbConfig.systemPrompt,
+    enabled: context.configOverride?.enabled !== undefined ? context.configOverride.enabled : dbConfig.enabled,
+  };
+
   if (!config.enabled || !config.apiKey) {
-    return null; // Fallback al motor local
+    return null; // Fallback al motor local si no hay API key o está deshabilitado
   }
 
   const { attendee, currentEvent, auditorioDireccion, auditorioTelefono, downloadUrl, origin, upcomingEvents, rsvpDetected } = context;
@@ -472,7 +481,8 @@ INSTRUCCIONES CLAVE DE RESPUESTA:
  */
 export async function processWhatsAppMessageIntent(
   incomingText: string,
-  senderPhone: string
+  senderPhone: string,
+  configOverride?: Partial<OmniRouteConfig>
 ): Promise<{ replyText: string; rsvpStatus?: "confirmado" | "cancelado"; isAiGenerated?: boolean }> {
   const rawText = String(incomingText || "").trim();
   const cleanPhone = String(senderPhone || "").replace(/[^\d]/g, "");
@@ -637,6 +647,7 @@ export async function processWhatsAppMessageIntent(
     origin,
     upcomingEvents: upcomingEventsList,
     rsvpDetected: rsvpStatus,
+    configOverride,
   });
 
   if (aiGeneratedReply) {

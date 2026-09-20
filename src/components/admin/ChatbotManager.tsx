@@ -244,8 +244,14 @@ export function ChatbotManager() {
         return;
       }
 
-      // Procesar intención con el motor IA contextual
-      const res = await processWhatsAppMessageIntent(userText, testPhone);
+      // Procesar intención con el motor IA contextual (usando la configuración activa en pantalla)
+      const res = await processWhatsAppMessageIntent(userText, testPhone, {
+        apiKey: aiApiKey.trim(),
+        baseUrl: aiBaseUrl.trim(),
+        model: aiModel.trim(),
+        systemPrompt: aiSystemPrompt,
+        enabled: aiEnabled,
+      });
 
       setTimeout(() => {
         setMessages((prev) => [
