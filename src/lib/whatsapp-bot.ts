@@ -302,13 +302,217 @@ export async function lookupAttendeeProfile(phone: string) {
   return null;
 }
 
+export interface OmniRouteConfig {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  systemPrompt?: string;
+  enabled: boolean;
+}
+
+/**
+ * Obtener credenciales de OmniRoute / OpenRouter desde app_secrets en Supabase
+ */
+export async function getOmniRouteConfig(): Promise<OmniRouteConfig> {
+  try {
+    const { data } = await supabase
+      .from("app_secrets")
+      .select("key, value")
+      .in("key", [
+        "OMNIROUTE_API_KEY",
+        "OMNIROUTE_BASE_URL",
+        "OMNIROUTE_MODEL",
+        "OMNIROUTE_SYSTEM_PROMPT",
+        "OMNIROUTE_ENABLED",
+      ]);
+
+    const apiKey = data?.find((d) => d.key === "OMNIROUTE_API_KEY")?.value || "";
+    const baseUrl = data?.find((d) => d.key === "OMNIROUTE_BASE_URL")?.value || "https://openrouter.ai/api/v1";
+    const model = data?.find((d) => d.key === "OMNIROUTE_MODEL")?.value || "google/gemini-2.0-flash-001";
+    const systemPrompt = data?.find((d) => d.key === "OMNIROUTE_SYSTEM_PROMPT")?.value || "";
+    const enabledVal = data?.find((d) => d.key === "OMNIROUTE_ENABLED")?.value;
+    const enabled = enabledVal === undefined || enabledVal === null || enabledVal === "" || enabledVal === "true";
+
+    return {
+      apiKey: apiKey.trim(),
+      baseUrl: baseUrl.trim().replace(/\/$/, ""),
+      model: model.trim(),
+      systemPrompt: systemPrompt.trim(),
+      enabled: Boolean(enabled),
+    };
+  } catch {
+    return {
+      apiKey: "",
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: "google/gemini-2.0-flash-001",
+      enabled: true,
+    };
+  }
+}
+
+/**
+ * Guardar configuración de OmniRoute / OpenRouter en app_secrets
+ */
+export async function saveOmniRouteConfig(config: Partial<OmniRouteConfig>): Promise<void> {
+  const updates: { key: string; value: string; updated_at: string }[] = [];
+  const now = new Date().toISOString();
+
+  if (config.apiKey !== undefined) {
+    updates.push({ key: "OMNIROUTE_API_KEY", value: config.apiKey, updated_at: now });
+  }
+  if (config.baseUrl !== undefined) {
+    updates.push({ key: "OMNIROUTE_BASE_URL", value: config.baseUrl, updated_at: now });
+  }
+  if (config.model !== undefined) {
+    updates.push({ key: "OMNIROUTE_MODEL", value: config.model, updated_at: now });
+  }
+  if (config.systemPrompt !== undefined) {
+    updates.push({ key: "OMNIROUTE_SYSTEM_PROMPT", value: config.systemPrompt, updated_at: now });
+  }
+  if (config.enabled !== undefined) {
+    updates.push({ key: "OMNIROUTE_ENABLED", value: config.enabled ? "true" : "false", updated_at: now });
+  }
+
+  if (updates.length > 0) {
+    const { error } = await supabase.from("app_secrets").upsert(updates, { onConflict: "key" });
+    if (error) throw error;
+  }
+}
+
+/**
+ * Generador de respuestas con OmniRoute / OpenRouter AI con inyección de contexto
+ */
+export async function generateOmniRouteReply(
+  userMessage: string,
+  context: {
+    attendee: AttendeeProfile | null;
+    currentEvent: any;
+    auditorioDireccion: string;
+    auditorioTelefono: string;
+    downloadUrl: string;
+    origin: string;
+    upcomingEvents?: any[];
+    rsvpDetected?: "confirmado" | "cancelado";
+  }
+): Promise<string | null> {
+  const config = await getOmniRouteConfig();
+  if (!config.enabled || !config.apiKey) {
+    return null; // Fallback al motor local
+  }
+
+  const { attendee, currentEvent, auditorioDireccion, auditorioTelefono, downloadUrl, origin, upcomingEvents, rsvpDetected } = context;
+
+  // Construir información del asistente
+  const attendeeInfo = attendee
+    ? `- Nombre del Asistente: ${attendee.nombreCompleto}
+- Teléfono: ${attendee.telefono}
+- ID Registro: ${attendee.id}
+- Estado de Asistencia (RSVP): ${rsvpDetected === "confirmado" ? "CONFIRMADO AHORA MISMO ✅" : rsvpDetected === "cancelado" ? "CANCELADO / DECLINADO ❌" : attendee.asistio ? "CONFIRMADO PREVIAMENTE ✅" : "Pendiente de confirmar"}
+- Estado de Pago: ${attendee.estadoPago || "N/A"}
+- Enlace oficial de descarga de su Pase QR / Invitación: ${downloadUrl}`
+    : `- Asistente: No registrado previamente en el sistema con este número de WhatsApp (Nuevo visitante).
+- Enlace general para registrarse y obtener pase QR: ${origin}`;
+
+  const upcomingText = upcomingEvents && upcomingEvents.length > 0
+    ? upcomingEvents.map((e) => `• ${e.nombre} - Fecha: ${e.fechaTexto} - Lugar: ${e.lugar}`).join("\n")
+    : "Sin más eventos listados por el momento.";
+
+  const systemInstruction = `Eres el Asistente Virtual Inteligente oficial por WhatsApp de "Centro Mundial de Gloria" / "Doxa Eventos".
+Tu objetivo es responder a los mensajes de WhatsApp de forma coherente, cálida, respetuosa, bíblica/pastoral y muy precisa según los datos reales de la persona y del evento.
+
+==================================================
+INFORMACIÓN REAL Y CONTEXTO EN BASE DE DATOS:
+==================================================
+
+1. DATOS DEL ASISTENTE QUE ESCRIBE:
+${attendeeInfo}
+
+2. EVENTO PRINCIPAL / ASIGNADO:
+- Nombre del Evento: ${currentEvent.nombre}
+- Fecha y Horario: ${currentEvent.fechaTexto}
+- Lugar / Dirección: ${currentEvent.lugar || auditorioDireccion}
+- Es de pago: ${currentEvent.esDePago ? `Sí (${currentEvent.precio} ${currentEvent.moneda || "COP"}). Instrucciones de pago: ${currentEvent.instruccionesPago || "Transferencia bancaria / Nequi"}` : "No, es 100% GRATUITO"}
+${currentEvent.descripcion ? `- Descripción: ${currentEvent.descripcion}` : ""}
+
+3. INFORMACIÓN DE LA SEDE / AUDITORIO CMG:
+- Dirección principal: ${auditorioDireccion}
+- Teléfono de contacto: ${auditorioTelefono || "Por este mismo canal de WhatsApp"}
+
+4. OTROS EVENTOS PROGRAMADOS:
+${upcomingText}
+
+==================================================
+INSTRUCCIONES CLAVE DE RESPUESTA:
+==================================================
+1. Tono: Cálido, empático, cristiano/pastoral, servicial y directo.
+2. Formato: WhatsApp amigable (párrafos cortos, uso de *negritas* para resaltar fechas, lugares o enlaces, y emojis apropiados).
+3. Si el usuario confirma asistencia (o envió "1"): Celebra su confirmación para *${currentEvent.nombre}*, recuérdale la fecha (${currentEvent.fechaTexto}), el lugar y su enlace de pase QR (${downloadUrl}).
+4. Si el usuario declina o cancela asistencia (o envió "2"): Responde con mucha comprensión, bendícele con amor y dile que esperamos verle en el próximo evento.
+5. Si el usuario envía una petición de oración o motivo de salud/familiar: Responde con empatía espiritual genuina, cita una breve promesa bíblica reconfortante, y confírmale que el equipo pastoral y de intercesores estará orando por su petición.
+6. Si preguntan por dirección, ubicación o cómo llegar: Proporciona el lugar exacto (${currentEvent.lugar || auditorioDireccion}) y sugiérele llegar con anticipación.
+7. Si piden su pase QR, ticket o entrada: Facilítale el enlace directo (${downloadUrl}) y explícale que puede descargarlo o guardarlo en su galería.
+8. Si preguntan por Casas de Paz o células: Explica que son grupos de bendición en hogares y pídeles su barrio y ciudad para contactarlos con un líder de zona.
+9. Mantén la respuesta concisa (máximo 120-150 palabras) para que sea cómoda de leer en un celular.`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 9000); // 9 segundos timeout
+
+    const cleanEndpoint = config.baseUrl.endsWith("/chat/completions")
+      ? config.baseUrl
+      : `${config.baseUrl}/chat/completions`;
+
+    const res = await fetch(cleanEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+        "HTTP-Referer": typeof window !== "undefined" ? window.location.origin : "https://cmgeventos.lovable.app",
+        "X-Title": "CMG Eventos WhatsApp Bot",
+      },
+      body: JSON.stringify({
+        model: config.model || "google/gemini-2.0-flash-001",
+        messages: [
+          {
+            role: "system",
+            content: config.systemPrompt
+              ? `${systemInstruction}\n\nREGLAS ADICIONALES DEL ADMINISTRADOR:\n${config.systemPrompt}`
+              : systemInstruction,
+          },
+          { role: "user", content: userMessage },
+        ],
+        temperature: 0.6,
+        max_tokens: 450,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (content && typeof content === "string" && content.trim().length > 0) {
+        return content.trim();
+      }
+    } else {
+      const errBody = await res.text().catch(() => "");
+      console.warn("OmniRoute / OpenRouter API respondió con estado:", res.status, errBody);
+    }
+  } catch (err: any) {
+    console.warn("Error al llamar a OmniRoute / OpenRouter API:", err?.message || err);
+  }
+
+  return null; // Fallback al motor contextual local
+}
+
 /**
  * 🤖 FEATURE 1 & 3: Chatbot Inteligente IA 24/7 Contextual y Procesador de Intenciones
  */
 export async function processWhatsAppMessageIntent(
   incomingText: string,
   senderPhone: string
-): Promise<{ replyText: string; rsvpStatus?: "confirmado" | "cancelado" }> {
+): Promise<{ replyText: string; rsvpStatus?: "confirmado" | "cancelado"; isAiGenerated?: boolean }> {
   const rawText = String(incomingText || "").trim();
   const cleanPhone = String(senderPhone || "").replace(/[^\d]/g, "");
   const norm = normalizeBotText(rawText);
@@ -335,6 +539,8 @@ export async function processWhatsAppMessageIntent(
     fechaTexto: "Próximamente",
     lugar: "Auditorio CMG",
   };
+
+  let upcomingEventsList: any[] = [];
 
   try {
     if (attendee?.eventId) {
@@ -364,10 +570,10 @@ export async function processWhatsAppMessageIntent(
         .from("events")
         .select("id, nombre, fecha_evento, lugar_evento, lugar, descripcion, es_de_pago, precio, moneda, instrucciones_pago")
         .eq("activo", true)
-        .order("created_at", { ascending: false })
-        .limit(1);
+        .order("fecha_evento", { ascending: true })
+        .limit(3);
 
-      if (activeEvents && activeEvents[0]) {
+      if (activeEvents && activeEvents.length > 0) {
         const evt = activeEvents[0];
         const dt = formatEventDateTime(evt.fecha_evento || "");
         currentEvent = {
@@ -381,6 +587,15 @@ export async function processWhatsAppMessageIntent(
           moneda: evt.moneda || "COP",
           instruccionesPago: evt.instrucciones_pago || undefined,
         };
+
+        upcomingEventsList = activeEvents.map((e) => {
+          const d = formatEventDateTime(e.fecha_evento || "");
+          return {
+            nombre: e.nombre,
+            fechaTexto: d.fullDateText || d.eventDate || "Próximamente",
+            lugar: e.lugar_evento || e.lugar || "Auditorio CMG",
+          };
+        });
       }
     }
   } catch (_) {}
@@ -401,10 +616,10 @@ export async function processWhatsAppMessageIntent(
   const downloadUrl = attendee ? `${origin}/descargar/${attendee.id}` : origin;
 
   // =========================================================================
-  // 4. DETECCIÓN DE INTENCIONES (CON NORMALIZACIÓN ROBUSTA)
+  // 4. DETECCIÓN DETERMINÍSTICA DE RSVP (MUTACIONES DE BASE DE DATOS GARANTIZADAS)
   // =========================================================================
+  let rsvpStatus: "confirmado" | "cancelado" | undefined = undefined;
 
-  // A. INTENCIÓN: Confirmar Asistencia RSVP ("1", "sí", "confirmo", "asistiré", "voy a ir", etc.)
   const isRsvpYes =
     norm === "1" ||
     norm === "1." ||
@@ -418,27 +633,6 @@ export async function processWhatsAppMessageIntent(
     norm.includes("alla nos vemos") ||
     norm.includes("cuenta conmigo");
 
-  if (isRsvpYes) {
-    if (attendee?.id) {
-      try {
-        await (supabase.from("registrations") as any)
-          .update({ asistio: true, estado_rsvp: "confirmado" })
-          .eq("id", attendee.id);
-      } catch (_) {}
-
-      return {
-        replyText: `✅ ¡Excelente, ${greetingName}! Tu asistencia para *${currentEvent.nombre}* ha sido CONFIRMADA con éxito 🎉.\n\n📅 *Fecha:* ${currentEvent.fechaTexto}\n📍 *Lugar:* ${currentEvent.lugar}\n🎟️ *Tu Pase QR:* ${downloadUrl}\n\n¡Te esperamos con los brazos abiertos! Recuerda llegar 20 minutos antes para tu ingreso.`,
-        rsvpStatus: "confirmado",
-      };
-    }
-
-    return {
-      replyText: `✅ ¡Muchas gracias por tu confirmación! 🎉\n\nTe esperamos en *${currentEvent.nombre}*.\n📅 *Fecha:* ${currentEvent.fechaTexto}\n📍 *Lugar:* ${currentEvent.lugar}\n\nSi aún no tienes tu pase QR de entrada, puedes generarlo aquí:\n👉 ${origin}`,
-      rsvpStatus: "confirmado",
-    };
-  }
-
-  // B. INTENCIÓN: Declinar / Cancelar Asistencia RSVP ("2", "no", "no podré", "cancelo", etc.)
   const isRsvpNo =
     norm === "2" ||
     norm === "2." ||
@@ -450,23 +644,81 @@ export async function processWhatsAppMessageIntent(
     norm.includes("no puedo asistir") ||
     norm.includes("no puedo ir");
 
-  if (isRsvpNo) {
+  if (isRsvpYes) {
+    rsvpStatus = "confirmado";
+    if (attendee?.id) {
+      try {
+        await (supabase.from("registrations") as any)
+          .update({ asistio: true, estado_rsvp: "confirmado" })
+          .eq("id", attendee.id);
+      } catch (_) {}
+    }
+  } else if (isRsvpNo) {
+    rsvpStatus = "cancelado";
     if (attendee?.id) {
       try {
         await (supabase.from("registrations") as any)
           .update({ asistio: false, estado_rsvp: "cancelado" })
           .eq("id", attendee.id);
       } catch (_) {}
+    }
+  }
 
+  // =========================================================================
+  // 5. INTENTO DE GENERACIÓN CON OMNIROUTE / OPENROUTER IA
+  // =========================================================================
+  const aiGeneratedReply = await generateOmniRouteReply(rawText, {
+    attendee,
+    currentEvent,
+    auditorioDireccion,
+    auditorioTelefono,
+    downloadUrl,
+    origin,
+    upcomingEvents: upcomingEventsList,
+    rsvpDetected: rsvpStatus,
+  });
+
+  if (aiGeneratedReply) {
+    return {
+      replyText: aiGeneratedReply,
+      rsvpStatus,
+      isAiGenerated: true,
+    };
+  }
+
+  // =========================================================================
+  // 6. MOTOR LOCAL CONTINGENTE (FALLBACK AUTOMÁTICO 100% DISPONIBLE)
+  // =========================================================================
+  if (isRsvpYes) {
+    if (attendee?.id) {
+      return {
+        replyText: `✅ ¡Excelente, ${greetingName}! Tu asistencia para *${currentEvent.nombre}* ha sido CONFIRMADA con éxito 🎉.\n\n📅 *Fecha:* ${currentEvent.fechaTexto}\n📍 *Lugar:* ${currentEvent.lugar}\n🎟️ *Tu Pase QR:* ${downloadUrl}\n\n¡Te esperamos con los brazos abiertos! Recuerda llegar 20 minutos antes para tu ingreso.`,
+        rsvpStatus: "confirmado",
+        isAiGenerated: false,
+      };
+    }
+
+    return {
+      replyText: `✅ ¡Muchas gracias por tu confirmación! 🎉\n\nTe esperamos en *${currentEvent.nombre}*.\n📅 *Fecha:* ${currentEvent.fechaTexto}\n📍 *Lugar:* ${currentEvent.lugar}\n\nSi aún no tienes tu pase QR de entrada, puedes generarlo aquí:\n👉 ${origin}`,
+      rsvpStatus: "confirmado",
+      isAiGenerated: false,
+    };
+  }
+
+  // B. INTENCIÓN: Declinar / Cancelar Asistencia RSVP ("2", "no", "no podré", "cancelo", etc.)
+  if (isRsvpNo) {
+    if (attendee?.id) {
       return {
         replyText: `❌ Entendido, ${greetingName}. Hemos registrado que no podrás asistir a *${currentEvent.nombre}* en esta ocasión.\n\n¡Esperamos contar contigo en nuestros próximos eventos y reuniones! Que Dios te bendiga grandemente. 🙏✨`,
         rsvpStatus: "cancelado",
+        isAiGenerated: false,
       };
     }
 
     return {
       replyText: `❌ Entendido. Hemos tomado nota de que no podrás asistir. ¡Esperamos verte pronto en un próximo evento! Bendiciones.`,
       rsvpStatus: "cancelado",
+      isAiGenerated: false,
     };
   }
 

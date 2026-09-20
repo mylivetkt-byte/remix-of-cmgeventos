@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Bot,
   Send,
@@ -17,9 +18,24 @@ import {
   Home,
   User,
   Phone,
+  Key,
+  Globe,
+  Cpu,
+  Eye,
+  EyeOff,
+  Save,
+  Check,
+  AlertTriangle,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
-import { processWhatsAppMessageIntent, lookupAttendeeProfile } from "@/lib/whatsapp-bot";
+import {
+  processWhatsAppMessageIntent,
+  lookupAttendeeProfile,
+  getOmniRouteConfig,
+  saveOmniRouteConfig,
+  OmniRouteConfig,
+} from "@/lib/whatsapp-bot";
 import { supabase } from "@/integrations/supabase/client";
 
 export function ChatbotManager() {
@@ -28,16 +44,45 @@ export function ChatbotManager() {
   const [testPhone, setTestPhone] = useState("573001234567");
   const [recentAttendees, setRecentAttendees] = useState<any[]>([]);
   const [currentAttendeeProfile, setCurrentAttendeeProfile] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<"ai_config" | "attendee" | "rules">("ai_config");
+
+  // Estados de Configuración OmniRoute / IA
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiBaseUrl, setAiBaseUrl] = useState("https://openrouter.ai/api/v1");
+  const [aiModel, setAiModel] = useState("google/gemini-2.0-flash-001");
+  const [aiSystemPrompt, setAiSystemPrompt] = useState("");
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [savingAi, setSavingAi] = useState(false);
+  const [testingAi, setTestingAi] = useState(false);
+  const [aiTestResult, setAiTestResult] = useState<{ success: boolean; message: string; latency?: number } | null>(null);
+
   const [messages, setMessages] = useState<
-    { sender: "user" | "bot"; text: string; time: string; rsvpStatus?: string }[]
+    { sender: "user" | "bot"; text: string; time: string; rsvpStatus?: string; isAiGenerated?: boolean }[]
   >([
     {
       sender: "bot",
       text: "👋 ¡Hola! Soy el Asistente Virtual Inteligente IA de Centro Mundial de Gloria / Doxa Eventos.\n\nPuedes probar cómo respondo inteligentemente según el asistente, el evento al que fue invitado, peticiones de oración, horarios, direcciones y confirmaciones RSVP.",
       time: "Ahora",
+      isAiGenerated: true,
     },
   ]);
   const [simulating, setSimulating] = useState(false);
+
+  // Cargar configuración de OmniRoute desde Supabase app_secrets
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const config = await getOmniRouteConfig();
+        setAiApiKey(config.apiKey);
+        setAiBaseUrl(config.baseUrl || "https://openrouter.ai/api/v1");
+        setAiModel(config.model || "google/gemini-2.0-flash-001");
+        setAiSystemPrompt(config.systemPrompt || "");
+        setAiEnabled(config.enabled);
+      } catch (_) {}
+    }
+    loadConfig();
+  }, []);
 
   // Cargar últimos registros para pruebas fáciles
   useEffect(() => {
@@ -72,6 +117,92 @@ export function ChatbotManager() {
     updateProfile();
   }, [testPhone]);
 
+  // Guardar configuración de OmniRoute en Supabase
+  const handleSaveAiConfig = async () => {
+    setSavingAi(true);
+    try {
+      await saveOmniRouteConfig({
+        apiKey: aiApiKey,
+        baseUrl: aiBaseUrl,
+        model: aiModel,
+        systemPrompt: aiSystemPrompt,
+        enabled: aiEnabled,
+      });
+      toast.success("¡Configuración de OmniRoute / IA guardada con éxito!");
+    } catch (err: any) {
+      toast.error("Error al guardar: " + err.message);
+    } finally {
+      setSavingAi(false);
+    }
+  };
+
+  // Probar conexión directa con el endpoint de IA
+  const handleTestAiConnection = async () => {
+    if (!aiApiKey.trim()) {
+      toast.error("Por favor ingresa primero una API Key.");
+      return;
+    }
+
+    setTestingAi(true);
+    setAiTestResult(null);
+    const startTime = performance.now();
+
+    try {
+      const cleanEndpoint = aiBaseUrl.endsWith("/chat/completions")
+        ? aiBaseUrl
+        : `${aiBaseUrl.replace(/\/$/, "")}/chat/completions`;
+
+      const res = await fetch(cleanEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${aiApiKey.trim()}`,
+          "HTTP-Referer": window.location.origin,
+          "X-Title": "CMG Eventos Test",
+        },
+        body: JSON.stringify({
+          model: aiModel.trim() || "google/gemini-2.0-flash-001",
+          messages: [
+            { role: "system", content: "Responde únicamente la palabra: CONECTADO" },
+            { role: "user", content: "ping" },
+          ],
+          max_tokens: 10,
+        }),
+      });
+
+      const elapsed = Math.round(performance.now() - startTime);
+
+      if (res.ok) {
+        const data = await res.json();
+        const reply = data.choices?.[0]?.message?.content || "OK";
+        setAiTestResult({
+          success: true,
+          message: `Conexión exitosa con ${aiModel}. Respuesta: "${reply.trim()}"`,
+          latency: elapsed,
+        });
+        toast.success(`¡Conexión IA exitosa! (${elapsed}ms)`);
+      } else {
+        const errText = await res.text().catch(() => "");
+        setAiTestResult({
+          success: false,
+          message: `Error HTTP ${res.status}: ${errText.slice(0, 100)}`,
+          latency: elapsed,
+        });
+        toast.error(`Fallo en conexión IA (HTTP ${res.status})`);
+      }
+    } catch (err: any) {
+      const elapsed = Math.round(performance.now() - startTime);
+      setAiTestResult({
+        success: false,
+        message: `Error de red: ${err.message}`,
+        latency: elapsed,
+      });
+      toast.error("Error al conectar con el servidor IA.");
+    } finally {
+      setTestingAi(false);
+    }
+  };
+
   const handleSendMessage = async (textToSend?: string) => {
     const userText = (textToSend || testInput).trim();
     if (!userText) return;
@@ -91,6 +222,7 @@ export function ChatbotManager() {
             sender: "bot",
             text: "⚠️ El Chatbot IA está pausado actualmente en la configuración.",
             time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            isAiGenerated: false,
           },
         ]);
         setSimulating(false);
@@ -108,6 +240,7 @@ export function ChatbotManager() {
             text: res.replyText,
             time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             rsvpStatus: res.rsvpStatus,
+            isAiGenerated: res.isAiGenerated,
           },
         ]);
         setSimulating(false);
@@ -117,7 +250,7 @@ export function ChatbotManager() {
         } else if (res.rsvpStatus === "cancelado") {
           toast.info("RSVP registrado como declinado.");
         }
-      }, 500);
+      }, 300);
     } catch (err: any) {
       setSimulating(false);
       toast.error("Error en simulación: " + err.message);
@@ -148,12 +281,12 @@ export function ChatbotManager() {
             <h2 className="text-2xl font-black font-heading tracking-tight">Chatbot Inteligente con IA 24/7</h2>
           </div>
           <p className="text-sm text-teal-100/90 max-w-xl">
-            Responde automáticamente mensajes entrantes de WhatsApp de forma coherente según la persona, el evento en el que está registrada, peticiones de oración, direcciones exactas, horarios, pases QR y confirmaciones RSVP.
+            Impulsado por OmniRoute / OpenRouter AI para generar respuestas humanas y contextuales según el asistente, su evento, peticiones de oración, pases QR, ubicación y confirmaciones RSVP.
           </p>
         </div>
 
         <div className="flex items-center gap-3 bg-white/10 p-3.5 rounded-2xl border border-white/20 backdrop-blur-md">
-          <Label className="text-xs font-extrabold text-white">Estado del Bot IA:</Label>
+          <Label className="text-xs font-extrabold text-white">Estado del Bot:</Label>
           <Switch checked={botActive} onCheckedChange={setBotActive} />
           <span className={`text-xs font-black px-2.5 py-1 rounded-full ${botActive ? "bg-emerald-500 text-slate-950" : "bg-slate-700 text-slate-300"}`}>
             {botActive ? "ACTIVO 24/7" : "PAUSADO"}
@@ -164,90 +297,229 @@ export function ChatbotManager() {
       {/* GRID PRINCIPAL */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* PANEL IZQUIERDO: CONFIGURACIÓN DE PRUEBA Y REGLAS */}
+        {/* PANEL IZQUIERDO: TABS Y CONFIGURACIÓN */}
         <div className="space-y-4 lg:col-span-5">
           
-          {/* IDENTIFICACIÓN DEL ASISTENTE */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-            <h3 className="font-extrabold text-xs text-slate-900 flex items-center gap-2 uppercase tracking-wider">
-              <Phone className="w-4 h-4 text-teal-600" /> Teléfono de Prueba
-            </h3>
-            <div className="space-y-2">
-              <Input
-                value={testPhone}
-                onChange={(e) => setTestPhone(e.target.value)}
-                placeholder="Número de WhatsApp (ej: 573001234567)"
-                className="bg-slate-50 border-slate-300 text-xs font-mono h-9 rounded-xl"
-              />
-              
-              {currentAttendeeProfile ? (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1">
-                  <div className="font-bold text-emerald-950 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-emerald-700" />
-                    Asistente Reconocido: {currentAttendeeProfile.nombreCompleto}
-                  </div>
-                  <div className="text-[11px] text-emerald-800">
-                    ID Registro: <span className="font-mono">{currentAttendeeProfile.id.slice(0, 8)}</span> • Asistió: {currentAttendeeProfile.asistio ? "Sí ✅" : "Pendiente ⏳"}
-                  </div>
+          {/* NAVEGACIÓN DE TABS */}
+          <div className="flex bg-slate-200/80 p-1 rounded-2xl gap-1 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setActiveTab("ai_config")}
+              className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                activeTab === "ai_config" ? "bg-white text-teal-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5 text-teal-600" />
+              API OmniRoute / IA
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("attendee")}
+              className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                activeTab === "attendee" ? "bg-white text-teal-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <User className="w-3.5 h-3.5 text-teal-600" />
+              Asistente & Tel
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("rules")}
+              className={`flex-1 py-2 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                activeTab === "rules" ? "bg-white text-teal-900 shadow-xs" : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+              Reglas & Contexto
+            </button>
+          </div>
+
+          {/* TAB 1: CONFIGURACIÓN OMNIROUTE / OPENROUTER IA */}
+          {activeTab === "ai_config" && (
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 className="font-extrabold text-xs text-slate-900 flex items-center gap-2 uppercase tracking-wider">
+                  <Key className="w-4 h-4 text-teal-600" /> Credenciales de IA
+                </h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-500">IA Activa:</span>
+                  <Switch checked={aiEnabled} onCheckedChange={setAiEnabled} />
                 </div>
-              ) : (
-                <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-500">
-                  ℹ️ Modo visitante no registrado (el bot brindará información general y enlaces de inscripción).
+              </div>
+
+              {/* API KEY */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span>API Key (OmniRoute / OpenRouter / Groq / OpenAI)</span>
+                  <span className="text-[10px] text-teal-600 font-semibold">Guardado seguro</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    type={showApiKey ? "text" : "password"}
+                    value={aiApiKey}
+                    onChange={(e) => setAiApiKey(e.target.value)}
+                    placeholder="sk-or-v1-... o sk-..."
+                    className="bg-slate-50 border-slate-300 font-mono text-xs pr-9 rounded-xl h-9.5"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* BASE URL */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-teal-600" /> Endpoint Base URL
+                </Label>
+                <Input
+                  value={aiBaseUrl}
+                  onChange={(e) => setAiBaseUrl(e.target.value)}
+                  placeholder="https://openrouter.ai/api/v1 o https://api.omniroute.io/v1"
+                  className="bg-slate-50 border-slate-300 font-mono text-xs rounded-xl h-9"
+                />
+                <div className="flex flex-wrap gap-1 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiBaseUrl("https://openrouter.ai/api/v1");
+                      setAiModel("google/gemini-2.0-flash-001");
+                    }}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 hover:bg-teal-50 hover:text-teal-900 border border-slate-200"
+                  >
+                    Preset OpenRouter
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiBaseUrl("https://api.omniroute.io/v1");
+                      setAiModel("google/gemini-2.0-flash-001");
+                    }}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 hover:bg-teal-50 hover:text-teal-900 border border-slate-200"
+                  >
+                    Preset OmniRoute
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAiBaseUrl("https://api.groq.com/openai/v1");
+                      setAiModel("llama-3.3-70b-versatile");
+                    }}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 hover:bg-teal-50 hover:text-teal-900 border border-slate-200"
+                  >
+                    Preset Groq
+                  </button>
+                </div>
+              </div>
+
+              {/* MODELO */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5 text-teal-600" /> Modelo LLM
+                </Label>
+                <Input
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
+                  placeholder="google/gemini-2.0-flash-001 o openai/gpt-4o-mini"
+                  className="bg-slate-50 border-slate-300 font-mono text-xs rounded-xl h-9"
+                />
+                <div className="flex flex-wrap gap-1 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setAiModel("google/gemini-2.0-flash-001")}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium"
+                  >
+                    ⚡ Gemini 2.0 Flash (Recomendado)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAiModel("openai/gpt-4o-mini")}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200"
+                  >
+                    GPT-4o Mini
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAiModel("meta-llama/llama-3.3-70b-instruct")}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200"
+                  >
+                    Llama 3.3 70B
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAiModel("deepseek/deepseek-chat")}
+                    className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200"
+                  >
+                    DeepSeek Chat
+                  </button>
+                </div>
+              </div>
+
+              {/* INSTRUCCIONES PERSONALIZADAS EXTRA */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-700">
+                  Instrucciones Adicionales del Administrador (Opcional)
+                </Label>
+                <Textarea
+                  value={aiSystemPrompt}
+                  onChange={(e) => setAiSystemPrompt(e.target.value)}
+                  placeholder="Ej: Recuerda invitar siempre al servicio de los domingos a las 10:00 AM..."
+                  rows={2}
+                  className="bg-slate-50 border-slate-300 text-xs rounded-xl"
+                />
+              </div>
+
+              {/* RESULTADO DE PRUEBA */}
+              {aiTestResult && (
+                <div
+                  className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
+                    aiTestResult.success
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                      : "bg-rose-50 border-rose-200 text-rose-900"
+                  }`}
+                >
+                  {aiTestResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="space-y-0.5">
+                    <p className="font-bold">{aiTestResult.message}</p>
+                    {aiTestResult.latency && (
+                      <p className="text-[11px] opacity-80">Latencia de respuesta: {aiTestResult.latency} ms</p>
+                    )}
+                  </div>
                 </div>
               )}
-            </div>
 
-            {recentAttendees.length > 0 && (
-              <div className="pt-2 border-t border-slate-100">
-                <span className="text-[10px] font-bold text-slate-400 block mb-1.5 uppercase">Seleccionar Asistente Real:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {recentAttendees.map((att) => (
-                    <button
-                      key={att.id}
-                      type="button"
-                      onClick={() => setTestPhone(att.telefono || "")}
-                      className={`text-[10px] px-2 py-1 rounded-lg border font-medium transition-all ${
-                        testPhone === att.telefono
-                          ? "bg-teal-700 text-white border-teal-700"
-                          : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
-                      }`}
-                    >
-                      {att.nombres} ({att.telefono || "Sin tel"})
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* INTENCIONES DETECTADAS */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-            <h3 className="font-extrabold text-xs text-slate-900 flex items-center gap-2 uppercase tracking-wider">
-              <Sparkles className="w-4 h-4 text-teal-600" /> Coherencia Inteligente 24/7
-            </h3>
-            <div className="space-y-2 text-xs">
-              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="font-bold text-teal-950 block">🙏 Peticiones de Oración y Consejería</span>
-                <span className="text-slate-600">Reconoce motivos de oración, brinda palabra de aliento y confirma intercesión.</span>
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="font-bold text-teal-950 block">📍 Dirección y Ubicación Exacta</span>
-                <span className="text-slate-600">Proporciona el lugar exacto del evento del asistente con indicaciones.</span>
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="font-bold text-teal-950 block">📅 Fecha y Horarios Personalizados</span>
-                <span className="text-slate-600">Informa la fecha real del evento en el que la persona está inscrita.</span>
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="font-bold text-teal-950 block">🎟️ Pase QR y Comprobantes</span>
-                <span className="text-slate-600">Entrega el link personal de descarga con nombre y estado.</span>
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="font-bold text-teal-950 block">💬 Confirmación RSVP (1 / 2)</span>
-                <span className="text-slate-600">Actualiza automáticamente el estado de asistencia en Supabase.</span>
+              {/* BOTONES DE ACCIÓN */}
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  type="button"
+                  onClick={handleSaveAiConfig}
+                  disabled={savingAi}
+                  className="flex-1 bg-teal-700 hover:bg-teal-800 text-white font-bold h-9.5 rounded-xl shadow-xs text-xs"
+                >
+                  <Save className="w-3.5 h-3.5 mr-1.5" />
+                  {savingAi ? "Guardando..." : "Guardar Configuración IA"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleTestAiConnection}
+                  disabled={testingAi || !aiApiKey.trim()}
+                  className="border-slate-300 hover:bg-slate-100 text-slate-800 font-bold h-9.5 rounded-xl text-xs"
+                >
+                  <Zap className="w-3.5 h-3.5 mr-1 text-amber-500" />
+                  {testingAi ? "Probando..." : "Probar Conexión"}
+                </Button>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* PANEL DERECHO: SIMULADOR INTERACTIVO */}
@@ -260,7 +532,9 @@ export function ChatbotManager() {
               </div>
               <div>
                 <h3 className="font-extrabold text-xs text-white">Simulador en Vivo del Chatbot WhatsApp</h3>
-                <p className="text-[10px] text-teal-400">Prueba cómo responderá a los asistentes reales</p>
+                <p className="text-[10px] text-teal-400">
+                  {aiApiKey ? `✨ Motor Activo: ${aiModel}` : "⚡ Motor Local de Contingencia"}
+                </p>
               </div>
             </div>
 
@@ -274,6 +548,7 @@ export function ChatbotManager() {
                     sender: "bot",
                     text: "👋 ¡Hola! Soy el Asistente Virtual Inteligente IA de Centro Mundial de Gloria. ¿En qué te puedo ayudar hoy?",
                     time: "Ahora",
+                    isAiGenerated: true,
                   },
                 ])
               }
@@ -313,12 +588,25 @@ export function ChatbotManager() {
                 >
                   {m.text}
                 </div>
-                <span className="text-[10px] text-slate-400 mt-1 px-1">{m.time}</span>
+                <div className="flex items-center gap-1.5 mt-1 px-1">
+                  <span className="text-[10px] text-slate-400">{m.time}</span>
+                  {m.sender === "bot" && (
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
+                        m.isAiGenerated
+                          ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                          : "bg-slate-100 text-slate-600 border border-slate-200"
+                      }`}
+                    >
+                      {m.isAiGenerated ? "✨ OmniRoute IA" : "⚡ Regla Local"}
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
             {simulating && (
               <div className="flex items-center gap-2 text-xs text-slate-500 font-medium animate-pulse pt-1">
-                <Bot className="w-4 h-4 text-teal-600 animate-spin" /> Chatbot procesando y respondiendo...
+                <Bot className="w-4 h-4 text-teal-600 animate-spin" /> Chatbot procesando con IA...
               </div>
             )}
           </div>
