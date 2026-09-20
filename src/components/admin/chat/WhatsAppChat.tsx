@@ -567,20 +567,72 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
 
   const handleSimulateIncomingAiMessage = async (queryText: string) => {
     if (!activeChat) return;
-    setTypingState(true);
-    await sleep(1000);
-    const { replyText, rsvpStatus } = await processWhatsAppMessageIntent(queryText, activeChat.id);
-    setTypingState(false);
+    const cleanId = cleanPhone(activeChat.id);
 
-    const botMsg: Message = {
-      id: `bot-reply-${Date.now()}`,
+    // 1. Agregar mensaje entrante simulado del usuario
+    const userMsg: Message = {
+      id: `user-sim-${Date.now()}`,
       fromMe: false,
-      body: replyText,
+      body: queryText,
       timestamp: Math.floor(Date.now() / 1000),
     };
-    setMessages((prev) => [...prev, botMsg]);
-    if (rsvpStatus) {
-      toast.success(`RSVP registrado automáticamente: ${rsvpStatus.toUpperCase()}`);
+    setMessages((prev) => [...prev, userMsg]);
+    setTypingState(true);
+
+    // 2. Procesar con el motor oficial de IA
+    const { replyText, rsvpStatus } = await processWhatsAppMessageIntent(queryText, cleanId || activeChat.id);
+    setTypingState(false);
+
+    if (replyText) {
+      const botMsg: Message = {
+        id: `bot-reply-${Date.now()}`,
+        fromMe: true,
+        body: replyText,
+        timestamp: Math.floor(Date.now() / 1000) + 1,
+      };
+      setMessages((prev) => [...prev, botMsg]);
+
+      // Si está conectado al servidor de WhatsApp, enviar respuesta real
+      if (status === "connected" && waConfig.url) {
+        try {
+          const cleanUrl = waConfig.url.replace(/\/$/, "");
+          await fetch(`${cleanUrl}/send`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${waConfig.token}`,
+            },
+            body: JSON.stringify({
+              phone: cleanId || activeChat.id,
+              message: replyText,
+            }),
+          });
+        } catch (_) {}
+      }
+
+      if (rsvpStatus) {
+        toast.success(`RSVP registrado: ${rsvpStatus.toUpperCase()}`);
+      }
+    }
+  };
+
+  const handleSuggestAiReply = async () => {
+    if (!activeChat) return;
+    const cleanId = cleanPhone(activeChat.id);
+    const lastIncoming = [...messages].reverse().find((m) => !m.fromMe)?.body || newMessage || "Hola";
+
+    setTypingState(true);
+    toast.info("Generando respuesta sugerida con IA...");
+    try {
+      const { replyText } = await processWhatsAppMessageIntent(lastIncoming, cleanId || activeChat.id);
+      if (replyText) {
+        setNewMessage(replyText);
+        toast.success("¡Respuesta sugerida lista en la caja de texto!");
+      }
+    } catch (err: any) {
+      toast.error("Error al generar sugerencia: " + err.message);
+    } finally {
+      setTypingState(false);
     }
   };
 
@@ -1078,6 +1130,17 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                   disabled={sending || status !== "connected"}
                   className="flex-1 h-12 rounded-2xl border-slate-300 text-sm font-semibold bg-slate-50 focus:bg-white"
                 />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSuggestAiReply}
+                  disabled={typingState || !activeChat}
+                  title="Generar respuesta inteligente según el contexto del asistente y evento"
+                  className="h-12 px-3.5 rounded-2xl border-teal-300 bg-teal-50 hover:bg-teal-100 text-teal-900 font-extrabold text-xs shrink-0 shadow-2xs flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-4 h-4 text-teal-700" />
+                  <span className="hidden sm:inline">Sugerir con IA</span>
+                </Button>
                 <Button
                   onClick={handleSendMessage}
                   disabled={sending || !newMessage.trim() || status !== "connected"}
