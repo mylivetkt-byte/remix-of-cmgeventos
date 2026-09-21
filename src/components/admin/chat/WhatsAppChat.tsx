@@ -17,7 +17,7 @@ import {
 } from "../WhatsAppContacts";
 import { personalizeMessage, CrmContact } from "@/lib/whatsapp-crm";
 import { toast } from "sonner";
-import { processWhatsAppMessageIntent } from "@/lib/whatsapp-bot";
+import { processWhatsAppMessageIntent, lookupAttendeeProfile } from "@/lib/whatsapp-bot";
 import {
   Loader2,
   Send,
@@ -147,6 +147,21 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
   const [broadcastProgress, setBroadcastProgress] = useState({ current: 0, total: 0 });
   const [broadcastStatusText, setBroadcastStatusText] = useState("");
   const abortBroadcastRef = useRef(false);
+
+  const [activeAttendeeProfile, setActiveAttendeeProfile] = useState<any>(null);
+
+  // Resolver perfil de asistente real cuando cambia el chat activo
+  useEffect(() => {
+    async function resolveAttendee() {
+      if (activeChat) {
+        const profile = await lookupAttendeeProfile(activeChat.id, activeChat.name);
+        setActiveAttendeeProfile(profile);
+      } else {
+        setActiveAttendeeProfile(null);
+      }
+    }
+    resolveAttendee();
+  }, [activeChat?.id, activeChat?.name]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -391,7 +406,12 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                 if (aiBotActive && !repliedMessagesRef.current.has(msgUniqueKey)) {
                   repliedMessagesRef.current.add(msgUniqueKey);
 
-                  processWhatsAppMessageIntent(lastNew.body, cleanId || chatId).then(async ({ replyText, rsvpStatus }) => {
+                  processWhatsAppMessageIntent(
+                    lastNew.body,
+                    cleanId || chatId,
+                    undefined,
+                    targetChat?.name || activeChat?.name
+                  ).then(async ({ replyText, rsvpStatus }) => {
                     if (replyText) {
                       const botMsg: Message = {
                         id: `bot-reply-${Date.now()}`,
@@ -992,7 +1012,15 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
                       )}
                     </h3>
                     <p className="text-[11px] font-mono text-slate-500 flex items-center gap-1 truncate">
-                      <Phone className="w-3 h-3 text-teal-600 shrink-0" /> {activeChat.id}
+                      <Phone className="w-3 h-3 text-teal-600 shrink-0" />
+                      {activeAttendeeProfile?.realPhone ? (
+                        <span>
+                          <strong className="text-slate-800 font-bold">{activeAttendeeProfile.realPhone}</strong>
+                          <span className="text-[10px] text-slate-400 ml-1.5">(ID WA: {activeChat.id})</span>
+                        </span>
+                      ) : (
+                        <span>{activeChat.id}</span>
+                      )}
                     </p>
                   </div>
                 </div>

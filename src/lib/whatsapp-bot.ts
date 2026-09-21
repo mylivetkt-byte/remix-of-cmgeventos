@@ -173,87 +173,122 @@ export function normalizeBotText(input: string): string {
 }
 
 /**
- * Helper para buscar el perfil del asistente por número de teléfono
+ * Helper para buscar el perfil del asistente por número de teléfono o por nombre (para contactos LID de WhatsApp)
  */
-export async function lookupAttendeeProfile(phone: string) {
-  if (!phone) return null;
-  const digitsOnly = String(phone).replace(/[^\d]/g, "");
-  if (!digitsOnly || digitsOnly.length < 7) return null;
+export async function lookupAttendeeProfile(phone: string, senderName?: string) {
+  if (!phone && !senderName) return null;
+  const digitsOnly = String(phone || "").replace(/[^\d]/g, "");
 
-  const phone10 = digitsOnly.length >= 10 && digitsOnly.startsWith("57") ? digitsOnly.slice(2) : digitsOnly;
-  const phone57 = phone10.length === 10 ? `57${phone10}` : digitsOnly;
+  // 1. Buscar en tabla principal registrations por número de teléfono
+  if (digitsOnly && digitsOnly.length >= 7) {
+    const phone10 = digitsOnly.length >= 10 && digitsOnly.startsWith("57") ? digitsOnly.slice(2) : digitsOnly;
+    const phone57 = phone10.length === 10 ? `57${phone10}` : digitsOnly;
 
-  // Lista segura de tokens numéricos puros (sin @, +, espacios ni caracteres especiales)
-  const phoneTokens = Array.from(new Set([digitsOnly, phone10, phone57].filter((p) => p && p.length >= 7)));
+    const phoneTokens = Array.from(new Set([digitsOnly, phone10, phone57].filter((p) => p && p.length >= 7)));
 
-  let attendee: {
-    id: string;
-    nombres: string;
-    apellidos?: string;
-    nombreCompleto: string;
-    eventId?: string | null;
-    asistio?: boolean | null;
-    estadoPago?: string | null;
-    montoPendiente?: number | null;
-    pdfUrl?: string | null;
-  } | null = null;
+    try {
+      const orCondition = phoneTokens.map((p) => `telefono.eq.${p}`).join(",");
+      const { data: regList, error } = await (supabase.from("registrations") as any)
+        .select("id, nombres, apellidos, event_id, asistio, estado_pago, monto_pendiente, pdf_url, created_at, telefono")
+        .or(orCondition)
+        .order("created_at", { ascending: false })
+        .limit(1);
 
-  // 1. Buscar en tabla principal registrations
-  try {
-    const orCondition = phoneTokens.map((p) => `telefono.eq.${p}`).join(",");
-    const { data: regList, error } = await (supabase.from("registrations") as any)
-      .select("id, nombres, apellidos, event_id, asistio, estado_pago, monto_pendiente, pdf_url, created_at, telefono")
-      .or(orCondition)
-      .order("created_at", { ascending: false })
-      .limit(1);
+      if (!error && regList && regList[0]) {
+        const reg = regList[0];
+        const fullName = [reg.nombres, reg.apellidos]
+          .map((s) => (s ? String(s).trim() : ""))
+          .filter((s) => s.length > 0 && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined")
+          .join(" ") || "Asistente";
 
-    if (!error && regList && regList[0]) {
-      const reg = regList[0];
-      const fullName = [reg.nombres, reg.apellidos]
-        .map((s) => (s ? String(s).trim() : ""))
-        .filter((s) => s.length > 0 && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined")
-        .join(" ") || "Asistente";
+        return {
+          id: reg.id,
+          nombres: reg.nombres || fullName,
+          apellidos: reg.apellidos || "",
+          nombreCompleto: fullName,
+          eventId: reg.event_id,
+          asistio: reg.asistio,
+          estadoPago: reg.estado_pago,
+          montoPendiente: reg.monto_pendiente,
+          pdfUrl: reg.pdf_url,
+          realPhone: reg.telefono,
+        };
+      }
+    } catch (_) {}
 
-      return {
-        id: reg.id,
-        nombres: reg.nombres || fullName,
-        apellidos: reg.apellidos || "",
-        nombreCompleto: fullName,
-        eventId: reg.event_id,
-        asistio: reg.asistio,
-        estadoPago: reg.estado_pago,
-        montoPendiente: reg.monto_pendiente,
-        pdfUrl: reg.pdf_url,
-      };
+    // Buscar en solicitudes de casas de paz
+    try {
+      const orCondition = phoneTokens.map((p) => `telefono.eq.${p}`).join(",");
+      const { data: cdpList } = await (supabase.from("casa_de_paz_solicitudes") as any)
+        .select("id, nombre, barrio, direccion, created_at, telefono")
+        .or(orCondition)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (cdpList && cdpList[0]) {
+        const cdp = cdpList[0];
+        return {
+          id: cdp.id,
+          nombres: cdp.nombre || "Hermano(a)",
+          apellidos: "",
+          nombreCompleto: cdp.nombre || "Hermano(a)",
+          eventId: null,
+          asistio: null,
+          estadoPago: null,
+          montoPendiente: null,
+          pdfUrl: null,
+          realPhone: cdp.telefono,
+        };
+      }
+    } catch (_) {}
+  }
+
+  // 2. Si el identificador es un WhatsApp Privacy LID (ej: 152492847413354) o no se encontró por número, buscar por nombre del contacto
+  if (senderName && typeof senderName === "string") {
+    const cleanName = senderName.trim();
+    if (cleanName.length >= 3 && !/^\d+$/.test(cleanName) && !cleanName.includes("@")) {
+      const parts = cleanName.split(/\s+/).filter(Boolean);
+      const firstName = parts[0];
+      const lastName = parts.length > 1 ? parts[parts.length - 1] : "";
+
+      try {
+        let query = (supabase.from("registrations") as any)
+          .select("id, nombres, apellidos, event_id, asistio, estado_pago, monto_pendiente, pdf_url, created_at, telefono")
+          .ilike("nombres", `%${firstName}%`);
+
+        if (lastName) {
+          query = query.or(`apellidos.ilike.%${lastName}%,nombres.ilike.%${lastName}%`);
+        }
+
+        const { data: nameList } = await query.order("created_at", { ascending: false }).limit(6);
+
+        if (nameList && nameList.length > 0) {
+          const best = nameList.find((reg: any) => {
+            const full = `${reg.nombres || ""} ${reg.apellidos || ""}`.toLowerCase();
+            return parts.every((p) => full.includes(p.toLowerCase()));
+          }) || nameList[0];
+
+          const fullName = [best.nombres, best.apellidos]
+            .map((s: any) => (s ? String(s).trim() : ""))
+            .filter((s: any) => s.length > 0 && s.toLowerCase() !== "null" && s.toLowerCase() !== "undefined")
+            .join(" ") || cleanName;
+
+          return {
+            id: best.id,
+            nombres: best.nombres || fullName,
+            apellidos: best.apellidos || "",
+            nombreCompleto: fullName,
+            eventId: best.event_id,
+            asistio: best.asistio,
+            estadoPago: best.estado_pago,
+            montoPendiente: best.monto_pendiente,
+            pdfUrl: best.pdf_url,
+            realPhone: best.telefono,
+          };
+        }
+      } catch (_) {}
     }
-  } catch (_) {}
-
-
-
-  // 3. Buscar en solicitudes de casas de paz o auditorio
-  try {
-    const orCondition = phoneTokens.map((p) => `telefono.eq.${p}`).join(",");
-    const { data: cdpList } = await (supabase.from("casa_de_paz_solicitudes") as any)
-      .select("id, nombre, barrio, direccion, created_at")
-      .or(orCondition)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    if (cdpList && cdpList[0]) {
-      const cdp = cdpList[0];
-      return {
-        id: cdp.id,
-        nombres: cdp.nombre || "Hermano(a)",
-        apellidos: "",
-        nombreCompleto: cdp.nombre || "Hermano(a)",
-        eventId: null,
-        asistio: null,
-        estadoPago: null,
-        montoPendiente: null,
-        pdfUrl: null,
-      };
-    }
-  } catch (_) {}
+  }
 
   return null;
 }
@@ -501,16 +536,17 @@ DIRECTRICES CLAVE DE RESPUESTA:
 export async function processWhatsAppMessageIntent(
   incomingText: string,
   senderPhone: string,
-  configOverride?: Partial<OmniRouteConfig>
-): Promise<{ replyText: string; rsvpStatus?: "confirmado" | "cancelado"; isAiGenerated?: boolean }> {
+  configOverride?: Partial<OmniRouteConfig>,
+  senderName?: string
+): Promise<{ replyText: string; rsvpStatus?: "confirmado" | "cancelado"; isAiGenerated?: boolean; attendee?: any }> {
   const rawText = String(incomingText || "").trim();
   const cleanPhone = String(senderPhone || "").replace(/[^\d]/g, "");
   const norm = normalizeBotText(rawText);
   const origin = typeof window !== "undefined" ? window.location.origin : "https://cmgeventos.lovable.app";
 
-  // 1. Identificar perfil del asistente en base de datos
-  const attendee = await lookupAttendeeProfile(cleanPhone || senderPhone);
-  const attendeeName = attendee?.nombreCompleto || attendee?.nombres || "";
+  // 1. Identificar perfil del asistente en base de datos (por teléfono o nombre de contacto WhatsApp)
+  const attendee = await lookupAttendeeProfile(cleanPhone || senderPhone, senderName);
+  const attendeeName = attendee?.nombreCompleto || attendee?.nombres || senderName || "";
   const greetingName = attendeeName ? `*${attendeeName}*` : "amigo(a)";
 
   // 2. Obtener datos del evento del asistente O del último evento activo
