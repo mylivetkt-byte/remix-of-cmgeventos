@@ -54,23 +54,28 @@ interface BackupData {
 type PasoAsistente = 1 | 2 | 3 | 4;
 
 const SQL_SCHEMA_PRINCIPAL = `-- ==============================================================================
--- SCRIPT COMPLETO DE BASE DE DATOS: CMG EVENTOS Y CONFERENCIAS
+-- SCRIPT MAESTRO DE BASE DE DATOS: CMG EVENTOS & CONFERENCIAS
 -- Compatible con PostgreSQL y Supabase
+-- Ejecuta este script en el SQL Editor de tu proyecto Supabase (Run)
 -- ==============================================================================
 
--- 1. Extensiones y Funciones
+-- 1. Extensiones requeridas
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- Función para actualizar columnas updated_at automáticamente
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SET search_path = public;
+$ LANGUAGE plpgsql SET search_path = public;
 
--- 2. Catálogos base
+-- ==============================================================================
+-- 2. TABLAS DE CATÁLOGOS BASE
+-- ==============================================================================
+
 CREATE TABLE IF NOT EXISTS public.catalog_tipo_documento (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   nombre TEXT NOT NULL,
@@ -125,7 +130,10 @@ CREATE TABLE IF NOT EXISTS public.catalog_barrio (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 3. Configuración y Eventos
+-- ==============================================================================
+-- 3. CONFIGURACIÓN GENERAL Y EVENTOS
+-- ==============================================================================
+
 CREATE TABLE IF NOT EXISTS public.event_config (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
   nombre_evento TEXT NOT NULL DEFAULT 'Mi Evento',
@@ -154,7 +162,11 @@ CREATE TABLE IF NOT EXISTS public.events (
   nombre TEXT NOT NULL,
   descripcion TEXT,
   fecha_evento TIMESTAMPTZ,
+  fecha TIMESTAMPTZ,
   lugar_evento TEXT,
+  lugar TEXT,
+  precio NUMERIC DEFAULT 0,
+  cupos INT DEFAULT 500,
   logo_url TEXT,
   banner_url TEXT,
   color_primario TEXT DEFAULT '#083E30',
@@ -186,31 +198,49 @@ CREATE TABLE IF NOT EXISTS public.event_field_configs (
   UNIQUE(event_id, field_key)
 );
 
--- 4. Registros Principales
+-- ==============================================================================
+-- 4. REGISTROS DE PARTICIPANTES Y ASISTENCIA
+-- ==============================================================================
+
 CREATE TABLE IF NOT EXISTS public.registrations (
   id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
   nombres TEXT NOT NULL,
   apellidos TEXT NOT NULL,
-  fecha_nacimiento DATE NOT NULL,
-  edad INT NOT NULL,
+  fecha_nacimiento DATE,
+  edad INT,
   tipo_documento_id UUID REFERENCES public.catalog_tipo_documento(id),
-  numero_documento TEXT NOT NULL,
-  telefono TEXT NOT NULL,
-  direccion TEXT NOT NULL,
-  barrio TEXT NOT NULL,
-  correo TEXT NOT NULL,
+  numero_documento TEXT,
+  telefono TEXT,
+  direccion TEXT,
+  barrio TEXT,
+  correo TEXT,
   estado_civil_id UUID REFERENCES public.catalog_estado_civil(id),
   sexo_id UUID REFERENCES public.catalog_sexo(id),
   cdp_id UUID REFERENCES public.catalog_cdp(id),
   red_id UUID REFERENCES public.catalog_red(id),
   nombre_invitador TEXT,
+  invitado_por TEXT,
   pdf_url TEXT,
   qr_code TEXT,
   asistio BOOLEAN DEFAULT false,
   fecha_asistencia TIMESTAMPTZ,
+  estado_pago TEXT DEFAULT 'Pendiente',
+  monto_pagado NUMERIC DEFAULT 0,
+  monto_pendiente NUMERIC DEFAULT 0,
+  notas_pago TEXT,
+  comprobante_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(tipo_documento_id, numero_documento)
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.attendance (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID REFERENCES public.events(id) ON DELETE CASCADE,
+  registration_id UUID REFERENCES public.registrations(id) ON DELETE CASCADE,
+  fecha_hora TIMESTAMPTZ DEFAULT timezone('utc'::text, now()),
+  metodo TEXT DEFAULT 'QR_SCANNER',
+  created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
 );
 
 CREATE TABLE IF NOT EXISTS public.retiro_sanidad_registrations (
@@ -223,10 +253,10 @@ CREATE TABLE IF NOT EXISTS public.retiro_sanidad_registrations (
   numero_documento TEXT NOT NULL,
   tipo_documento_id UUID REFERENCES public.catalog_tipo_documento(id),
   sexo_id UUID REFERENCES public.catalog_sexo(id),
-  fecha_nacimiento DATE NOT NULL,
-  edad INT NOT NULL,
-  direccion TEXT NOT NULL,
-  barrio TEXT NOT NULL,
+  fecha_nacimiento DATE,
+  edad INT,
+  direccion TEXT,
+  barrio TEXT,
   estado_civil_id UUID REFERENCES public.catalog_estado_civil(id),
   red_id UUID REFERENCES public.catalog_red(id),
   cdp_id UUID REFERENCES public.catalog_cdp(id),
@@ -239,7 +269,27 @@ CREATE TABLE IF NOT EXISTS public.retiro_sanidad_registrations (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 5. Solicitudes de Casa de Paz y Auditorio
+-- ==============================================================================
+-- 5. CASAS DE PAZ, AUDITORIO Y CONTACTOS WHATSAPP
+-- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS public.casas_de_paz_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombres TEXT,
+  apellidos TEXT,
+  nombre TEXT,
+  telefono TEXT,
+  direccion TEXT,
+  barrio TEXT,
+  ciudad TEXT,
+  correo TEXT,
+  estado TEXT DEFAULT 'pendiente',
+  comentarios TEXT,
+  notas TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS public.casa_de_paz_solicitudes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nombre TEXT NOT NULL,
@@ -253,13 +303,73 @@ CREATE TABLE IF NOT EXISTS public.casa_de_paz_solicitudes (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.whatsapp_contacts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre TEXT NOT NULL,
+  telefono TEXT NOT NULL,
+  correo TEXT,
+  etiquetas TEXT[] DEFAULT '{}',
+  notas TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.whatsapp_crm_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  destinatario TEXT NOT NULL,
+  mensaje TEXT NOT NULL,
+  estado TEXT DEFAULT 'enviado',
+  tipo TEXT DEFAULT 'individual',
+  fecha_envio TIMESTAMPTZ DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.chat_conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  contacto_id UUID REFERENCES public.whatsapp_contacts(id) ON DELETE SET NULL,
+  telefono TEXT NOT NULL,
+  nombre TEXT,
+  ultimo_mensaje TEXT,
+  fecha_ultimo_mensaje TIMESTAMPTZ DEFAULT now(),
+  leido BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.chat_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID REFERENCES public.chat_conversations(id) ON DELETE CASCADE,
+  remitente TEXT NOT NULL,
+  texto TEXT NOT NULL,
+  timestamp TIMESTAMPTZ DEFAULT now(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.chatbot_config (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  activo BOOLEAN DEFAULT true,
+  nombre_bot TEXT DEFAULT 'Asistente Virtual CMG',
+  mensaje_bienvenida TEXT DEFAULT '¡Hola! Bienvenido a CMG Eventos. ¿En qué podemos ayudarte hoy?',
+  instrucciones_ia TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.chatbot_faq (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  pregunta TEXT NOT NULL,
+  respuesta TEXT NOT NULL,
+  activo BOOLEAN DEFAULT true,
+  orden INT DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS public.auditorio_config (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   activo BOOLEAN NOT NULL DEFAULT true,
   titulo TEXT NOT NULL DEFAULT 'Alquiler del Auditorio',
   subtitulo TEXT,
   descripcion TEXT,
-  precio NUMERIC,
+  precio NUMERIC DEFAULT 0,
   moneda TEXT NOT NULL DEFAULT 'COP',
   mostrar_precio BOOLEAN NOT NULL DEFAULT true,
   texto_tarifas TEXT,
@@ -291,28 +401,19 @@ CREATE TABLE IF NOT EXISTS public.auditorio_solicitudes (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 6. Usuarios y Secretos
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'app_role') THEN
-    CREATE TYPE public.app_role AS ENUM ('admin', 'moderator', 'user');
-  END IF;
-END $$;
-
-CREATE TABLE IF NOT EXISTS public.user_roles (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  role app_role NOT NULL,
-  UNIQUE(user_id, role)
+CREATE TABLE IF NOT EXISTS public.historial_backups (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre_archivo TEXT NOT NULL,
+  tamano_bytes BIGINT,
+  total_registros INT,
+  usuario TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.app_secrets (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+-- ==============================================================================
+-- 6. DATOS SEMILLA INICIALES (CATÁLOGOS Y CONFIGURACIÓN)
+-- ==============================================================================
 
--- 7. Semillas Iniciales (Catálogos y Evento Principal)
 INSERT INTO public.catalog_tipo_documento (nombre, orden) 
 SELECT 'Cédula de Ciudadanía', 1 WHERE NOT EXISTS (SELECT 1 FROM public.catalog_tipo_documento WHERE nombre = 'Cédula de Ciudadanía');
 INSERT INTO public.catalog_tipo_documento (nombre, orden) 
@@ -354,11 +455,15 @@ VALUES ('evento-principal', 'Evento Principal CMG', 'Gran evento congregacional 
 ON CONFLICT (slug) DO NOTHING;
 
 INSERT INTO public.auditorio_config (titulo, subtitulo, descripcion, capacidad)
-VALUES ('Alquiler del Auditorio', 'Un espacio amplio y equipado para tu evento', 'Auditorio disponible para conferencias y eventos.', '300 personas')
+VALUES ('Alquiler del Auditorio', 'Un espacio amplio y equipado para tu evento', 'Auditorio disponible para conferencias y eventos especiales.', '300 personas')
 ON CONFLICT DO NOTHING;
 
--- 8. Permisos y Políticas RLS Permisivas
-DO $$ 
+-- ==============================================================================
+-- 7. POLÍTICAS ROW LEVEL SECURITY (RLS PERMISIVAS)
+-- Permite acceso completo para que la aplicación web funcione sin bloqueos
+-- ==============================================================================
+
+DO $ 
 DECLARE
     tbl text;
     tables text[] := ARRAY[
@@ -372,32 +477,46 @@ DECLARE
         'events',
         'event_field_configs',
         'registrations',
+        'attendance',
         'retiro_sanidad_registrations',
+        'casas_de_paz_requests',
         'casa_de_paz_solicitudes',
+        'whatsapp_contacts',
+        'whatsapp_crm_messages',
+        'chat_conversations',
+        'chat_messages',
+        'chatbot_config',
+        'chatbot_faq',
         'auditorio_config',
         'auditorio_solicitudes',
-        'user_roles',
-        'app_secrets'
+        'historial_backups'
     ];
 BEGIN
     FOREACH tbl IN ARRAY tables LOOP
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = tbl AND table_schema = 'public') THEN
             EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', tbl);
-            EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I;', 'policy_cmg_all_' || tbl, tbl);
-            EXECUTE format('CREATE POLICY %I ON public.%I FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);', 'policy_cmg_all_' || tbl, tbl);
+            EXECUTE format('DROP POLICY IF EXISTS %I ON %I;', 'policy_open_all_' || tbl, tbl);
+            EXECUTE format('CREATE POLICY %I ON %I FOR ALL TO public USING (true) WITH CHECK (true);', 'policy_open_all_' || tbl, tbl);
         END IF;
     END LOOP;
-END $$;
+END $;
 
+-- Permisos de lectura y escritura globales en el esquema public
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
 
--- 9. Storage Buckets
-INSERT INTO storage.buckets (id, name, public) VALUES ('invitations', 'invitations', true) ON CONFLICT (id) DO NOTHING;
-DO $$ BEGIN
+-- ==============================================================================
+-- 8. STORAGE BUCKET PARA INVITACIONES Y PASES PDF
+-- ==============================================================================
+
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('invitations', 'invitations', true) 
+ON CONFLICT (id) DO NOTHING;
+
+DO $ BEGIN
     DROP POLICY IF EXISTS "Public read invitations" ON storage.objects;
     CREATE POLICY "Public read invitations" ON storage.objects FOR SELECT USING (bucket_id = 'invitations');
     DROP POLICY IF EXISTS "Anyone upload invitations" ON storage.objects;
@@ -405,7 +524,28 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "Anyone update invitations" ON storage.objects;
     CREATE POLICY "Anyone update invitations" ON storage.objects FOR UPDATE USING (bucket_id = 'invitations');
 EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
+END $;
+
+-- ==============================================================================
+-- 9. HABILITAR REALTIME EN TABLAS CLAVE
+-- ==============================================================================
+
+DO $ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.registrations;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $;
+
+DO $ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.attendance;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $;
+
+DO $ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $;
+
+-- FIN DEL SCRIPT MAESTRO CMG EVENTOS
 `;
 
 export function AsistenteRestauracionModal({
