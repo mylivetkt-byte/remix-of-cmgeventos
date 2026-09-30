@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Loader2, Lock, Database } from "lucide-react";
 import { toast } from "sonner";
 import { AsistenteRestauracionModal } from "@/components/admin/AsistenteRestauracionModal";
+import { PinAdminModal } from "@/components/admin/PinAdminModal";
 
 const AdminLogin = () => {
   const { signIn, user } = useAuth();
@@ -16,6 +17,7 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [asistenteOpen, setAsistenteOpen] = useState(false);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -80,7 +82,7 @@ const AdminLogin = () => {
           <div className="mt-5 pt-4 border-t border-border flex justify-center">
             <button
               type="button"
-              onClick={() => setAsistenteOpen(true)}
+              onClick={() => setPinModalOpen(true)}
               className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 font-medium cursor-pointer"
               title="Configurar conexión a Supabase y restaurar base de datos"
             >

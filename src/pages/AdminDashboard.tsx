@@ -26,6 +26,7 @@ import { EventManager } from "@/components/admin/EventManager";
 import { UserManager } from "@/components/admin/UserManager";
 import { AuditorioManager } from "@/components/admin/AuditorioManager";
 import { MantenimientoMigracionModal } from "@/components/admin/MantenimientoMigracionModal";
+import { PinAdminModal } from "@/components/admin/PinAdminModal";
 import { AsistenteRestauracionModal } from "@/components/admin/AsistenteRestauracionModal";
 import { UserRole, ROLE_LABELS, ROLE_PERMISSIONS_MAP } from "@/integrations/supabase/user-role-types";
 import { useCatalog } from "@/hooks/useCatalogs";
@@ -67,6 +68,15 @@ const AdminDashboard = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [modalMantenimiento, setModalMantenimiento] = useState(false);
   const [modalAsistente, setModalAsistente] = useState(false);
+  const [modalPinOpen, setModalPinOpen] = useState(false);
+  const [pinMotivo, setPinMotivo] = useState("");
+  const [pinAccionPendiente, setPinAccionPendiente] = useState<(() => void) | null>(null);
+
+  const ejecutarAccionProtegida = (accion: () => void, motivo: string) => {
+    setPinMotivo(motivo);
+    setPinAccionPendiente(() => accion);
+    setModalPinOpen(true);
+  };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>("super_admin");
   const [search, setSearch] = useState("");
