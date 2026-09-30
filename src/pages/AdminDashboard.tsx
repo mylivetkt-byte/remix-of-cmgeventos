@@ -1872,6 +1872,20 @@ const AdminDashboard = () => {
         open={modalAsistente}
         onOpenChange={setModalAsistente}
       />
+
+      {/* MODAL DE SEGURIDAD: AUTORIZACIÓN POR CONTRASEÑA O PIN */}
+      <PinAdminModal
+        open={modalPinOpen}
+        onOpenChange={setModalPinOpen}
+        motivo={pinMotivo}
+        onAutorizado={() => {
+          if (pinAccionPendiente) {
+            const fn = pinAccionPendiente;
+            setPinAccionPendiente(null);
+            fn();
+          }
+        }}
+      />
     </div>
   );
 };

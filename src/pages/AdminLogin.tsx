@@ -98,6 +98,17 @@ const AdminLogin = () => {
         open={asistenteOpen}
         onOpenChange={setAsistenteOpen}
       />
+
+      {/* Modal de Seguridad PIN / Contraseña */}
+      <PinAdminModal
+        open={pinModalOpen}
+        onOpenChange={setPinModalOpen}
+        titulo="AUTORIZACIÓN DE ADMINISTRADOR"
+        motivo="El acceso al Asistente de Base de Datos y Restauración requiere la clave o PIN de Administrador."
+        onAutorizado={() => {
+          setAsistenteOpen(true);
+        }}
+      />
     </div>
   );
 };
