@@ -36,7 +36,7 @@ export function PinAdminModal({
     if (!limpio) return false;
 
     // 1. PINs o contraseñas maestras permitidas
-    const masterPins = ["1234", "123", "ADMIN", "admin", "0000", "admin123"];
+    const masterPins = ["369700"];
     if (masterPins.includes(limpio)) return true;
 
     // 2. PIN personalizado guardado en localStorage
@@ -74,7 +74,7 @@ export function PinAdminModal({
         onAutorizado("ADMINISTRADOR");
       } else {
         toast.error("❌ Contraseña o PIN incorrecto", {
-          description: "Prueba con tu clave de admin o el PIN por defecto (1234).",
+          description: "Ingresa la clave o PIN de Administrador autorizado.",
         });
         setPin("");
         inputRef.current?.focus();
@@ -132,6 +132,7 @@ export function PinAdminModal({
                 ref={inputRef}
                 type="password"
                 maxLength={30}
+                autoComplete="new-password"
                 placeholder="••••••"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
@@ -147,9 +148,7 @@ export function PinAdminModal({
                 </button>
               )}
             </div>
-            <p className="text-[10px] text-slate-500 text-center">
-              PIN por defecto: <strong className="text-slate-700">1234</strong>
-            </p>
+            
           </div>
 
           {/* Keypad Numérico Táctil */}

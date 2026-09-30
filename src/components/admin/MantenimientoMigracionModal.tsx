@@ -491,8 +491,8 @@ END $$;
       return;
     }
 
-    if (pinRestauracion !== "1234" && pinRestauracion !== "ADMIN") {
-      toast.error("Clave/PIN incorrecto. Ingresa 1234 o ADMIN para autorizar.");
+    if (pinRestauracion !== "369700") {
+      toast.error("Clave/PIN de autorización incorrecto.");
       return;
     }
 
@@ -1166,7 +1166,7 @@ END $$;
                       </label>
                       <input
                         type="password"
-                        placeholder="Ingresa clave (ej. 1234 o ADMIN)"
+                        placeholder="Ingresa clave de autorización"
                         value={pinRestauracion}
                         onChange={(e) => setPinRestauracion(e.target.value)}
                         className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
