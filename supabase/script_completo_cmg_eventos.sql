@@ -560,6 +560,7 @@ BEGIN
     -- Registrar identidad para inicio de sesión por email
     INSERT INTO auth.identities (
       id,
+      provider_id,
       user_id,
       identity_data,
       provider,
@@ -567,7 +568,8 @@ BEGIN
       created_at,
       updated_at
     ) VALUES (
-      v_user_id,
+      gen_random_uuid(),
+      v_user_id::text,
       v_user_id,
       format('{"sub":"%s","email":"%s"}', v_user_id, 'cmeventos@gmail.com')::jsonb,
       'email',
@@ -583,7 +585,7 @@ BEGIN
       ON CONFLICT DO NOTHING;
     END IF;
 
-  ELSE
+    ELSE
     -- Si el usuario ya existe, actualizar contraseña a cmg2026 y confirmar correo
     UPDATE auth.users
     SET encrypted_password = crypt('cmg2026', gen_salt('bf')),
@@ -591,6 +593,34 @@ BEGIN
         raw_user_meta_data = '{"nombre":"Super Administrador CMG","rol":"super_admin"}'::jsonb,
         updated_at = now()
     WHERE email = 'cmeventos@gmail.com';
+
+    SELECT id INTO v_user_id FROM auth.users WHERE email = 'cmeventos@gmail.com' LIMIT 1;
+
+    INSERT INTO auth.identities (
+      id,
+      provider_id,
+      user_id,
+      identity_data,
+      provider,
+      last_sign_in_at,
+      created_at,
+      updated_at
+    ) VALUES (
+      gen_random_uuid(),
+      v_user_id::text,
+      v_user_id,
+      format('{"sub":"%s","email":"%s"}', v_user_id, 'cmeventos@gmail.com')::jsonb,
+      'email',
+      now(),
+      now(),
+      now()
+    ) ON CONFLICT DO NOTHING;
+
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_roles' AND table_schema = 'public') THEN
+      INSERT INTO public.user_roles (user_id, role)
+      VALUES (v_user_id, 'admin')
+      ON CONFLICT DO NOTHING;
+    END IF;
   END IF;
 END $;
 
