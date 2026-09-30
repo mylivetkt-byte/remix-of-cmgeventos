@@ -698,11 +698,13 @@ export function AsistenteRestauracionModal({
   const [estadoConexion, setEstadoConexion] = useState<"idle" | "ok" | "error">("idle");
   const [mensajeConexion, setMensajeConexion] = useState("");
 
-  // Paso 3: Inicializar BD
+  // Paso 3: Inicializar BD y Exportar JSON
   const [inicializandoBD, setInicializandoBD] = useState(false);
   const [estadoInicializacion, setEstadoInicializacion] = useState<"idle" | "ok" | "error">("idle");
   const [mensajeInicializacion, setMensajeInicializacion] = useState("");
   const [tablasCreadas, setTablasCreadas] = useState<string[]>([]);
+  const [conteoTablas, setConteoTablas] = useState<Record<string, number>>({});
+  const [exportandoJSON, setExportandoJSON] = useState(false);
 
   // Paso 4: Restauración
   const [archivoRestaurar, setArchivoRestaurar] = useState<File | null>(null);
@@ -861,12 +863,15 @@ export function AsistenteRestauracionModal({
       const tablasVerificadas: string[] = [];
       const tablasConError: string[] = [];
 
+      const conteos: Record<string, number> = {};
+
       for (const tabla of tablasPrincipales) {
         setMensajeInicializacion(`Verificando tabla: ${tabla}...`);
         try {
-          const { error } = await client.from(tabla).select("*").limit(1);
+          const { count, error } = await client.from(tabla).select("*", { count: "exact", head: true });
           if (!error) {
             tablasVerificadas.push(tabla);
+            conteos[tabla] = count ?? 0;
           } else {
             tablasConError.push(tabla);
           }
@@ -876,6 +881,7 @@ export function AsistenteRestauracionModal({
       }
 
       setTablasCreadas(tablasVerificadas);
+      setConteoTablas(conteos);
 
       if (tablasVerificadas.length >= tablasPrincipales.length * 0.7) {
         setEstadoInicializacion("ok");
@@ -906,6 +912,64 @@ export function AsistenteRestauracionModal({
       toast.error("Error al verificar la base de datos");
     } finally {
       setInicializandoBD(false);
+    }
+  }
+
+  // Paso 3: Exportar datos actuales a archivo JSON de respaldo
+  async function handleExportarCopiaSeguridadJSON() {
+    if (tablasCreadas.length === 0) {
+      toast.error("Primero verifica las tablas para poder exportar los datos.");
+      return;
+    }
+
+    setExportandoJSON(true);
+    try {
+      const client = crearClienteSupabase();
+      const datosExportados: Record<string, any[]> = {};
+      let totalRegistros = 0;
+
+      for (const tabla of tablasCreadas) {
+        const { data, error } = await client.from(tabla).select("*");
+        if (!error && Array.isArray(data)) {
+          datosExportados[tabla] = data;
+          totalRegistros += data.length;
+        } else {
+          datosExportados[tabla] = [];
+        }
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const backupPayload = {
+        metadata: {
+          app: "CMG Eventos",
+          fecha: new Date().toISOString(),
+          totalTablas: Object.keys(datosExportados).length,
+          totalRegistros,
+          version: "1.0",
+          url: bdUrl,
+        },
+        datos: datosExportados,
+      };
+
+      const blob = new Blob([JSON.stringify(backupPayload, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `backup_cmg_eventos_${timestamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(
+        `Copia de seguridad descargada: ${totalRegistros} registros en ${Object.keys(datosExportados).length} tablas`
+      );
+    } catch (err: any) {
+      toast.error(`Error al exportar datos: ${err?.message || "Desconocido"}`);
+    } finally {
+      setExportandoJSON(false);
     }
   }
 
@@ -1377,13 +1441,63 @@ export function AsistenteRestauracionModal({
                   </div>
 
                   {tablasCreadas.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-slate-200/60 grid grid-cols-2 gap-1.5">
-                      {tablasCreadas.map((t) => (
-                        <div key={t} className="flex items-center gap-1.5 text-[11px]">
-                          <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                          <span className="font-mono text-slate-700">{t}</span>
-                        </div>
-                      ))}
+                    <div className="mt-3 pt-3 border-t border-slate-200/60 space-y-3">
+                      <div className="flex items-center justify-between text-xs text-slate-600 font-bold">
+                        <span>Tablas accesibles y conteo de datos:</span>
+                        <span className="text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full font-black text-[10px]">
+                          {Object.values(conteoTablas).reduce((a, b) => a + b, 0)} registros en total
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+                        {tablasCreadas.map((t) => {
+                          const count = conteoTablas[t] ?? 0;
+                          return (
+                            <div
+                              key={t}
+                              className="flex items-center justify-between gap-2 text-[11px] bg-white/80 rounded-xl px-2.5 py-1.5 border border-slate-200/80 shadow-xs"
+                            >
+                              <div className="flex items-center gap-1.5 truncate">
+                                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                                <span className="font-mono text-slate-800 font-medium truncate">{t}</span>
+                              </div>
+                              <span
+                                className={`text-[10px] font-black px-1.5 py-0.5 rounded-md shrink-0 ${
+                                  count > 0
+                                    ? "bg-emerald-100 text-emerald-800 font-mono"
+                                    : "bg-slate-100 text-slate-400"
+                                }`}
+                              >
+                                {count} reg.
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Botón para descargar datos en JSON directamente */}
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={handleExportarCopiaSeguridadJSON}
+                          disabled={exportandoJSON}
+                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase px-4 py-3 shadow-md shadow-emerald-600/20 hover:scale-[1.01] active:scale-98 transition-all disabled:opacity-50"
+                        >
+                          {exportandoJSON ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileJson className="h-4 w-4" />
+                          )}
+                          <span>
+                            {exportandoJSON
+                              ? "Generando copia de seguridad JSON..."
+                              : `Descargar Copia de Seguridad JSON (${Object.values(conteoTablas).reduce((a, b) => a + b, 0)} registros)`}
+                          </span>
+                        </button>
+                        <p className="text-[10px] text-slate-500 text-center mt-1.5">
+                          Descarga todos los datos de estas tablas en formato .json para montarlos o restaurarlos en el <strong>Paso 4</strong>.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
