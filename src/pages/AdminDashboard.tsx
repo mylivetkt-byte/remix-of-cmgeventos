@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Menu, UserPlus, Send, Bot, Home, Building2, Eye, ExternalLink, Copy, Check, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
+import { LogOut, Database, Rocket, Users, Settings, List, Search, Download, QrCode, Trash2, Trash, Pencil, MessageCircle, Mail, UserCheck, UserX, RefreshCw, LayoutDashboard, Sparkles, Globe, ShieldCheck, ChevronLeft, ChevronRight, ChevronDown, Menu, UserPlus, Send, Bot, Home, Building2, Eye, ExternalLink, Copy, Check, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { CatalogManager } from "@/components/admin/CatalogManager";
 import { CasaDePazRequestsManager } from "@/components/admin/CasaDePazRequestsManager";
 import { EventConfigManager } from "@/components/admin/EventConfigManager";
@@ -25,6 +25,8 @@ import { WhatsAppContacts, StoredContact } from "@/components/admin/WhatsAppCont
 import { EventManager } from "@/components/admin/EventManager";
 import { UserManager } from "@/components/admin/UserManager";
 import { AuditorioManager } from "@/components/admin/AuditorioManager";
+import { MantenimientoMigracionModal } from "@/components/admin/MantenimientoMigracionModal";
+import { AsistenteRestauracionModal } from "@/components/admin/AsistenteRestauracionModal";
 import { UserRole, ROLE_LABELS, ROLE_PERMISSIONS_MAP } from "@/integrations/supabase/user-role-types";
 import { useCatalog } from "@/hooks/useCatalogs";
 import { sendCheckInWhatsAppNotification } from "@/lib/whatsapp-bot";
@@ -63,6 +65,8 @@ const AdminDashboard = () => {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("dashboard");
   const [collapsed, setCollapsed] = useState(false);
+  const [modalMantenimiento, setModalMantenimiento] = useState(false);
+  const [modalAsistente, setModalAsistente] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole>("super_admin");
   const [search, setSearch] = useState("");
@@ -863,6 +867,58 @@ const AdminDashboard = () => {
               </button>
             );
           })}
+
+          
+          {/* SECCIÓN MANTENIMIENTO, RESETEO & BD */}
+          <div className="pt-4 my-2 border-t border-slate-100">
+            {(!collapsed || mobileMenuOpen) && (
+              <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider px-3.5 mb-2.5">
+                Mantenimiento & BD
+              </p>
+            )}
+
+            <button
+              onClick={() => {
+                setModalMantenimiento(true);
+                setMobileMenuOpen(false);
+              }}
+              title={collapsed ? "Mantenimiento, Reseteo & BD" : undefined}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-black text-amber-950 bg-amber-50/80 hover:bg-amber-100 hover:text-amber-900 border border-amber-200/70 transition-all cursor-pointer ${
+                collapsed && !mobileMenuOpen ? "justify-center px-0" : ""
+              }`}
+            >
+              <div className="flex items-center gap-3.5 truncate">
+                <Database className="w-5 h-5 text-amber-600 shrink-0" />
+                {(!collapsed || mobileMenuOpen) && <span className="truncate">Mantenimiento & BD</span>}
+              </div>
+              {(!collapsed || mobileMenuOpen) && (
+                <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-black uppercase">
+                  Panel
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => {
+                setModalAsistente(true);
+                setMobileMenuOpen(false);
+              }}
+              title={collapsed ? "Asistente Restauración (4 Pasos)" : undefined}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-black text-teal-950 bg-teal-50/80 hover:bg-teal-100 hover:text-teal-900 border border-teal-200/70 transition-all mt-1.5 cursor-pointer ${
+                collapsed && !mobileMenuOpen ? "justify-center px-0" : ""
+              }`}
+            >
+              <div className="flex items-center gap-3.5 truncate">
+                <Rocket className="w-5 h-5 text-teal-600 shrink-0" />
+                {(!collapsed || mobileMenuOpen) && <span className="truncate">Asistente BD (4 Pasos)</span>}
+              </div>
+              {(!collapsed || mobileMenuOpen) && (
+                <span className="text-[10px] bg-teal-200 text-teal-900 px-1.5 py-0.5 rounded font-black uppercase">
+                  Wizard
+                </span>
+              )}
+            </button>
+          </div>
 
           <div className="pt-4 my-2 border-t border-slate-100">
             {(!collapsed || mobileMenuOpen) && (
@@ -1790,6 +1846,22 @@ const AdminDashboard = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL MANTENIMIENTO, RESETEO & MIGRACIÓN (6 PESTAÑAS) */}
+      <MantenimientoMigracionModal
+        open={modalMantenimiento}
+        onOpenChange={setModalMantenimiento}
+        adminNombre={currentUserObj?.nombre || "SUPER ADMIN"}
+        onDatosActualizados={() => {
+          queryClient.invalidateQueries();
+        }}
+      />
+
+      {/* MODAL ASISTENTE DE RESTAURACIÓN & SETUP (4 PASOS) */}
+      <AsistenteRestauracionModal
+        open={modalAsistente}
+        onOpenChange={setModalAsistente}
+      />
     </div>
   );
 };
