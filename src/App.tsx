@@ -13,6 +13,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import DownloadInvitation from "./pages/DownloadInvitation";
 import CheckIn from "./pages/CheckIn";
 import AuditorioPage from "./pages/AuditorioPage";
+import PastoralChatPage from "./pages/PastoralChatPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +39,9 @@ const App = () => (
             <Route path="/descargar/:id" element={<DownloadInvitation />} />
             <Route path="/checkin" element={<CheckIn />} />
             <Route path="/auditorio" element={<AuditorioPage />} />
+            <Route path="/chat-pastoral" element={<PastoralChatPage />} />
+            <Route path="/consejeria" element={<PastoralChatPage />} />
+            <Route path="/pastor-virtual" element={<PastoralChatPage />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />

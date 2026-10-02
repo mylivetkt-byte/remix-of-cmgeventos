@@ -54,7 +54,17 @@ export const EventCatalogPage = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link to="/chat-pastoral">
+              <Button size="sm" className="bg-gradient-to-r from-teal-800 to-emerald-700 hover:from-teal-900 hover:to-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs gap-1.5 border border-teal-600/30">
+                <Heart className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
+                <span>Pastor Virtual</span>
+                <Badge className="bg-amber-400 text-slate-950 font-black text-[9px] px-1 py-0 shadow-none ml-1 hidden sm:inline">
+                  CHAT IA
+                </Badge>
+              </Button>
+            </Link>
+
             <Link to="/admin/login">
               <Button variant="outline" size="sm" className="border-slate-200 bg-white text-slate-700 hover:bg-slate-100 text-xs font-semibold rounded-xl shadow-xs">
                 <ShieldCheck className="w-4 h-4 mr-1.5 text-teal-600" />
@@ -259,10 +269,34 @@ export const EventCatalogPage = () => {
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
           <p>© {new Date().getFullYear()} Doxa Eventos • Centro Mundial de Gloria. Todos los derechos reservados.</p>
           <div className="flex items-center gap-4 text-slate-700 font-semibold">
+            <Link to="/chat-pastoral" className="text-teal-700 hover:underline flex items-center gap-1 font-bold">
+              🕊️ Consejería & Oración Virtual
+            </Link>
             <Link to="/admin/login" className="hover:text-teal-700 transition-colors">Administración</Link>
           </div>
         </div>
       </footer>
+
+      {/* Botón Flotante Permanente al Chat Pastoral */}
+      <div className="fixed bottom-6 right-6 z-40 flex items-center gap-2 group">
+        <div className="hidden md:flex bg-slate-900/90 text-white text-xs px-3.5 py-2 rounded-2xl shadow-xl border border-emerald-500/30 backdrop-blur-md items-center gap-2 animate-bounce [animation-duration:3s]">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <span>¿Necesitas oración o un consejo bíblico?</span>
+        </div>
+
+        <Link
+          to="/chat-pastoral"
+          className="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-800 via-teal-700 to-amber-500 text-white shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all border-2 border-white/80 p-0.5"
+          title="Hablar con el Pastor Virtual (Consejería y Oración)"
+        >
+          <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+            <Heart className="w-6 h-6 text-amber-400 fill-amber-400/30 group-hover:scale-110 transition-transform" />
+          </div>
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full flex items-center justify-center text-[8px] font-bold text-slate-950">
+            ✓
+          </span>
+        </Link>
+      </div>
     </div>
   );
 };
