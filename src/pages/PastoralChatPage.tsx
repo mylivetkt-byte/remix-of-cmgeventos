@@ -91,17 +91,12 @@ export const PastoralChatPage: React.FC = () => {
 
         const msgs = await PastoralChatService.loadMessages(sess.id);
         if (msgs.length === 0) {
-          const welcome = await PastoralChatService.generatePastorResponse(
-            sess.id,
-            "hola",
-            [],
-            existingName.trim()
-          );
+          const welcomeText = `¡Hola, ${existingName.trim()}! Qué alegría saludarte y tenerte aquí. Soy Bernabé.\n\nEstoy a tu disposición para escucharte, orar por ti y tu familia, o si tienes alguna inquietud sobre nuestras reuniones y actividades.\n\n¿Cómo te encuentras hoy y de qué te gustaría que conversemos?`;
           const saved = await PastoralChatService.saveMessage(
             sess.id,
             "assistant",
-            welcome.text,
-            welcome.intent
+            welcomeText,
+            "general"
           );
           setMessages([saved]);
         } else {
@@ -139,7 +134,7 @@ export const PastoralChatPage: React.FC = () => {
 
         const msgs = await PastoralChatService.loadMessages(session.id);
         if (msgs.length === 0) {
-          const welcomeText = `🕊️ **¡Hola, ${cleanName}! Qué bendición tan grande tenerte aquí.**\n\nSoy **Bernabé**, tu consejero espiritual y hermano en la fe en este espacio confidencial y de paz.\n\nEstoy aquí para acompañarte en:\n- 🙏 **Oración e Intercesión**: Si deseas clamar por tu vida, salud o familia.\n- 🕊️ **Consejería Bíblica**: Si necesitas una palabra de aliento o dirección en momentos difíciles.\n- ❤️ **Conocer a Jesús**: El regalo de salvación y una vida nueva en Cristo.\n- 📅 **Eventos y Retiros**: Para que conozcas y participes de nuestras próximas reuniones.\n\n¿Cómo te sientes hoy y en qué puedo servirte o apoyarte en este momento?\n\n*Con afecto fraternal,*\n**Bernabé** ✨`;
+          const welcomeText = `¡Hola, ${cleanName}! Qué bendición tenerte aquí. Soy Bernabé.\n\nEstoy a tu disposición para escucharte, orar por ti y tu familia, o si tienes alguna inquietud sobre nuestras reuniones y actividades.\n\n¿Cómo te encuentras hoy y de qué te gustaría que conversemos?`;
 
           const saved = await PastoralChatService.saveMessage(
             session.id,
@@ -221,6 +216,10 @@ export const PastoralChatPage: React.FC = () => {
         messages,
         userName || detectedName
       );
+
+      // Simular tiempo de escritura humana realista (entre 1.8s y 3.6s)
+      const humanDelay = Math.min(Math.max(response.text.length * 8, 1800), 3600);
+      await new Promise((resolve) => setTimeout(resolve, humanDelay));
 
       const responseMsg = await PastoralChatService.saveMessage(
         session.id,
@@ -644,17 +643,17 @@ export const PastoralChatPage: React.FC = () => {
             );
           })}
 
-          {/* Indicador de "Escribiendo y orando..." */}
+          {/* Indicador natural de "Escribiendo..." */}
           {isLoading && (
-            <div className="flex gap-3 items-center text-slate-400 text-xs italic">
+            <div className="flex gap-3 items-center text-slate-400 text-xs">
               <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center">
-                <Flame className="w-4 h-4 text-amber-400 animate-spin" />
+                <Flame className="w-4 h-4 text-amber-400 animate-pulse" />
               </div>
-              <div className="flex items-center gap-1.5 bg-slate-800/80 px-3.5 py-2 rounded-2xl border border-slate-700/60">
+              <div className="flex items-center gap-1.5 bg-slate-800/80 px-3.5 py-2 rounded-2xl border border-slate-700/60 shadow-xs">
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce" />
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:0.2s]" />
                 <span className="w-2 h-2 rounded-full bg-teal-400 animate-bounce [animation-delay:0.4s]" />
-                <span className="ml-2 text-slate-300 font-medium">Bernabé está respondiendo con oración...</span>
+                <span className="ml-2 text-slate-300 font-medium text-xs">Bernabé está escribiendo...</span>
               </div>
             </div>
           )}

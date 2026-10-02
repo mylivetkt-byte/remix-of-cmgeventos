@@ -353,7 +353,7 @@ REGLAS VITALES DE CONVERSACIÓN:
 5. Si pregunta por eventos, aquí tienes los eventos activos de la iglesia:
 ${eventsText || "No hay eventos especiales cargados en este momento."}
 6. No repitas saludos largos ni listas de menú en cada respuesta. Responde directo a lo que la persona te acaba de decir.
-7. Firma únicamente como "Bernabé" o con una bendición corta sin títulos de pastor virtual ni IA.`;
+7. REGLA ESTRICTA: NUNCA coloques firmas ni tu nombre al final de los mensajes (NO pongas 'Bernabé', 'Con amor', 'Atentamente', ni repitas tu nombre al final). Escribe directamente como una persona chateando con un amigo.`;
 
     const recentHistory = history.slice(-6).map((m) => ({
       role: m.role === "assistant" ? "assistant" : "user",
@@ -389,7 +389,8 @@ ${eventsText || "No hay eventos especiales cargados en este momento."}
         const data = await res.json();
         const content = data.choices?.[0]?.message?.content;
         if (content && typeof content === "string" && content.trim().length > 0) {
-          return content.trim();
+          // Limpiar si el modelo adjuntó firma accidentalmente
+          return content.replace(/\n\s*\*?\*?Bernabé\*?\*?.*$/i, "").trim();
         }
       }
     } catch (e) {
@@ -459,10 +460,7 @@ ${eventsText || "No hay eventos especiales cargados en este momento."}
 
 No quiero darte respuestas mecánicas ni parecer un contestador automático. Quiero escucharte a ti, de verdad y de corazón.
 
-Dime con total confianza: ¿qué estás viviendo en este momento o qué situación tienes en mente? No más discursos armados; háblame de lo que sientes, de lo que te preocupa o de lo que necesitas hoy, y conversemos como hermanos en la fe. Te escucho con toda mi atención.
-
-*Con aprecio sincero,  
-**${ADVISOR_NAME}***`,
+Dime con total confianza: ¿qué estás viviendo en este momento o qué situación tienes en mente? No más discursos armados; háblame de lo que sientes, de lo que te preocupa o de lo que necesitas hoy, y conversemos como hermanos en la fe. Te escucho con toda mi atención.`,
       };
     }
 
@@ -481,8 +479,7 @@ Dime con total confianza: ¿qué estás viviendo en este momento o qué situaci�
       const randomGreeting = greetingsResponses[Math.floor(Math.random() * greetingsResponses.length)];
       return {
         intent: "general",
-        text: `${randomGreeting}\n\n*Un abrazo en Cristo,  
-**${ADVISOR_NAME}***`,
+        text: randomGreeting,
       };
     }
 
@@ -506,10 +503,7 @@ Dime con total confianza: ¿qué estás viviendo en este momento o qué situaci�
 La Biblia nos dice con mucha sabiduría en *Santiago 1:19-20*:
 > *"Por esto, mis amados hermanos, todo hombre sea pronto para oír, tardo para hablar, tardo para airarse; porque la ira del hombre no obra la justicia de Dios."*
 
-No tienes que guardarte esa molestia tú solo/a. Desahógate conmigo: ¿qué fue exactamente lo que provocó este enojo o qué situación te tiene tan agotado/a? Aquí estoy para escucharte sin juzgarte.
-
-*Cuentas conmigo,  
-**${ADVISOR_NAME}*** 🕊️`,
+No tienes que guardarte esa molestia tú solo/a. Desahógate conmigo: ¿qué fue exactamente lo que provocó este enojo o qué situación te tiene tan agotado/a? Aquí estoy para escucharte sin juzgarte.`,
       };
     }
 
@@ -528,17 +522,14 @@ No tienes que guardarte esa molestia tú solo/a. Desahógate conmigo: ¿qué fue
       await this.addSpiritualMemory(sessionId, "emotional_state", "Tristeza o soledad manifestada");
       return {
         intent: "consejeria",
-        text: `🕊️ **Respira hondo, ${greeting}. Pon tu mano en el pecho un instante.**
+        text: `🕊️ Respira hondo, ${greeting}. Pon tu mano en el pecho un instante.
 
 Aunque sientas que nadie comprende tu dolor, Dios ve cada una de tus lágrimas. *Salmos 34:18* promete:
 > *"Cercano está Jehová a los quebrantados de corazón; y salva a los contritos de espíritu."*
 
 Esta tristeza no es el final de tu historia. Es un momento difícil, pero Dios está cerca para sanarte y sostenerte. 
 
-Si te sientes cómodo/a compartiéndolo, ¿qué es lo que más te ha dolido recientemente? Quiero escucharte y acompañarte en este paso.
-
-*A tu lado siempre,  
-**${ADVISOR_NAME}*** 🤍`,
+Si te sientes cómodo/a compartiéndolo, ¿qué es lo que más te ha dolido recientemente? Quiero escucharte y acompañarte en este paso.`,
       };
     }
 
@@ -555,10 +546,7 @@ Tu vida tiene un valor incalculable para Dios y para quienes te rodean. Aunque e
 🙏 **Oremos ahora mismo:**
 *Padre Celestial, en el nombre de Jesús, abrazo a ${greeting} en este momento de angustia. Envía Tu paz sobrenatural, reprende todo pensamiento de muerte y llena este corazón de vida y esperanza. En el nombre de Jesús, amén.*
 
-Por favor, comunícate con una línea de auxilio o acércate a nosotros en el Centro Mundial de Gloria. Queremos ayudarte. ¿Qué te tiene tan abrumado/a en este instante? Te escucho con amor.
-
-*Tu amigo y servidor,  
-**${ADVISOR_NAME}***`,
+Por favor, comunícate con una línea de auxilio o acércate a nosotros en el Centro Mundial de Gloria. Queremos ayudarte. ¿Qué te tiene tan abrumado/a en este instante? Te escucho con amor.`,
       };
     }
 
@@ -568,7 +556,7 @@ Por favor, comunícate con una línea de auxilio o acércate a nosotros en el Ce
       await this.addSpiritualMemory(sessionId, "decision_christ", "Interés o decisión por Cristo");
       return {
         intent: "salvacion",
-        text: `✨ **¡Qué bendición tan hermosa, ${greeting}!**
+        text: `✨ ¡Qué bendición tan hermosa, ${greeting}!
 
 No hay decisión más maravillosa que abrirle el corazón a Jesús. En *Juan 3:16* la Palabra nos enseña:
 > *"Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito, para que todo aquel que en él cree, no se pierda, mas tenga vida eterna."*
@@ -578,10 +566,7 @@ Jesús no mira tu pasado; Él te ofrece perdón total, paz y una vida completame
 Si deseas entregarle hoy tu vida, dile con fe desde el corazón:
 > *"Señor Jesús, hoy reconozco que te necesito. Te pido perdón por mis faltas. Creo que moriste por mí en la cruz y resucitaste. Te recibo hoy como mi Salvador y Señor. Hazme una nueva persona y escribe mi nombre en el Libro de la Vida. ¡Amén!"*
 
-¿Pudiste hacer esta oración? Me alegraría mucho saber cómo te sientes en este instante.
-
-*Firmes en la fe,  
-**${ADVISOR_NAME}*** 🕊️`,
+¿Pudiste hacer esta oración? Me alegraría mucho saber cómo te sientes en este instante.`,
       };
     }
 
@@ -599,10 +584,7 @@ La Biblia nos asegura en *Mateo 18:19*:
 🕊️ **Clamamos juntos:**
 *Padre Bueno, presentamos ante Ti a ${greeting}. Tú conoces su vida, su salud, su familia y cada detalle que le inquieta. Declaramos sanidad, restauración y paz sobre su hogar. Que Tu favor le acompañe en esta semana y que abra puertas donde parecía no haber camino. En el nombre poderoso de Jesús, ¡AMÉN!*
 
-Descansa en Sus promesas. ¿Hay algún detalle específico o nombre por el que quieras que sigamos intercediendo?
-
-*Con fe y amor,  
-**${ADVISOR_NAME}*** 🕊️`,
+Descansa en Sus promesas. ¿Hay algún detalle específico o nombre por el que quieras que sigamos intercediendo?`,
       };
     }
 
@@ -632,10 +614,7 @@ Aquí tienes la información de nuestras próximas reuniones:
 
 ${eventDetails}
 
-¿Te interesa asistir a alguno de ellos? Avísame si tienes preguntas sobre la llegada o la inscripción.
-
-*Bendiciones,  
-**${ADVISOR_NAME}*** ⛪`,
+¿Te interesa asistir a alguno de ellos? Avísame si tienes preguntas sobre la llegada o la inscripción.`,
       };
     }
 
@@ -650,10 +629,7 @@ ${eventDetails}
 La Palabra nos aconseja en *Colosenses 3:13*:
 > *"Soportándoos con paciencia los unos a los otros, y perdonándoos unos a otros si alguno tuviere queja contra otro. De la manera que Cristo os perdonó, así también hacedlo vosotros."*
 
-Las dificultades en el hogar no se vencen con discusiones duras, sino doblando rodillas, teniendo paciencia y sembrando amor. ¿Qué es lo más difícil que estás viviendo en tu familia en este momento?
-
-*En oración por tu hogar,  
-**${ADVISOR_NAME}*** 🌿`,
+Las dificultades en el hogar no se vencen con discusiones duras, sino doblando rodillas, teniendo paciencia y sembrando amor. ¿Qué es lo más difícil que estás viviendo en tu familia en este momento?`,
       };
     }
 
@@ -667,10 +643,7 @@ Sobre esto que me comentas: *" ${rawTrimmed} "*
 A veces la vida nos pone en encrucijadas o momentos donde necesitamos claridad y paz mental. Proverbios 3:5-6 nos recuerda:
 > *"Fíate de Jehová de todo tu corazón, y no te apoyes en tu propia prudencia. Reconócelo en todos tus caminos, y él enderezará tus veredas."*
 
-Cuéntame un poco más a fondo: ¿qué es lo que más te inquieta de esta situación o cómo sientes que puedo ayudarte a encontrar paz y dirección en esto hoy?
-
-*Siempre contigo,  
-**${ADVISOR_NAME}*** ✨`,
+Cuéntame un poco más a fondo: ¿qué es lo que más te inquieta de esta situación o cómo sientes que puedo ayudarte a encontrar paz y dirección en esto hoy?`,
     };
   }
 }
