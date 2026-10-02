@@ -58,10 +58,7 @@ export const EventCatalogPage = () => {
             <Link to="/chat-pastoral">
               <Button size="sm" className="bg-gradient-to-r from-teal-800 to-emerald-700 hover:from-teal-900 hover:to-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs gap-1.5 border border-teal-600/30">
                 <Heart className="w-3.5 h-3.5 text-amber-300 fill-amber-300" />
-                <span>Pastor Virtual</span>
-                <Badge className="bg-amber-400 text-slate-950 font-black text-[9px] px-1 py-0 shadow-none ml-1 hidden sm:inline">
-                  CHAT IA
-                </Badge>
+                <span>Consejería & Oración</span>
               </Button>
             </Link>
 
@@ -270,7 +267,7 @@ export const EventCatalogPage = () => {
           <p>© {new Date().getFullYear()} Doxa Eventos • Centro Mundial de Gloria. Todos los derechos reservados.</p>
           <div className="flex items-center gap-4 text-slate-700 font-semibold">
             <Link to="/chat-pastoral" className="text-teal-700 hover:underline flex items-center gap-1 font-bold">
-              🕊️ Consejería & Oración Virtual
+              🕊️ Consejería & Oración
             </Link>
             <Link to="/admin/login" className="hover:text-teal-700 transition-colors">Administración</Link>
           </div>
@@ -287,7 +284,7 @@ export const EventCatalogPage = () => {
         <Link
           to="/chat-pastoral"
           className="relative flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-800 via-teal-700 to-amber-500 text-white shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all border-2 border-white/80 p-0.5"
-          title="Hablar con el Pastor Virtual (Consejería y Oración)"
+          title="Consejería y Oración"
         >
           <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
             <Heart className="w-6 h-6 text-amber-400 fill-amber-400/30 group-hover:scale-110 transition-transform" />

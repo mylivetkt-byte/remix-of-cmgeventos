@@ -25,7 +25,7 @@ export interface PastoralSession {
 }
 
 const STORAGE_KEY = "pastoral_agent_session_token_v1";
-const PASTOR_NAME = "Pastor Bernabé";
+const ADVISOR_NAME = "Bernabé";
 
 export class PastoralChatService {
   /**
@@ -319,10 +319,10 @@ El enemigo quiere hacerte creer que este es el final, pero Dios aún tiene plane
 🙏 **Oremos ahora mismo:**
 *Padre Celestial, en el nombre de Jesús, abrazo a ${greeting} en este momento de angustia extrema. Te pido que envíes a tus ángeles y a tu Santo Espíritu trayendo paz que sobrepasa todo entendimiento. Rompe toda tiniebla de desesperación, reprende el espíritu de muerte y llena este corazón con tu amor infinito. En el nombre de Jesús, amén.*
 
-Por favor, comunícate de inmediato con una línea de ayuda de tu país o acércate a los pastores y líderes de nuestra iglesia. Estamos aquí para ti con los brazos abiertos. ¿Puedes contarme qué es lo que más te aflige en este instante? Te escucho con amor.
+Por favor, comunícate de inmediato con una línea de ayuda de tu país o acércate a los líderes de nuestra iglesia. Estamos aquí para ti con los brazos abiertos. ¿Puedes contarme qué es lo que más te aflige en este instante? Te escucho con amor.
 
-*Con amor pastoral,  
-**${PASTOR_NAME}** - Tu consejero y amigo.*`,
+*Con aprecio sincero y oración,  
+**${ADVISOR_NAME}** - Tu consejero y amigo.*`,
       };
     }
 
@@ -345,7 +345,7 @@ Si deseas entregarle hoy tu vida, repite con fe desde lo profundo de tu corazón
 Si hiciste esta oración, ¡hoy hay fiesta en los cielos por tu alma! Cuéntame, ¿cómo te sientes ahora mismo? Me encantaría acompañarte y guiarte en tus primeros pasos de fe.
 
 *Siempre a tu lado en oración,  
-**${PASTOR_NAME}*** 🕊️`,
+**${ADVISOR_NAME}*** 🕊️`,
       };
     }
 
@@ -379,7 +379,7 @@ ${eventDetails}
 ¿Te llama la atención alguno de estos eventos? Puedo ayudarte con cualquier inquietud sobre la inscripción o la llegada. ¡Será un privilegio inmenso verte allí adorando juntos a Dios!
 
 *Bendiciones abundantes,  
-**${PASTOR_NAME}*** ⛪`,
+**${ADVISOR_NAME}*** ⛪`,
       };
     }
 
@@ -395,7 +395,7 @@ Jesús nos dio esta promesa infalible en *Mateo 18:19*:
 
 Clamemos juntos en este momento:
 
-🕊️ **Oración Pastoral:**
+🕊️ **Oración:**
 *Padre Bueno, Dios de toda consolación y Señor de la vida, hoy me pongo en mutuo acuerdo con ${activeName || "esta vida preciosa"}. Ponemos delante de Tu altar esta necesidad, el dolor, la salud y cada anhelo de su corazón. Declaramos que por las llagas de Cristo hay sanidad física, emocional y espiritual.*
 
 *Envía Tu paz sobrenatural que disipa todo temor y angustia. Suple cada necesidad según tus riquezas en gloria. Que esta semana sea testigo de Tu mano milagrosa y de Tu provisión. Te damos toda la gloria, honra y alabanza, en el nombre poderoso de Cristo Jesús, ¡AMÉN!*
@@ -403,7 +403,7 @@ Clamemos juntos en este momento:
 Descansa en sus promesas hoy. Si hay algún detalle específico que quieras que continúe intercediendo en mi altar de oración, compártemelo con total confianza.
 
 *Firmes en la fe,  
-**${PASTOR_NAME}*** 🕊️`,
+**${ADVISOR_NAME}*** 🕊️`,
       };
     }
 
@@ -419,10 +419,10 @@ En los momentos de dificultad en el hogar o la pareja, la Palabra nos recuerda e
 
 Recuerda que las batallas en el hogar no se ganan con contiendas ni con dureza de palabras, sino doblando rodillas y aplicando perdón diario (*Colosenses 3:13*). El amor de Cristo es capaz de restaurar vasijas rotas y devolver la armonía donde parecía imposible.
 
-¿Te gustaría que oremos juntos por la restauración y unidad de tu hogar en este instante? Cuéntame un poco más para bendecirte con dirección pastoral.
+¿Te gustaría que oremos juntos por la restauración y unidad de tu hogar en este instante? Cuéntame un poco más para bendecirte con dirección espiritual.
 
 *Con afecto fraternal,  
-**${PASTOR_NAME}*** 🌿`,
+**${ADVISOR_NAME}*** 🌿`,
       };
     }
 
@@ -441,7 +441,7 @@ Dios no te ha abandonado ni un solo segundo. Esta prueba no define tu futuro; es
 Te invito a soltar esa carga pesada hoy en Sus manos. ¿Qué es lo que más te pesa hoy en tu mente? Aquí estoy para escucharte con amor cristiano y sin juzgarte jamás.
 
 *Tu servidor en Cristo,  
-**${PASTOR_NAME}*** 🕯️`,
+**${ADVISOR_NAME}*** 🕯️`,
       };
     }
 
@@ -450,7 +450,7 @@ Te invito a soltar esa carga pesada hoy en Sus manos. ¿Qué es lo que más te p
       intent: "general",
       text: `🕊️ **La gracia y la paz de nuestro Señor Jesucristo sean contigo, ${greeting}.**
 
-Soy el **${PASTOR_NAME}**, tu consejero pastoral y amigo espiritual en este espacio sagrado y confidencial.
+Soy **${ADVISOR_NAME}**, tu consejero espiritual y hermano en la fe en este espacio confidencial.
 
 Estoy aquí para caminar contigo en:
 - 🙏 **Oración e Intercesión**: Si necesitas clamar por sanidad, paz o tu familia.
@@ -461,7 +461,7 @@ Estoy aquí para caminar contigo en:
 ¿Cómo te sientes hoy y en qué puedo orar o apoyarte en este momento?
 
 *En el amor de Cristo,  
-**${PASTOR_NAME}*** ✨`,
+**${ADVISOR_NAME}*** ✨`,
     };
   }
 }

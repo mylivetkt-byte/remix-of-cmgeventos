@@ -11,17 +11,14 @@ import {
   RotateCcw,
   Sparkles,
   Heart,
-  Calendar,
   ShieldCheck,
   Brain,
   ArrowLeft,
-  Trash2,
   Flame,
-  Radio,
-  Share2,
+  User,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -51,8 +48,14 @@ export const PastoralChatPage: React.FC = () => {
   const [memories, setMemories] = useState<SpiritualMemory[]>([]);
   const [userName, setUserName] = useState<string | null>(null);
 
+  // Pantalla previa para pedir nombre antes de iniciar
+  const [isAskingName, setIsAskingName] = useState(false);
+  const [enteredName, setEnteredName] = useState("");
+  const [isSubmittingName, setIsSubmittingName] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   const {
     isRecording,
@@ -64,40 +67,93 @@ export const PastoralChatPage: React.FC = () => {
     formatTime,
   } = useVoiceRecorder();
 
-  // 1. Inicializar sesión y cargar mensajes
+  // 1. Inicializar sesión y verificar si ya tiene nombre registrado
   useEffect(() => {
     const init = async () => {
       const sess = await PastoralChatService.getOrCreateSession();
       setSession(sess);
-      setUserName(sess.user_name);
 
-      const msgs = await PastoralChatService.loadMessages(sess.id);
-      if (msgs.length === 0) {
-        // Mensaje de bienvenida inicial
-        const welcome = await PastoralChatService.generatePastorResponse(
-          sess.id,
-          "hola",
-          [],
-          sess.user_name
-        );
-        const saved = await PastoralChatService.saveMessage(
-          sess.id,
-          "assistant",
-          welcome.text,
-          welcome.intent
-        );
-        setMessages([saved]);
+      const existingName = sess.user_name || localStorage.getItem("pastoral_user_name");
+
+      if (existingName && existingName.trim().length > 0) {
+        setUserName(existingName.trim());
+        setIsAskingName(false);
+
+        const msgs = await PastoralChatService.loadMessages(sess.id);
+        if (msgs.length === 0) {
+          const welcome = await PastoralChatService.generatePastorResponse(
+            sess.id,
+            "hola",
+            [],
+            existingName.trim()
+          );
+          const saved = await PastoralChatService.saveMessage(
+            sess.id,
+            "assistant",
+            welcome.text,
+            welcome.intent
+          );
+          setMessages([saved]);
+        } else {
+          setMessages(msgs);
+        }
+
+        const mems = await PastoralChatService.loadSpiritualMemories(sess.id);
+        setMemories(mems);
       } else {
-        setMessages(msgs);
+        // No tiene nombre aún: mostrar pantalla para identificarse antes de iniciar
+        setIsAskingName(true);
+        setTimeout(() => nameInputRef.current?.focus(), 200);
       }
-
-      // Cargar memorias
-      const mems = await PastoralChatService.loadSpiritualMemories(sess.id);
-      setMemories(mems);
     };
 
     init();
   }, []);
+
+  // Manejo de confirmación de nombre al inicio
+  const handleConfirmName = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const cleanName = enteredName.trim();
+    if (!cleanName) {
+      toast.error("Por favor escribe tu nombre para identificarte.");
+      return;
+    }
+
+    setIsSubmittingName(true);
+    try {
+      setUserName(cleanName);
+      localStorage.setItem("pastoral_user_name", cleanName);
+
+      if (session) {
+        await PastoralChatService.updateUserName(session.id, cleanName);
+
+        const msgs = await PastoralChatService.loadMessages(session.id);
+        if (msgs.length === 0) {
+          const welcomeText = `🕊️ **¡Hola, ${cleanName}! Qué bendición tan grande tenerte aquí.**\n\nSoy **Bernabé**, tu consejero espiritual y hermano en la fe en este espacio confidencial y de paz.\n\nEstoy aquí para acompañarte en:\n- 🙏 **Oración e Intercesión**: Si deseas clamar por tu vida, salud o familia.\n- 🕊️ **Consejería Bíblica**: Si necesitas una palabra de aliento o dirección en momentos difíciles.\n- ❤️ **Conocer a Jesús**: El regalo de salvación y una vida nueva en Cristo.\n- 📅 **Eventos y Retiros**: Para que conozcas y participes de nuestras próximas reuniones.\n\n¿Cómo te sientes hoy y en qué puedo servirte o apoyarte en este momento?\n\n*Con afecto fraternal,*\n**Bernabé** ✨`;
+
+          const saved = await PastoralChatService.saveMessage(
+            session.id,
+            "assistant",
+            welcomeText,
+            "general"
+          );
+          setMessages([saved]);
+        } else {
+          setMessages(msgs);
+        }
+
+        const mems = await PastoralChatService.loadSpiritualMemories(session.id);
+        setMemories(mems);
+      }
+
+      setIsAskingName(false);
+    } catch (err) {
+      console.error("Error al registrar nombre:", err);
+      setIsAskingName(false);
+    } finally {
+      setIsSubmittingName(false);
+    }
+  };
 
   // 2. Si hay transcripción en tiempo real de voz, sincronizarla con el input
   useEffect(() => {
@@ -147,7 +203,7 @@ export const PastoralChatPage: React.FC = () => {
       await PastoralChatService.updateUserName(session.id, detectedName);
     }
 
-    // Generar respuesta pastoral
+    // Generar respuesta
     try {
       const response = await PastoralChatService.generatePastorResponse(
         session.id,
@@ -156,21 +212,20 @@ export const PastoralChatPage: React.FC = () => {
         userName || detectedName
       );
 
-      const pastorMsg = await PastoralChatService.saveMessage(
+      const responseMsg = await PastoralChatService.saveMessage(
         session.id,
         "assistant",
         response.text,
         response.intent
       );
 
-      setMessages((prev) => [...prev, pastorMsg]);
+      setMessages((prev) => [...prev, responseMsg]);
 
-      // Refrescar memorias
       const updatedMemories = await PastoralChatService.loadSpiritualMemories(session.id);
       setMemories(updatedMemories);
     } catch (err) {
       console.error("Error al generar respuesta:", err);
-      toast.error("Ocurrió un inconveniente al recibir el mensaje pastoral.");
+      toast.error("Ocurrió un inconveniente al recibir el mensaje.");
     } finally {
       setIsLoading(false);
     }
@@ -189,7 +244,7 @@ export const PastoralChatPage: React.FC = () => {
     }
   };
 
-  // Reproducir voz del pastor (Text-to-Speech)
+  // Reproducir voz (Text-to-Speech)
   const handleSpeakMessage = (msgId: string, text: string) => {
     if (!("speechSynthesis" in window)) {
       toast.error("Tu navegador no soporta lectura por voz.");
@@ -204,7 +259,6 @@ export const PastoralChatPage: React.FC = () => {
 
     window.speechSynthesis.cancel();
 
-    // Limpiar markdown básico para lectura fluida
     const cleanText = text
       .replace(/\*\*/g, "")
       .replace(/[#*_>~`]/g, "")
@@ -212,14 +266,19 @@ export const PastoralChatPage: React.FC = () => {
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = "es-ES";
-    utterance.rate = 0.95; // Un poco más pausado y pastoral
+    utterance.rate = 0.95;
     utterance.pitch = 0.98;
 
-    // Buscar voz en español cálida si está disponible
     const voices = window.speechSynthesis.getVoices();
-    const spanishVoice = voices.find(
-      (v) => v.lang.startsWith("es") && (v.name.includes("Natural") || v.name.includes("Pablo") || v.name.includes("Jorge") || v.name.includes("Google"))
-    ) || voices.find((v) => v.lang.startsWith("es"));
+    const spanishVoice =
+      voices.find(
+        (v) =>
+          v.lang.startsWith("es") &&
+          (v.name.includes("Natural") ||
+            v.name.includes("Pablo") ||
+            v.name.includes("Jorge") ||
+            v.name.includes("Google"))
+      ) || voices.find((v) => v.lang.startsWith("es"));
 
     if (spanishVoice) {
       utterance.voice = spanishVoice;
@@ -271,15 +330,89 @@ export const PastoralChatPage: React.FC = () => {
 
   // Píldoras de acción rápida
   const quickPills = [
-    { label: "Pedir una oración 🙏", text: "Pastor, necesito pedir una oración por mi vida y mi familia" },
-    { label: "Necesito un consejo 🕊️", text: "Pastor, estoy pasando por un momento difícil y necesito un consejo bíblico" },
-    { label: "¿Próximos eventos? 📅", text: "¿Qué eventos, retiros o actividades tienen en la iglesia próximamente?" },
-    { label: "Conocer a Jesús ❤️", text: "Pastor, siento un vacío en mi corazón y quiero conocer a Jesús y salvar mi alma" },
+    { label: "Pedir una oración 🙏", text: "Bernabé, necesito pedir una oración por mi vida y mi familia" },
+    { label: "Necesito un consejo 🕊️", text: "Bernabé, estoy pasando por un momento difícil y necesito un consejo bíblico" },
+    { label: "¿Próximos eventos? 📅", text: "¿Qué eventos, retiros o actividades tienen próximamente?" },
+    { label: "Conocer a Jesús ❤️", text: "Bernabé, siento un vacío en mi corazón y quiero conocer a Jesús y salvar mi alma" },
   ];
 
+  // -------------------------------------------------------------
+  // PANTALLA PREVIA: SOLICITAR NOMBRE PARA IDENTIFICARSE
+  // -------------------------------------------------------------
+  if (isAskingName) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-slate-100 font-sans items-center justify-center p-4">
+        <div className="w-full max-w-md bg-slate-900/90 border border-emerald-800/40 rounded-3xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+          {/* Brillo ambiental */}
+          <div className="absolute top-0 right-0 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 text-center space-y-4">
+            {/* Ícono cálido */}
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-800 via-teal-700 to-amber-500 p-0.5 shadow-lg mx-auto flex items-center justify-center">
+              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-amber-400">
+                <Heart className="w-8 h-8 text-amber-400 fill-amber-400/20 animate-pulse" />
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                Espacio de Consejería & Oración
+              </h2>
+              <p className="text-xs text-emerald-400/90 font-medium mt-1">
+                Centro Mundial de Gloria • Confidencial y Seguro
+              </p>
+            </div>
+
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed pt-1">
+              Para acompañarte de manera personal, llamarte por tu nombre y orar por ti, por favor dinos cómo te llamas:
+            </p>
+
+            <form onSubmit={handleConfirmName} className="space-y-4 pt-2">
+              <div className="relative">
+                <User className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  value={enteredName}
+                  onChange={(e) => setEnteredName(e.target.value)}
+                  placeholder="Escribe tu nombre (Ej: Carlos, Andrea...)"
+                  maxLength={40}
+                  className="w-full bg-slate-950/80 border border-slate-700 focus:border-emerald-500 rounded-2xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-slate-500 focus:outline-hidden transition-all shadow-inner"
+                  required
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={!enteredName.trim() || isSubmittingName}
+                className="w-full bg-gradient-to-r from-emerald-700 via-teal-700 to-teal-800 hover:from-emerald-600 hover:to-teal-700 text-white font-bold h-12 rounded-2xl shadow-lg transition-all active:scale-98 flex items-center justify-center gap-2"
+              >
+                <span>Comenzar conversación</span>
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </form>
+
+            <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+              <Link to="/" className="hover:text-slate-200 transition-colors flex items-center gap-1">
+                <ArrowLeft className="w-3.5 h-3.5" /> Volver al catálogo
+              </Link>
+              <span className="flex items-center gap-1 text-[11px] text-emerald-400/80">
+                <ShieldCheck className="w-3.5 h-3.5" /> Sesión 100% privada
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
+  // PANTALLA PRINCIPAL DEL CHAT
+  // -------------------------------------------------------------
   return (
     <div className="flex flex-col h-screen bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 text-slate-100 font-sans">
-      {/* 1. Header Pastoral */}
+      {/* 1. Header */}
       <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-emerald-900/40 px-4 py-3 shadow-lg">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -291,7 +424,7 @@ export const PastoralChatPage: React.FC = () => {
               <ArrowLeft className="w-5 h-5" />
             </Link>
 
-            {/* Avatar Pastoral con Halo Dorado */}
+            {/* Avatar con Halo Dorado */}
             <div className="relative">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-800 via-teal-700 to-amber-500 p-0.5 shadow-md flex items-center justify-center">
                 <div className="w-full h-full bg-slate-900 rounded-[14px] flex items-center justify-center text-amber-400">
@@ -304,9 +437,9 @@ export const PastoralChatPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="font-bold text-base sm:text-lg text-white tracking-tight flex items-center gap-1.5">
-                  Pastor Bernabé
-                  <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 text-[10px] py-0 px-1.5 font-medium">
-                    CONSEJERO ESPIRITUAL
+                  Bernabé
+                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[10px] py-0 px-1.5 font-medium">
+                    CONSEJERÍA & ORACIÓN
                   </Badge>
                 </h1>
               </div>
@@ -348,7 +481,7 @@ export const PastoralChatPage: React.FC = () => {
         </div>
       </header>
 
-      {/* 2. Banner de Privacidad y Píldoras de Inicio Rápido */}
+      {/* 2. Banner de Privacidad e Identificación */}
       <div className="bg-slate-950/60 border-b border-slate-800/60 px-4 py-2">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2 text-slate-400">
@@ -359,7 +492,7 @@ export const PastoralChatPage: React.FC = () => {
           </div>
 
           {userName && (
-            <Badge className="bg-emerald-950/80 text-emerald-300 border-emerald-700/50 text-xs">
+            <Badge className="bg-emerald-950/80 text-emerald-300 border-emerald-700/50 text-xs font-semibold">
               Hermano/a: {userName}
             </Badge>
           )}
@@ -373,7 +506,7 @@ export const PastoralChatPage: React.FC = () => {
           {messages.length <= 2 && (
             <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900/60 to-slate-950/40 border border-emerald-800/30">
               <p className="text-xs font-semibold text-amber-300/90 mb-2 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> ¿En qué podemos acompañarte hoy?
+                <Sparkles className="w-3.5 h-3.5" /> ¿En qué podemos acompañarte hoy, {userName || ""}?
               </p>
               <div className="flex flex-wrap gap-2">
                 {quickPills.map((pill) => (
@@ -391,14 +524,14 @@ export const PastoralChatPage: React.FC = () => {
 
           {/* Listado de mensajes */}
           {messages.map((msg) => {
-            const isPastor = msg.role === "assistant";
+            const isAdvisor = msg.role === "assistant";
             return (
               <div
                 key={msg.id}
-                className={`flex gap-3 ${isPastor ? "justify-start" : "justify-end"} group`}
+                className={`flex gap-3 ${isAdvisor ? "justify-start" : "justify-end"} group`}
               >
-                {/* Avatar Pastor */}
-                {isPastor && (
+                {/* Avatar */}
+                {isAdvisor && (
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-800 to-amber-600 p-0.5 shrink-0 shadow-sm mt-1">
                     <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center text-amber-400">
                       <Flame className="w-4 h-4 text-amber-400" />
@@ -409,7 +542,7 @@ export const PastoralChatPage: React.FC = () => {
                 {/* Burbuja de Mensaje */}
                 <div
                   className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 shadow-md relative ${
-                    isPastor
+                    isAdvisor
                       ? "bg-slate-800/90 border border-slate-700/80 text-slate-100 rounded-tl-xs"
                       : "bg-gradient-to-br from-teal-700 to-emerald-800 text-white rounded-tr-xs shadow-teal-900/20"
                   }`}
@@ -417,10 +550,16 @@ export const PastoralChatPage: React.FC = () => {
                   {/* Encabezado de la burbuja */}
                   <div className="flex items-center justify-between gap-2 mb-1.5 text-[11px] opacity-80">
                     <span className="font-semibold flex items-center gap-1">
-                      {isPastor ? "Pastor Bernabé" : userName || "Tú"}
-                      {isPastor && msg.intent && (
+                      {isAdvisor ? "Bernabé" : userName || "Tú"}
+                      {isAdvisor && msg.intent && (
                         <span className="capitalize px-1.5 py-0.2 bg-emerald-950/70 border border-emerald-700/40 text-[9px] rounded-md text-emerald-300 ml-1">
-                          {msg.intent === "salvacion" ? "🕊️ Salvación" : msg.intent === "oracion" ? "🙏 Oración" : msg.intent === "evento" ? "📅 Evento" : "Consejería"}
+                          {msg.intent === "salvacion"
+                            ? "🕊️ Salvación"
+                            : msg.intent === "oracion"
+                            ? "🙏 Oración"
+                            : msg.intent === "evento"
+                            ? "📅 Evento"
+                            : "Consejería"}
                         </span>
                       )}
                     </span>
@@ -429,7 +568,7 @@ export const PastoralChatPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Contenido con formato y saltos de línea */}
+                  {/* Contenido */}
                   <div className="text-sm leading-relaxed whitespace-pre-wrap font-normal selection:bg-amber-500/30">
                     {msg.content}
                   </div>
@@ -442,9 +581,8 @@ export const PastoralChatPage: React.FC = () => {
                   )}
 
                   {/* Acciones de la burbuja (Copiar, Escuchar con voz) */}
-                  {isPastor && (
+                  {isAdvisor && (
                     <div className="flex items-center justify-end gap-2 mt-2 pt-2 border-t border-slate-700/60 text-slate-400">
-                      {/* Botón de Escuchar Audio */}
                       <button
                         type="button"
                         onClick={() => handleSpeakMessage(msg.id, msg.content)}
@@ -453,7 +591,7 @@ export const PastoralChatPage: React.FC = () => {
                             ? "bg-amber-500/20 text-amber-300 font-semibold animate-pulse"
                             : "hover:text-amber-300 hover:bg-slate-700/60"
                         }`}
-                        title="Escuchar al Pastor orar / hablar"
+                        title="Escuchar mensaje con voz"
                       >
                         {speakingMessageId === msg.id ? (
                           <>
@@ -461,12 +599,11 @@ export const PastoralChatPage: React.FC = () => {
                           </>
                         ) : (
                           <>
-                            <Volume2 className="w-3.5 h-3.5" /> Escuchar voz
+                            <Volume2 className="w-3.5 h-3.5" /> Escuchar con voz
                           </>
                         )}
                       </button>
 
-                      {/* Botón Copiar */}
                       <button
                         type="button"
                         onClick={() => handleCopyMessage(msg.id, msg.content)}
@@ -496,7 +633,7 @@ export const PastoralChatPage: React.FC = () => {
                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce" />
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce [animation-delay:0.2s]" />
                 <span className="w-2 h-2 rounded-full bg-teal-400 animate-bounce [animation-delay:0.4s]" />
-                <span className="ml-2 text-slate-300 font-medium">El Pastor Bernabé está respondiendo con oración...</span>
+                <span className="ml-2 text-slate-300 font-medium">Bernabé está respondiendo con oración...</span>
               </div>
             </div>
           )}
@@ -516,7 +653,7 @@ export const PastoralChatPage: React.FC = () => {
               </span>
               <span className="font-semibold text-sm">Grabando audio: {formatTime(recordingTime)}</span>
               <span className="hidden sm:inline text-red-300 italic">
-                (Habla libremente tu petición de oración o desahogo)
+                (Habla libremente tu petición de oración o necesidad)
               </span>
             </div>
 
@@ -593,7 +730,7 @@ export const PastoralChatPage: React.FC = () => {
           </form>
 
           <p className="text-[11px] text-center text-slate-500 mt-2">
-            Este chat es un apoyo pastoral y espiritual fundamentado en la Biblia. En emergencias de salud o peligro, acude de inmediato a los servicios de auxilio.
+            Este espacio de consejería y oración está fundamentado en la Biblia. En emergencias de salud o peligro, acude de inmediato a los servicios de auxilio.
           </p>
         </div>
       </footer>
@@ -607,7 +744,7 @@ export const PastoralChatPage: React.FC = () => {
               Cerebro Espiritual & Memoria de la Sesión
             </DialogTitle>
             <DialogDescription className="text-slate-400 text-xs">
-              Aquí se guardan de forma confidencial tus motivos de oración y temas tratados para que el Pastor te recuerde en futuras visitas.
+              Aquí se guardan de forma confidencial tus motivos de oración y temas tratados para recordarte en futuras visitas.
             </DialogDescription>
           </DialogHeader>
 
@@ -620,7 +757,7 @@ export const PastoralChatPage: React.FC = () => {
             <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs">
               <span className="text-slate-400 block mb-1 font-semibold">Nombre reconocido:</span>
               <span className="text-white font-medium text-sm">
-                {userName ? `Hermano/a ${userName}` : "No especificado aún (puedes decirle tu nombre al Pastor)"}
+                {userName ? `Hermano/a ${userName}` : "No especificado"}
               </span>
             </div>
 
@@ -631,7 +768,7 @@ export const PastoralChatPage: React.FC = () => {
 
               {memories.length === 0 ? (
                 <p className="text-xs text-slate-500 italic p-3 text-center bg-slate-950/40 rounded-xl">
-                  Aún no se han registrado motivos en esta sesión. Cuando le pidas una oración al Pastor, se guardará aquí.
+                  Aún no se han registrado motivos en esta sesión. Cuando solicites una oración o consejo, se guardará aquí.
                 </p>
               ) : (
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
