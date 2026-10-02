@@ -581,7 +581,7 @@ DECLARE
   v_user_id UUID := '00000000-0000-0000-0000-000000000001';
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'cmeventos@gmail.com') THEN
-    -- Insertar nuevo usuario con contraseña encriptada por bcrypt
+    -- Insertar nuevo usuario con contraseña encriptada por bcrypt y columnas no-nulas
     INSERT INTO auth.users (
       instance_id,
       id,
@@ -595,7 +595,13 @@ BEGIN
       created_at,
       updated_at,
       confirmation_token,
-      recovery_token
+      recovery_token,
+      email_change_token_new,
+      email_change_token_current,
+      email_change,
+      phone_change,
+      phone_change_token,
+      reauthentication_token
     ) VALUES (
       '00000000-0000-0000-0000-000000000000',
       v_user_id,
@@ -608,6 +614,12 @@ BEGIN
       '{"nombre":"Super Administrador CMG","rol":"super_admin"}'::jsonb,
       now(),
       now(),
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
       '',
       ''
     );
@@ -641,11 +653,19 @@ BEGIN
     END IF;
 
   ELSE
-    -- Si el usuario ya existe, actualizar contraseña a cmg2026 y confirmar correo
+    -- Si el usuario ya existe, actualizar contraseña a cmg2026, confirmar correo y sanear campos NULL
     UPDATE auth.users
     SET encrypted_password = crypt('cmg2026', gen_salt('bf')),
         email_confirmed_at = COALESCE(email_confirmed_at, now()),
         raw_user_meta_data = '{"nombre":"Super Administrador CMG","rol":"super_admin"}'::jsonb,
+        confirmation_token = COALESCE(confirmation_token, ''),
+        recovery_token = COALESCE(recovery_token, ''),
+        email_change_token_new = COALESCE(email_change_token_new, ''),
+        email_change_token_current = COALESCE(email_change_token_current, ''),
+        email_change = COALESCE(email_change, ''),
+        phone_change = COALESCE(phone_change, ''),
+        phone_change_token = COALESCE(phone_change_token, ''),
+        reauthentication_token = COALESCE(reauthentication_token, ''),
         updated_at = now()
     WHERE email = 'cmeventos@gmail.com';
 
