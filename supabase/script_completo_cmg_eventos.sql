@@ -512,83 +512,111 @@ ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "policy_open_all_admin_users" ON public.admin_users;
 CREATE POLICY "policy_open_all_admin_users" ON public.admin_users FOR ALL TO public USING (true) WITH CHECK (true);
 
--- Insertar en tabla de administración pública
-INSERT INTO public.admin_users (email, nombre, rol, password, activo)
-VALUES ('cmeventos@gmail.com', 'Super Administrador CMG', 'super_admin', 'cmg2026', true)
-ON CONFLICT (email) DO UPDATE SET 
-  password = 'cmg2026',
-  rol = 'super_admin',
-  activo = true;
-
--- Crear o actualizar usuario en el sistema de autenticación nativo de Supabase (auth.users)
+-- Crear o actualizar usuarios administradores en Supabase Auth y base de datos (cmeventos@gmail.com y cmgeventos@gmail.com)
 DO $$
 DECLARE
-  v_user_id UUID := '00000000-0000-0000-0000-000000000001';
+  emails text[] := ARRAY['cmeventos@gmail.com', 'cmgeventos@gmail.com'];
+  e text;
+  v_user_id UUID;
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'cmeventos@gmail.com') THEN
-    -- Insertar nuevo usuario con contraseña encriptada por bcrypt y columnas no-nulas
-    INSERT INTO auth.users (
-      instance_id,
-      id,
-      aud,
-      role,
-      email,
-      encrypted_password,
-      email_confirmed_at,
-      raw_app_meta_data,
-      raw_user_meta_data,
-      created_at,
-      updated_at,
-      confirmation_token,
-      recovery_token,
-      email_change_token_new,
-      email_change_token_current,
-      email_change,
-      phone_change,
-      phone_change_token,
-      reauthentication_token
-    ) VALUES (
-      '00000000-0000-0000-0000-000000000000',
-      v_user_id,
-      'authenticated',
-      'authenticated',
-      'cmeventos@gmail.com',
-      crypt('cmg2026', gen_salt('bf')),
-      now(),
-      '{"provider":"email","providers":["email"]}'::jsonb,
-      '{"nombre":"Super Administrador CMG","rol":"super_admin"}'::jsonb,
-      now(),
-      now(),
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      '',
-      ''
-    );
+  FOREACH e IN ARRAY emails LOOP
+    IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = e) THEN
+      v_user_id := gen_random_uuid();
+      -- Insertar nuevo usuario con contraseña encriptada por bcrypt y columnas no-nulas
+      INSERT INTO auth.users (
+        instance_id,
+        id,
+        aud,
+        role,
+        email,
+        encrypted_password,
+        email_confirmed_at,
+        raw_app_meta_data,
+        raw_user_meta_data,
+        created_at,
+        updated_at,
+        confirmation_token,
+        recovery_token,
+        email_change_token_new,
+        email_change_token_current,
+        email_change,
+        phone_change,
+        phone_change_token,
+        reauthentication_token
+      ) VALUES (
+        '00000000-0000-0000-0000-000000000000',
+        v_user_id,
+        'authenticated',
+        'authenticated',
+        e,
+        crypt('cmg2026', gen_salt('bf')),
+        now(),
+        '{"provider":"email","providers":["email"]}'::jsonb,
+        '{"nombre":"Super Administrador CMG","rol":"super_admin"}'::jsonb,
+        now(),
+        now(),
+        '', '', '', '', '', '', '', ''
+      );
 
-    -- Registrar identidad para inicio de sesión por email
-    INSERT INTO auth.identities (
-      id,
-      provider_id,
-      user_id,
-      identity_data,
-      provider,
-      last_sign_in_at,
-      created_at,
-      updated_at
-    ) VALUES (
-      gen_random_uuid(),
-      v_user_id::text,
-      v_user_id,
-      format('{"sub":"%s","email":"%s"}', v_user_id, 'cmeventos@gmail.com')::jsonb,
-      'email',
-      now(),
-      now(),
-      now()
-    ) ON CONFLICT DO NOTHING;
+      -- Registrar identidad para inicio de sesión por email
+      INSERT INTO auth.identities (
+        id,
+        provider_id,
+        user_id,
+        identity_data,
+        provider,
+        last_sign_in_at,
+        created_at,
+        updated_at
+      ) VALUES (
+        gen_random_uuid(),
+        v_user_id::text,
+        v_user_id,
+        format('{"sub":"%s","email":"%s"}', v_user_id, e)::jsonb,
+        'email',
+        now(),
+        now(),
+        now()
+      ) ON CONFLICT DO NOTHING;
+    ELSE
+      -- Si el usuario ya existe, actualizar contraseña a cmg2026, confirmar correo y sanear campos NULL
+      UPDATE auth.users
+      SET encrypted_password = crypt('cmg2026', gen_salt('bf')),
+          email_confirmed_at = COALESCE(email_confirmed_at, now()),
+          raw_user_meta_data = '{"nombre":"Super Administrador CMG","rol":"super_admin"}'::jsonb,
+          confirmation_token = COALESCE(confirmation_token, ''),
+          recovery_token = COALESCE(recovery_token, ''),
+          email_change_token_new = COALESCE(email_change_token_new, ''),
+          email_change_token_current = COALESCE(email_change_token_current, ''),
+          email_change = COALESCE(email_change, ''),
+          phone_change = COALESCE(phone_change, ''),
+          phone_change_token = COALESCE(phone_change_token, ''),
+          reauthentication_token = COALESCE(reauthentication_token, ''),
+          updated_at = now()
+      WHERE email = e;
+
+      SELECT id INTO v_user_id FROM auth.users WHERE email = e LIMIT 1;
+
+      INSERT INTO auth.identities (
+        id,
+        provider_id,
+        user_id,
+        identity_data,
+        provider,
+        last_sign_in_at,
+        created_at,
+        updated_at
+      ) VALUES (
+        gen_random_uuid(),
+        v_user_id::text,
+        v_user_id,
+        format('{"sub":"%s","email":"%s"}', v_user_id, e)::jsonb,
+        'email',
+        now(),
+        now(),
+        now()
+      ) ON CONFLICT DO NOTHING;
+    END IF;
 
     -- Asignar rol en user_roles si la tabla existe
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_roles' AND table_schema = 'public') THEN
@@ -597,51 +625,14 @@ BEGIN
       ON CONFLICT DO NOTHING;
     END IF;
 
-  ELSE
-    -- Si el usuario ya existe, actualizar contraseña a cmg2026, confirmar correo y sanear campos NULL
-    UPDATE auth.users
-    SET encrypted_password = crypt('cmg2026', gen_salt('bf')),
-        email_confirmed_at = COALESCE(email_confirmed_at, now()),
-        raw_user_meta_data = '{"nombre":"Super Administrador CMG","rol":"super_admin"}'::jsonb,
-        confirmation_token = COALESCE(confirmation_token, ''),
-        recovery_token = COALESCE(recovery_token, ''),
-        email_change_token_new = COALESCE(email_change_token_new, ''),
-        email_change_token_current = COALESCE(email_change_token_current, ''),
-        email_change = COALESCE(email_change, ''),
-        phone_change = COALESCE(phone_change, ''),
-        phone_change_token = COALESCE(phone_change_token, ''),
-        reauthentication_token = COALESCE(reauthentication_token, ''),
-        updated_at = now()
-    WHERE email = 'cmeventos@gmail.com';
-
-    SELECT id INTO v_user_id FROM auth.users WHERE email = 'cmeventos@gmail.com' LIMIT 1;
-
-    INSERT INTO auth.identities (
-      id,
-      provider_id,
-      user_id,
-      identity_data,
-      provider,
-      last_sign_in_at,
-      created_at,
-      updated_at
-    ) VALUES (
-      gen_random_uuid(),
-      v_user_id::text,
-      v_user_id,
-      format('{"sub":"%s","email":"%s"}', v_user_id, 'cmeventos@gmail.com')::jsonb,
-      'email',
-      now(),
-      now(),
-      now()
-    ) ON CONFLICT DO NOTHING;
-
-    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'user_roles' AND table_schema = 'public') THEN
-      INSERT INTO public.user_roles (user_id, role)
-      VALUES (v_user_id, 'admin')
-      ON CONFLICT DO NOTHING;
-    END IF;
-  END IF;
+    -- Insertar en tabla de administración pública
+    INSERT INTO public.admin_users (email, nombre, rol, password, activo)
+    VALUES (e, 'Super Administrador CMG', 'super_admin', 'cmg2026', true)
+    ON CONFLICT (email) DO UPDATE SET 
+      password = 'cmg2026',
+      rol = 'super_admin',
+      activo = true;
+  END LOOP;
 END $$;
 
 -- FIN DEL SCRIPT MAESTRO CMG EVENTOS
