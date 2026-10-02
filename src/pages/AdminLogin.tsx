@@ -31,6 +31,7 @@ const AdminLogin = () => {
     try {
       await signIn(email, password);
       toast.success("Sesión iniciada");
+      navigate("/admin", { replace: true });
     } catch (err: any) {
       toast.error(err.message || "Error al iniciar sesión");
     } finally {
