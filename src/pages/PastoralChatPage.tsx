@@ -17,6 +17,10 @@ import {
   Flame,
   User,
   ArrowRight,
+  Settings,
+  Key,
+  Cpu,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +38,7 @@ import {
   PastoralMessage,
   SpiritualMemory,
   PastoralSession,
+  AiSettings,
 } from "@/services/pastoralChatService";
 import { toast } from "sonner";
 
@@ -47,6 +52,11 @@ export const PastoralChatPage: React.FC = () => {
   const [showBrainModal, setShowBrainModal] = useState(false);
   const [memories, setMemories] = useState<SpiritualMemory[]>([]);
   const [userName, setUserName] = useState<string | null>(null);
+
+  // Modal para configuración de modelo IA (Groq, Gemini, OpenAI)
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiConfig, setAiConfig] = useState<AiSettings>(() => PastoralChatService.getAiSettings());
+  const [isTestingAi, setIsTestingAi] = useState(false);
 
   // Pantalla previa para pedir nombre antes de iniciar
   const [isAskingName, setIsAskingName] = useState(false);
@@ -470,6 +480,17 @@ export const PastoralChatPage: React.FC = () => {
 
             <Button
               variant="ghost"
+              size="sm"
+              onClick={() => setShowAiModal(true)}
+              className="text-slate-300 hover:text-teal-300 hover:bg-slate-800 text-xs gap-1.5 rounded-xl border border-slate-700/60"
+              title="Configurar motor de IA (Groq, Gemini, OpenAI)"
+            >
+              <Cpu className="w-4 h-4 text-teal-400" />
+              <span className="hidden sm:inline">Motor IA</span>
+            </Button>
+
+            <Button
+              variant="ghost"
               size="icon"
               onClick={handleResetChat}
               className="text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl"
@@ -801,6 +822,174 @@ export const PastoralChatPage: React.FC = () => {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 7. Modal de Configuración de Motor IA */}
+      <Dialog open={showAiModal} onOpenChange={setShowAiModal}>
+        <DialogContent className="bg-slate-900 border border-slate-700 text-slate-100 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-teal-400">
+              <Cpu className="w-5 h-5 text-teal-400" />
+              Configurar Motor de Inteligencia Artificial
+            </DialogTitle>
+            <DialogDescription className="text-slate-400 text-xs">
+              Conecta una clave API para que Bernabé responda con inteligencia artificial de última generación. Si no tienes una, el consejero usará su motor bíblico dinámico integrado.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            <div>
+              <label className="text-slate-300 font-semibold block mb-1">Proveedor / Plataforma:</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAiConfig({
+                      ...aiConfig,
+                      provider: "groq",
+                      baseUrl: "https://api.groq.com/openai/v1",
+                      model: "llama-3.3-70b-versatile",
+                    })
+                  }
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                    aiConfig.provider === "groq"
+                      ? "bg-teal-950/80 border-teal-500 text-white shadow-xs"
+                      : "bg-slate-950/40 border-slate-800 text-slate-400 hover:bg-slate-800"
+                  }`}
+                >
+                  <div className="font-bold text-xs text-white">Groq (Gratuito)</div>
+                  <div className="text-[10px] text-teal-400">Ultra rápido • Llama 3.3</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAiConfig({
+                      ...aiConfig,
+                      provider: "gemini",
+                      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+                      model: "gemini-2.0-flash",
+                    })
+                  }
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                    aiConfig.provider === "gemini"
+                      ? "bg-teal-950/80 border-teal-500 text-white shadow-xs"
+                      : "bg-slate-950/40 border-slate-800 text-slate-400 hover:bg-slate-800"
+                  }`}
+                >
+                  <div className="font-bold text-xs text-white">Google Gemini</div>
+                  <div className="text-[10px] text-emerald-400">Gemini 2.0 Flash</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAiConfig({
+                      ...aiConfig,
+                      provider: "openai",
+                      baseUrl: "https://api.openai.com/v1",
+                      model: "gpt-4o-mini",
+                    })
+                  }
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                    aiConfig.provider === "openai"
+                      ? "bg-teal-950/80 border-teal-500 text-white shadow-xs"
+                      : "bg-slate-950/40 border-slate-800 text-slate-400 hover:bg-slate-800"
+                  }`}
+                >
+                  <div className="font-bold text-xs text-white">OpenAI</div>
+                  <div className="text-[10px] text-amber-400">GPT-4o Mini</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAiConfig({
+                      ...aiConfig,
+                      provider: "openrouter",
+                      baseUrl: "https://openrouter.ai/api/v1",
+                      model: "google/gemini-2.0-flash-001",
+                    })
+                  }
+                  className={`p-2.5 rounded-xl border text-left transition-all ${
+                    aiConfig.provider === "openrouter"
+                      ? "bg-teal-950/80 border-teal-500 text-white shadow-xs"
+                      : "bg-slate-950/40 border-slate-800 text-slate-400 hover:bg-slate-800"
+                  }`}
+                >
+                  <div className="font-bold text-xs text-white">OpenRouter / Omni</div>
+                  <div className="text-[10px] text-blue-400">Multi-modelo</div>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-slate-300 font-semibold">API Key:</label>
+                {aiConfig.provider === "groq" && (
+                  <a
+                    href="https://console.groq.com/keys"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] text-teal-400 hover:underline flex items-center gap-1"
+                  >
+                    Obtener clave gratis <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                )}
+                {aiConfig.provider === "gemini" && (
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1"
+                  >
+                    Obtener clave gratis <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                )}
+              </div>
+              <input
+                type="password"
+                value={aiConfig.apiKey}
+                onChange={(e) => setAiConfig({ ...aiConfig, apiKey: e.target.value })}
+                placeholder="Pega aquí tu API Key..."
+                className="w-full bg-slate-950/80 border border-slate-700 focus:border-teal-500 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-hidden"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-300 font-semibold block mb-1">Modelo Seleccionado:</label>
+              <input
+                type="text"
+                value={aiConfig.model}
+                onChange={(e) => setAiConfig({ ...aiConfig, model: e.target.value })}
+                placeholder="Nombre del modelo"
+                className="w-full bg-slate-950/80 border border-slate-700 focus:border-teal-500 rounded-xl px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-hidden"
+              />
+            </div>
+
+            <div className="pt-2 flex items-center justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAiModal(false)}
+                className="text-slate-400 hover:text-white text-xs"
+              >
+                Cerrar
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  PastoralChatService.saveAiSettings(aiConfig);
+                  toast.success("Configuración de IA guardada con éxito.");
+                  setShowAiModal(false);
+                }}
+                className="bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs"
+              >
+                Guardar Configuración
+              </Button>
             </div>
           </div>
         </DialogContent>

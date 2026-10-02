@@ -24,6 +24,13 @@ export interface PastoralSession {
   created_at: string;
 }
 
+export interface AiSettings {
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  provider: "groq" | "openrouter" | "gemini" | "openai" | "custom";
+}
+
 const STORAGE_KEY = "pastoral_agent_session_token_v1";
 const ADVISOR_NAME = "Bernabé";
 
@@ -41,13 +48,37 @@ export class PastoralChatService {
   }
 
   /**
+   * Obtiene configuración de IA configurada
+   */
+  public static getAiSettings(): AiSettings {
+    const saved = localStorage.getItem("pastoral_ai_config");
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (_) {}
+    }
+    return {
+      apiKey: "",
+      baseUrl: "https://api.groq.com/openai/v1",
+      model: "llama-3.3-70b-versatile",
+      provider: "groq",
+    };
+  }
+
+  /**
+   * Guarda configuración de IA
+   */
+  public static saveAiSettings(settings: AiSettings): void {
+    localStorage.setItem("pastoral_ai_config", JSON.stringify(settings));
+  }
+
+  /**
    * Obtiene o crea la sesión en Supabase
    */
   public static async getOrCreateSession(): Promise<PastoralSession> {
     const sessionToken = this.getSessionToken();
 
     try {
-      // 1. Intentar buscar sesión existente
       const { data: existing, error: searchError } = await supabase
         .from("pastoral_chat_sessions" as any)
         .select("*")
@@ -55,14 +86,13 @@ export class PastoralChatService {
         .maybeSingle();
 
       if (searchError) {
-        console.warn("Aviso al consultar sesión en Supabase (puede requerir migración):", searchError.message);
+        console.warn("Aviso al consultar sesión en Supabase:", searchError.message);
       }
 
       if (existing) {
         return existing as unknown as PastoralSession;
       }
 
-      // 2. Crear nueva sesión si no existe
       const newSession = {
         session_token: sessionToken,
         user_name: null,
@@ -76,7 +106,6 @@ export class PastoralChatService {
         .single();
 
       if (insertError || !created) {
-        // Fallback local si la tabla aún no existe en Supabase
         return {
           id: sessionToken,
           session_token: sessionToken,
@@ -126,7 +155,6 @@ export class PastoralChatService {
         .order("created_at", { ascending: true });
 
       if (error || !data || data.length === 0) {
-        // Buscar en localStorage como fallback
         const local = localStorage.getItem(`pastoral_msgs_${sessionId}`);
         if (local) {
           try {
@@ -164,7 +192,6 @@ export class PastoralChatService {
       created_at: new Date().toISOString(),
     };
 
-    // 1. Guardar en local storage para resiliencia inmediata
     try {
       const local = localStorage.getItem(`pastoral_msgs_${sessionId}`);
       const list: PastoralMessage[] = local ? JSON.parse(local) : [];
@@ -174,7 +201,6 @@ export class PastoralChatService {
       console.warn("No se pudo guardar mensaje en local:", e);
     }
 
-    // 2. Guardar en Supabase si la tabla está lista
     try {
       await supabase.from("pastoral_chat_messages" as any).insert({
         session_id: sessionId,
@@ -206,7 +232,6 @@ export class PastoralChatService {
         is_active: true,
       });
     } catch {
-      // Guardar en local
       const key = `pastoral_memories_${sessionId}`;
       const list = JSON.parse(localStorage.getItem(key) || "[]");
       list.push({ type, detail, date: new Date().toISOString() });
@@ -247,7 +272,6 @@ export class PastoralChatService {
     for (const p of patterns) {
       const match = text.match(p);
       if (match && match[1]) {
-        // Filtrar palabras comunes que no son nombres
         const word = match[1].trim();
         const nonNames = ["cristiano", "pecador", "nuevo", "de", "un", "una", "alguien", "aqui", "a", "el", "la"];
         if (!nonNames.includes(word.toLowerCase())) {
@@ -277,7 +301,106 @@ export class PastoralChatService {
   }
 
   /**
-   * Genera la respuesta del Pastor con teología de rescate, amor y eventos
+   * Intenta llamar a un LLM en la nube (Groq, OpenAI, Gemini, etc.)
+   */
+  private static async tryExternalLLM(
+    userText: string,
+    history: PastoralMessage[],
+    activeName: string,
+    eventsText: string
+  ): Promise<string | null> {
+    const aiConfig = this.getAiSettings();
+
+    // 1. Obtener API key: primero de configuración local, luego de app_secrets
+    let apiKey = aiConfig.apiKey?.trim();
+    let baseUrl = aiConfig.baseUrl?.trim() || "https://api.groq.com/openai/v1";
+    let model = aiConfig.model?.trim() || "llama-3.3-70b-versatile";
+
+    if (!apiKey) {
+      try {
+        const { data } = await supabase
+          .from("app_secrets")
+          .select("key, value")
+          .in("key", ["OMNIROUTE_API_KEY", "OMNIROUTE_BASE_URL", "OMNIROUTE_MODEL"]);
+
+        const dbKey = data?.find((d) => d.key === "OMNIROUTE_API_KEY")?.value;
+        const dbUrl = data?.find((d) => d.key === "OMNIROUTE_BASE_URL")?.value;
+        const dbModel = data?.find((d) => d.key === "OMNIROUTE_MODEL")?.value;
+
+        if (dbKey && dbKey.trim().length > 10) {
+          apiKey = dbKey.trim();
+          if (dbUrl) baseUrl = dbUrl.trim();
+          if (dbModel) model = dbModel.trim();
+        }
+      } catch (_) {}
+    }
+
+    if (!apiKey) return null;
+
+    // Ajuste de endpoints conocidos
+    let endpoint = baseUrl;
+    if (!endpoint.includes("/chat/completions")) {
+      endpoint = `${endpoint.replace(/\/$/, "")}/chat/completions`;
+    }
+
+    const systemPrompt = `Eres Bernabé, consejero cristiano, empático, evangelizador y pastor de almas del Centro Mundial de Gloria.
+Estás conversando con ${activeName || "un hermano/a que visita la iglesia"}.
+REGLAS VITALES DE CONVERSACIÓN:
+1. Habla de forma natural, humana, cálida, sin respuestas robóticas ni plantillas prefabricadas.
+2. Si el usuario te dice que "siempre respondes lo mismo" o que pareces un robot, pídele disculpas con humildad cristiana sincera, reconoce su sentir y pregúntale qué le preocupa o qué tiene en su corazón.
+3. Tu misión es escuchar, consolar, rescatar almas para Cristo (Juan 3:16, Romanos 10:9) y ministrar paz según la Palabra de Dios.
+4. Si pide oración, ora con palabras sentidas y adaptadas a su situación exacta.
+5. Si pregunta por eventos, aquí tienes los eventos activos de la iglesia:
+${eventsText || "No hay eventos especiales cargados en este momento."}
+6. No repitas saludos largos ni listas de menú en cada respuesta. Responde directo a lo que la persona te acaba de decir.
+7. Firma únicamente como "Bernabé" o con una bendición corta sin títulos de pastor virtual ni IA.`;
+
+    const recentHistory = history.slice(-6).map((m) => ({
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: m.content,
+    }));
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 9000);
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...recentHistory,
+            { role: "user", content: userText },
+          ],
+          temperature: 0.7,
+          max_tokens: 600,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (content && typeof content === "string" && content.trim().length > 0) {
+          return content.trim();
+        }
+      }
+    } catch (e) {
+      console.warn("LLM en la nube no respondió, usando motor pastoral contextual:", e);
+    }
+
+    return null;
+  }
+
+  /**
+   * Genera la respuesta pastoral dinámica y contextual
    */
   public static async generatePastorResponse(
     sessionId: string,
@@ -285,75 +408,208 @@ export class PastoralChatService {
     history: PastoralMessage[],
     currentUserName: string | null
   ): Promise<{ text: string; intent: string }> {
-    const lower = userText.toLowerCase();
+    const rawTrimmed = userText.trim();
+    const lower = rawTrimmed.toLowerCase();
 
-    // 1. Detectar si el usuario compartió su nombre
+    // 1. Detectar nombre
     const detectedName = this.extractUserName(userText);
     const activeName = detectedName || currentUserName || "";
     if (detectedName && detectedName !== currentUserName) {
       await this.updateUserName(sessionId, detectedName);
     }
 
-    const greeting = activeName ? `amado/a ${activeName}` : "mi querido hermano/a";
+    const greeting = activeName ? activeName : "hermano/a";
 
-    // 2. Detectar intenciones clave
-    const isCrisis = /suicid|morir|no quiero vivir|acabar con mi vida|quitarme la vida|desesperad/i.test(lower);
-    const isSalvation = /salvaci|salvar|aceptar a cristo|conocer a jes[uú]s|arrepent|perd[oó]n de dios|vida eterna|c[oó]mo ser salvo/i.test(lower);
-    const isPrayer = /oraci|orar|ora por|enfermo|sanidad|interced|pide por|clama|enfermedad|dolor/i.test(lower);
-    const isEvents = /evento|retiro|congreso|conferencia|actividad|cuando es|fecha|horario|inscripci|costo/i.test(lower);
-    const isFamilyOrMarriage = /espos[oa]|matrimonio|pareja|hijo|familia|divorcio|hogar|novi/i.test(lower);
-    const isAnxietyOrSadness = /ansiedad|triste|depresi|deprimid|angustia|soledad|miedo|des[aá]nimo|llor/i.test(lower);
+    // 2. Obtener eventos de base de datos
+    const events = await this.getActiveEvents();
+    const eventsText = events.length > 0
+      ? events.map((e) => `- ${e.nombre}: ${e.fecha_evento ? new Date(e.fecha_evento).toLocaleDateString("es-ES") : "Por confirmar"} en ${e.lugar_evento || "Sede Principal"}`).join("\n")
+      : "Próximamente publicaremos nuevos retiros y eventos.";
 
-    // --- A. PROTOCOLO DE RESCATE EN CRISIS EXTREMA ---
-    if (isCrisis) {
-      await this.addSpiritualMemory(sessionId, "emotional_state", "Alerta de crisis emocional profunda");
+    // 3. INTENTO DE LLAMADA AL MODELO IA EXTERNO (Groq, OpenAI, Gemini, etc.)
+    const llmReply = await this.tryExternalLLM(userText, history, activeName, eventsText);
+    if (llmReply) {
       return {
-        intent: "crisis",
-        text: `🕊️ **${activeName ? activeName.toUpperCase() + ", " : ""}POR FAVOR ESCÚCHAME CON TODO EL CORAZÓN:**
-
-Tu vida tiene un valor incalculable para Dios. En este mismo instante, aunque el dolor parezca insoportable, **NO ESTÁS SOLO/A**. La Biblia nos promete en *Salmos 34:18*: 
-> *"Cercano está Jehová a los quebrantados de corazón; y salva a los contritos de espíritu."*
-
-El enemigo quiere hacerte creer que este es el final, pero Dios aún tiene planes de bienestar, paz y esperanza para ti (Jeremías 29:11). Te ruego que no tomes ninguna decisión fatal. 
-
-🙏 **Oremos ahora mismo:**
-*Padre Celestial, en el nombre de Jesús, abrazo a ${greeting} en este momento de angustia extrema. Te pido que envíes a tus ángeles y a tu Santo Espíritu trayendo paz que sobrepasa todo entendimiento. Rompe toda tiniebla de desesperación, reprende el espíritu de muerte y llena este corazón con tu amor infinito. En el nombre de Jesús, amén.*
-
-Por favor, comunícate de inmediato con una línea de ayuda de tu país o acércate a los líderes de nuestra iglesia. Estamos aquí para ti con los brazos abiertos. ¿Puedes contarme qué es lo que más te aflige en este instante? Te escucho con amor.
-
-*Con aprecio sincero y oración,  
-**${ADVISOR_NAME}** - Tu consejero y amigo.*`,
+        text: llmReply,
+        intent: "ai_generated",
       };
     }
 
-    // --- B. RESCATE DE ALMAS / SALVACIÓN Y CONOCER A JESÚS ---
-    if (isSalvation) {
-      await this.addSpiritualMemory(sessionId, "decision_christ", "Interés o decisión de entrega a Cristo");
+    // 4. MOTOR CONVERSACIONAL CONTEXTUAL Y DINÁMICO (FALLBACK INTELIGENTE)
+    // =========================================================================
+
+    // A. Detectar queja de repetición o robot ("siempre respondes lo mismo", "repites", "eres un bot", etc.)
+    const isComplaintAboutRepetition =
+      lower.includes("siempre respondes") ||
+      lower.includes("siempre respodes") ||
+      lower.includes("respondes a lo mismo") ||
+      lower.includes("respodes a lo mismo") ||
+      lower.includes("repites") ||
+      lower.includes("lo mismo") ||
+      lower.includes("pareces un robot") ||
+      lower.includes("eres un bot") ||
+      lower.includes("no me escuchas") ||
+      lower.includes("otra vez lo mismo") ||
+      lower.includes("no me ayudas");
+
+    if (isComplaintAboutRepetition) {
       return {
-        intent: "salvacion",
-        text: `✨ **¡Qué bendición tan hermosa leer tus palabras, ${greeting}!**
+        intent: "consejeria",
+        text: `Tienes toda la razón, ${greeting}, y te pido una disculpa muy sincera. 🙏
 
-No hay decisión más trascendental ni gloriosa en toda la existencia humana que abrirle las puertas del corazón a Jesús. La Palabra de Dios nos enseña en *Juan 3:16*:
-> *"Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito, para que todo aquel que en él cree, no se pierda, mas tenga vida eterna."*
+No quiero darte respuestas mecánicas ni parecer un contestador automático. Quiero escucharte a ti, de verdad y de corazón.
 
-Jesús no vino a condenarte ni a pedirte perfección; vino a rescatarte con sus brazos de gracia, perdonar cada una de tus faltas y hacerte una nueva criatura (*2 Corintios 5:17*).
+Dime con total confianza: ¿qué estás viviendo en este momento o qué situación tienes en mente? No más discursos armados; háblame de lo que sientes, de lo que te preocupa o de lo que necesitas hoy, y conversemos como hermanos en la fe. Te escucho con toda mi atención.
 
-Si deseas entregarle hoy tu vida, repite con fe desde lo profundo de tu corazón esta sencilla oración:
+*Con aprecio sincero,  
+**${ADVISOR_NAME}***`,
+      };
+    }
 
-> *"Señor Jesús, hoy reconozco que te necesito. Reconozco que he cometido errores y te pido perdón por mis pecados. Creo con todo mi corazón que moriste en la cruz por mí y que resucitaste al tercer día para darme vida eterna. Te abro mi corazón y te recibo hoy como mi único y suficiente Salvador y Señor de mi vida. Escribe mi nombre en el Libro de la Vida y lléname de tu Santo Espíritu. En el nombre de Jesús, ¡Amén!"*
+    // B. Saludos simples en medio de la conversación ("hola", "¿cómo estás?", "qué tal", etc.)
+    const isSmallTalkGreeting =
+      /^(hola|buenas|buenos d[ií]as|buenas tardes|buenas noches|qu[eé] tal|c[oó]mo est[aá]s|c[oó]mo te va|alo|hey)$/i.test(lower) ||
+      lower.startsWith("hola ") ||
+      lower.startsWith("buenas ");
 
-Si hiciste esta oración, ¡hoy hay fiesta en los cielos por tu alma! Cuéntame, ¿cómo te sientes ahora mismo? Me encantaría acompañarte y guiarte en tus primeros pasos de fe.
+    if (isSmallTalkGreeting) {
+      const greetingsResponses = [
+        `¡Hola ${greeting}! Me da mucha alegría saludarte. Por aquí me encuentro en paz y listo para conversar contigo. ¿Cómo ha estado tu día y qué hay de nuevo en tu vida?`,
+        `¡Qué bueno saber de ti, ${greeting}! La paz de Dios esté sobre tu hogar. Cuéntame, ¿cómo te sientes hoy y en qué te puedo servir?`,
+        `¡Hola de nuevo, ${greeting}! Siempre es una bendición conversar. ¿Cómo van tus cosas y cómo te sientes en este momento?`,
+      ];
+      const randomGreeting = greetingsResponses[Math.floor(Math.random() * greetingsResponses.length)];
+      return {
+        intent: "general",
+        text: `${randomGreeting}\n\n*Un abrazo en Cristo,  
+**${ADVISOR_NAME}***`,
+      };
+    }
 
-*Siempre a tu lado en oración,  
+    // C. Expresiones de rabia, frustración o cansancio
+    const isAngryOrFrustrated =
+      lower.includes("enojad") ||
+      lower.includes("rabia") ||
+      lower.includes("harto") ||
+      lower.includes("cansad") ||
+      lower.includes("odio") ||
+      lower.includes("molest") ||
+      lower.includes("injusto") ||
+      lower.includes("no aguanto");
+
+    if (isAngryOrFrustrated) {
+      await this.addSpiritualMemory(sessionId, "emotional_state", "Desahogo por enojo o frustración");
+      return {
+        intent: "consejeria",
+        text: `Comprendo tu sentir, ${greeting}. Es totalmente válido sentirse frustrado o con impotencia cuando las cosas no salen como esperamos o cuando la carga se vuelve pesada.
+
+La Biblia nos dice con mucha sabiduría en *Santiago 1:19-20*:
+> *"Por esto, mis amados hermanos, todo hombre sea pronto para oír, tardo para hablar, tardo para airarse; porque la ira del hombre no obra la justicia de Dios."*
+
+No tienes que guardarte esa molestia tú solo/a. Desahógate conmigo: ¿qué fue exactamente lo que provocó este enojo o qué situación te tiene tan agotado/a? Aquí estoy para escucharte sin juzgarte.
+
+*Cuentas conmigo,  
 **${ADVISOR_NAME}*** 🕊️`,
       };
     }
 
-    // --- C. INFORMACIÓN DE EVENTOS REALES DE LA IGLESIA ---
-    if (isEvents) {
-      const events = await this.getActiveEvents();
-      let eventDetails = "";
+    // D. Tristeza profunda, llanto o soledad
+    const isSadnessOrLoneliness =
+      lower.includes("triste") ||
+      lower.includes("llor") ||
+      lower.includes("soledad") ||
+      lower.includes("solo") ||
+      lower.includes("sola") ||
+      lower.includes("vacio") ||
+      lower.includes("depresi") ||
+      lower.includes("desanimo");
 
+    if (isSadnessOrLoneliness) {
+      await this.addSpiritualMemory(sessionId, "emotional_state", "Tristeza o soledad manifestada");
+      return {
+        intent: "consejeria",
+        text: `🕊️ **Respira hondo, ${greeting}. Pon tu mano en el pecho un instante.**
+
+Aunque sientas que nadie comprende tu dolor, Dios ve cada una de tus lágrimas. *Salmos 34:18* promete:
+> *"Cercano está Jehová a los quebrantados de corazón; y salva a los contritos de espíritu."*
+
+Esta tristeza no es el final de tu historia. Es un momento difícil, pero Dios está cerca para sanarte y sostenerte. 
+
+Si te sientes cómodo/a compartiéndolo, ¿qué es lo que más te ha dolido recientemente? Quiero escucharte y acompañarte en este paso.
+
+*A tu lado siempre,  
+**${ADVISOR_NAME}*** 🤍`,
+      };
+    }
+
+    // E. Crisis extrema / riesgo
+    const isCrisis = /suicid|morir|no quiero vivir|acabar con mi vida|quitarme la vida|desesperad/i.test(lower);
+    if (isCrisis) {
+      await this.addSpiritualMemory(sessionId, "emotional_state", "Alerta de crisis extrema");
+      return {
+        intent: "crisis",
+        text: `🕊️ **${activeName ? activeName.toUpperCase() + ", " : ""}POR FAVOR DETENTE Y ESCÚCHAME:**
+
+Tu vida tiene un valor incalculable para Dios y para quienes te rodean. Aunque el dolor parezca insoportable hoy, **NO ESTÁS SOLO/A**.
+
+🙏 **Oremos ahora mismo:**
+*Padre Celestial, en el nombre de Jesús, abrazo a ${greeting} en este momento de angustia. Envía Tu paz sobrenatural, reprende todo pensamiento de muerte y llena este corazón de vida y esperanza. En el nombre de Jesús, amén.*
+
+Por favor, comunícate con una línea de auxilio o acércate a nosotros en el Centro Mundial de Gloria. Queremos ayudarte. ¿Qué te tiene tan abrumado/a en este instante? Te escucho con amor.
+
+*Tu amigo y servidor,  
+**${ADVISOR_NAME}***`,
+      };
+    }
+
+    // F. Salvación / Conocer a Jesús
+    const isSalvation = /salvaci|salvar|aceptar a cristo|conocer a jes[uú]s|arrepent|perd[oó]n de dios|vida eterna|c[oó]mo ser salvo/i.test(lower);
+    if (isSalvation) {
+      await this.addSpiritualMemory(sessionId, "decision_christ", "Interés o decisión por Cristo");
+      return {
+        intent: "salvacion",
+        text: `✨ **¡Qué bendición tan hermosa, ${greeting}!**
+
+No hay decisión más maravillosa que abrirle el corazón a Jesús. En *Juan 3:16* la Palabra nos enseña:
+> *"Porque de tal manera amó Dios al mundo, que ha dado a su Hijo unigénito, para que todo aquel que en él cree, no se pierda, mas tenga vida eterna."*
+
+Jesús no mira tu pasado; Él te ofrece perdón total, paz y una vida completamente nueva (*2 Corintios 5:17*).
+
+Si deseas entregarle hoy tu vida, dile con fe desde el corazón:
+> *"Señor Jesús, hoy reconozco que te necesito. Te pido perdón por mis faltas. Creo que moriste por mí en la cruz y resucitaste. Te recibo hoy como mi Salvador y Señor. Hazme una nueva persona y escribe mi nombre en el Libro de la Vida. ¡Amén!"*
+
+¿Pudiste hacer esta oración? Me alegraría mucho saber cómo te sientes en este instante.
+
+*Firmes en la fe,  
+**${ADVISOR_NAME}*** 🕊️`,
+      };
+    }
+
+    // G. Petición de oración
+    const isPrayer = /oraci|orar|ora por|enfermo|sanidad|interced|pide por|clama|enfermedad|dolor|salud/i.test(lower);
+    if (isPrayer) {
+      await this.addSpiritualMemory(sessionId, "prayer_request", userText.slice(0, 150));
+      return {
+        intent: "oracion",
+        text: `🙏 **Nos ponemos de acuerdo en este momento por ti, ${greeting}:**
+
+La Biblia nos asegura en *Mateo 18:19*:
+> *"Si dos de vosotros se pusieren de acuerdo en la tierra acerca de cualquiera cosa que pidieren, les será hecho por mi Padre que está en los cielos."*
+
+🕊️ **Clamamos juntos:**
+*Padre Bueno, presentamos ante Ti a ${greeting}. Tú conoces su vida, su salud, su familia y cada detalle que le inquieta. Declaramos sanidad, restauración y paz sobre su hogar. Que Tu favor le acompañe en esta semana y que abra puertas donde parecía no haber camino. En el nombre poderoso de Jesús, ¡AMÉN!*
+
+Descansa en Sus promesas. ¿Hay algún detalle específico o nombre por el que quieras que sigamos intercediendo?
+
+*Con fe y amor,  
+**${ADVISOR_NAME}*** 🕊️`,
+      };
+    }
+
+    // H. Consulta sobre eventos de la iglesia
+    const isEvents = /evento|retiro|congreso|conferencia|actividad|cuando es|fecha|horario|inscripci|costo|auditorio/i.test(lower);
+    if (isEvents) {
+      let eventDetails = "";
       if (events.length > 0) {
         eventDetails = events
           .map((evt) => {
@@ -363,104 +619,57 @@ Si hiciste esta oración, ¡hoy hay fiesta en los cielos por tu alma! Cuéntame,
           })
           .join("\n\n");
       } else {
-        eventDetails = "Estamos preparando nuestros próximos eventos y conferencias especiales. Puedes revisar periódicamente nuestra cartelera principal o avisarme qué tipo de actividad buscas (jóvenes, damas, matrimonios o retiros).";
+        eventDetails = "Estamos preparando nuestras próximas actividades y vigilias. Puedes revisar la cartelera o decirme qué tipo de actividad buscas (jóvenes, damas o familias).";
       }
 
-      await this.addSpiritualMemory(sessionId, "interested_event", "Consulta sobre eventos de la iglesia");
+      await this.addSpiritualMemory(sessionId, "interested_event", "Consulta sobre eventos");
 
       return {
         intent: "evento",
-        text: `¡Qué gran alegría, ${greeting}! La comunión con los hermanos y congregarse es alimento vital para el alma (*Hebreos 10:25*).
+        text: `¡Qué alegría, ${greeting}! Congregarnos y compartir con los hermanos fortalece la fe (*Hebreos 10:25*).
 
-Aquí tienes información de nuestras próximas actividades y encuentros:
+Aquí tienes la información de nuestras próximas reuniones:
 
 ${eventDetails}
 
-¿Te llama la atención alguno de estos eventos? Puedo ayudarte con cualquier inquietud sobre la inscripción o la llegada. ¡Será un privilegio inmenso verte allí adorando juntos a Dios!
+¿Te interesa asistir a alguno de ellos? Avísame si tienes preguntas sobre la llegada o la inscripción.
 
-*Bendiciones abundantes,  
+*Bendiciones,  
 **${ADVISOR_NAME}*** ⛪`,
       };
     }
 
-    // --- D. PETICIONES DE ORACIÓN & INTERCESIÓN ---
-    if (isPrayer) {
-      await this.addSpiritualMemory(sessionId, "prayer_request", userText.slice(0, 150));
-      return {
-        intent: "oracion",
-        text: `🙏 **Amado/a ${activeName || "hermano/a"}, unámonos en clamor ante el trono de la gracia:**
-
-Jesús nos dio esta promesa infalible en *Mateo 18:19*:
-> *"Otra vez os digo, que si dos de vosotros se pusieren de acuerdo en la tierra acerca de cualquiera cosa que pidieren, les será hecho por mi Padre que está en los cielos."*
-
-Clamemos juntos en este momento:
-
-🕊️ **Oración:**
-*Padre Bueno, Dios de toda consolación y Señor de la vida, hoy me pongo en mutuo acuerdo con ${activeName || "esta vida preciosa"}. Ponemos delante de Tu altar esta necesidad, el dolor, la salud y cada anhelo de su corazón. Declaramos que por las llagas de Cristo hay sanidad física, emocional y espiritual.*
-
-*Envía Tu paz sobrenatural que disipa todo temor y angustia. Suple cada necesidad según tus riquezas en gloria. Que esta semana sea testigo de Tu mano milagrosa y de Tu provisión. Te damos toda la gloria, honra y alabanza, en el nombre poderoso de Cristo Jesús, ¡AMÉN!*
-
-Descansa en sus promesas hoy. Si hay algún detalle específico que quieras que continúe intercediendo en mi altar de oración, compártemelo con total confianza.
-
-*Firmes en la fe,  
-**${ADVISOR_NAME}*** 🕊️`,
-      };
-    }
-
-    // --- E. CONSEJERÍA DE MATRIMONIO Y FAMILIA ---
-    if (isFamilyOrMarriage) {
-      await this.addSpiritualMemory(sessionId, "family_need", "Consejería familiar / matrimonio");
+    // I. Familia y matrimonio
+    const isFamily = /espos[oa]|matrimonio|pareja|hijo|familia|divorcio|hogar|novi/i.test(lower);
+    if (isFamily) {
+      await this.addSpiritualMemory(sessionId, "family_need", "Familia / matrimonio");
       return {
         intent: "consejeria",
-        text: `🤍 **Querido/a ${activeName || "hermano/a"}, la familia es el tesoro más amado por Dios:**
+        text: `La familia es el regalo más preciado que Dios nos dio, ${greeting}, pero también donde mayores batallas se libran.
 
-En los momentos de dificultad en el hogar o la pareja, la Palabra nos recuerda en *Efesios 4:2-3*:
-> *"Con toda humildad y mansedumbre, soportándoos con paciencia los unos a los otros en amor, solícitos en guardar la unidad del Espíritu en el vínculo de la paz."*
+La Palabra nos aconseja en *Colosenses 3:13*:
+> *"Soportándoos con paciencia los unos a los otros, y perdonándoos unos a otros si alguno tuviere queja contra otro. De la manera que Cristo os perdonó, así también hacedlo vosotros."*
 
-Recuerda que las batallas en el hogar no se ganan con contiendas ni con dureza de palabras, sino doblando rodillas y aplicando perdón diario (*Colosenses 3:13*). El amor de Cristo es capaz de restaurar vasijas rotas y devolver la armonía donde parecía imposible.
+Las dificultades en el hogar no se vencen con discusiones duras, sino doblando rodillas, teniendo paciencia y sembrando amor. ¿Qué es lo más difícil que estás viviendo en tu familia en este momento?
 
-¿Te gustaría que oremos juntos por la restauración y unidad de tu hogar en este instante? Cuéntame un poco más para bendecirte con dirección espiritual.
-
-*Con afecto fraternal,  
+*En oración por tu hogar,  
 **${ADVISOR_NAME}*** 🌿`,
       };
     }
 
-    // --- F. CONSEJERÍA PARA ANSIEDAD, TRISTEZA O DESÁNIMO ---
-    if (isAnxietyOrSadness) {
-      await this.addSpiritualMemory(sessionId, "emotional_state", "Desahogo por tristeza o ansiedad");
-      return {
-        intent: "consejeria",
-        text: `🕊️ **Respira profundo, ${greeting}. Pon tu mano en el corazón un momento.**
-
-No te sientas culpable por sentir tristeza o cansancio. Los más grandes hombres y mujeres de la Biblia también lloraron y se sintieron débiles. Pero mira la dulce promesa que Dios te entrega hoy en *Filipenses 4:6-7*:
-> *"Por nada estéis afanosos, sino sean conocidas vuestras peticiones delante de Dios en toda oración y ruego, con acción de gracias. Y la paz de Dios, que sobrepasa todo entendimiento, guardará vuestros corazones y vuestros pensamientos en Cristo Jesús."*
-
-Dios no te ha abandonado ni un solo segundo. Esta prueba no define tu futuro; es solo una estación donde Dios está fortaleciendo tus raíces.
-
-Te invito a soltar esa carga pesada hoy en Sus manos. ¿Qué es lo que más te pesa hoy en tu mente? Aquí estoy para escucharte con amor cristiano y sin juzgarte jamás.
-
-*Tu servidor en Cristo,  
-**${ADVISOR_NAME}*** 🕯️`,
-      };
-    }
-
-    // --- G. SALUDO INICIAL Y CONVERSACIÓN GENERAL ---
+    // J. Respuesta libre inteligente (nunca repetir el menú inicial en medio de una charla)
     return {
-      intent: "general",
-      text: `🕊️ **La gracia y la paz de nuestro Señor Jesucristo sean contigo, ${greeting}.**
+      intent: "consejeria",
+      text: `Te entiendo perfectamente, ${greeting}. 
 
-Soy **${ADVISOR_NAME}**, tu consejero espiritual y hermano en la fe en este espacio confidencial.
+Sobre esto que me comentas: *" ${rawTrimmed} "*
 
-Estoy aquí para caminar contigo en:
-- 🙏 **Oración e Intercesión**: Si necesitas clamar por sanidad, paz o tu familia.
-- 🕊️ **Consejería Bíblica**: Para cualquier duda, momento difícil o búsqueda de dirección de Dios.
-- ❤️ **Conocer a Jesús**: El regalo de salvación y una vida nueva en Cristo.
-- 📅 **Eventos y Retiros**: Para que conozcas y participes de nuestras próximas reuniones.
+A veces la vida nos pone en encrucijadas o momentos donde necesitamos claridad y paz mental. Proverbios 3:5-6 nos recuerda:
+> *"Fíate de Jehová de todo tu corazón, y no te apoyes en tu propia prudencia. Reconócelo en todos tus caminos, y él enderezará tus veredas."*
 
-¿Cómo te sientes hoy y en qué puedo orar o apoyarte en este momento?
+Cuéntame un poco más a fondo: ¿qué es lo que más te inquieta de esta situación o cómo sientes que puedo ayudarte a encontrar paz y dirección en esto hoy?
 
-*En el amor de Cristo,  
+*Siempre contigo,  
 **${ADVISOR_NAME}*** ✨`,
     };
   }
