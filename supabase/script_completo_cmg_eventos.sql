@@ -521,7 +521,7 @@ ON CONFLICT (email) DO UPDATE SET
   activo = true;
 
 -- Crear o actualizar usuario en el sistema de autenticación nativo de Supabase (auth.users)
-DO $
+DO $$
 DECLARE
   v_user_id UUID := '00000000-0000-0000-0000-000000000001';
 BEGIN
@@ -585,7 +585,7 @@ BEGIN
       ON CONFLICT DO NOTHING;
     END IF;
 
-    ELSE
+  ELSE
     -- Si el usuario ya existe, actualizar contraseña a cmg2026 y confirmar correo
     UPDATE auth.users
     SET encrypted_password = crypt('cmg2026', gen_salt('bf')),
@@ -622,6 +622,6 @@ BEGIN
       ON CONFLICT DO NOTHING;
     END IF;
   END IF;
-END $;
+END $$;
 
 -- FIN DEL SCRIPT MAESTRO CMG EVENTOS

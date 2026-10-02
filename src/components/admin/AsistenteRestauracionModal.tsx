@@ -463,7 +463,7 @@ ON CONFLICT DO NOTHING;
 -- Permite acceso completo para que la aplicación web funcione sin bloqueos
 -- ==============================================================================
 
-DO $ 
+DO $$ 
 DECLARE
     tbl text;
     tables text[] := ARRAY[
@@ -499,7 +499,7 @@ BEGIN
             EXECUTE format('CREATE POLICY %I ON %I FOR ALL TO public USING (true) WITH CHECK (true);', 'policy_open_all_' || tbl, tbl);
         END IF;
     END LOOP;
-END $;
+END $$;
 
 -- Permisos de lectura y escritura globales en el esquema public
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
@@ -516,7 +516,7 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('invitations', 'invitations', true) 
 ON CONFLICT (id) DO NOTHING;
 
-DO $ BEGIN
+DO $$ BEGIN
     DROP POLICY IF EXISTS "Public read invitations" ON storage.objects;
     CREATE POLICY "Public read invitations" ON storage.objects FOR SELECT USING (bucket_id = 'invitations');
     DROP POLICY IF EXISTS "Anyone upload invitations" ON storage.objects;
@@ -524,26 +524,26 @@ DO $ BEGIN
     DROP POLICY IF EXISTS "Anyone update invitations" ON storage.objects;
     CREATE POLICY "Anyone update invitations" ON storage.objects FOR UPDATE USING (bucket_id = 'invitations');
 EXCEPTION WHEN OTHERS THEN NULL;
-END $;
+END $$;
 
 -- ==============================================================================
 -- 9. HABILITAR REALTIME EN TABLAS CLAVE
 -- ==============================================================================
 
-DO $ BEGIN
+DO $$ BEGIN
   ALTER PUBLICATION supabase_realtime ADD TABLE public.registrations;
 EXCEPTION WHEN OTHERS THEN NULL;
-END $;
+END $$;
 
-DO $ BEGIN
+DO $$ BEGIN
   ALTER PUBLICATION supabase_realtime ADD TABLE public.attendance;
 EXCEPTION WHEN OTHERS THEN NULL;
-END $;
+END $$;
 
-DO $ BEGIN
+DO $$ BEGIN
   ALTER PUBLICATION supabase_realtime ADD TABLE public.chat_messages;
 EXCEPTION WHEN OTHERS THEN NULL;
-END $;
+END $$;
 
 
 
@@ -576,7 +576,7 @@ ON CONFLICT (email) DO UPDATE SET
   activo = true;
 
 -- Crear o actualizar usuario en el sistema de autenticación nativo de Supabase (auth.users)
-DO $
+DO $$
 DECLARE
   v_user_id UUID := '00000000-0000-0000-0000-000000000001';
 BEGIN
@@ -640,7 +640,7 @@ BEGIN
       ON CONFLICT DO NOTHING;
     END IF;
 
-    ELSE
+  ELSE
     -- Si el usuario ya existe, actualizar contraseña a cmg2026 y confirmar correo
     UPDATE auth.users
     SET encrypted_password = crypt('cmg2026', gen_salt('bf')),
@@ -677,7 +677,7 @@ BEGIN
       ON CONFLICT DO NOTHING;
     END IF;
   END IF;
-END $;
+END $$;
 
 -- FIN DEL SCRIPT MAESTRO CMG EVENTOS
 `;

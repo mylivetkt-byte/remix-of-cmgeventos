@@ -23,4 +23,5 @@ dist-ssr
 *.sln
 *.sw?
 .env
+supabase/.temp/
 node_modules
