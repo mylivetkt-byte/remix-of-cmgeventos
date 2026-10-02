@@ -2,20 +2,41 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { brokeredPreviewStorage } from './previewAuthStorage';
 
+const DEFAULT_SUPABASE_URL = "https://czypeiuywtchqfsnsbem.supabase.co";
+const DEFAULT_SUPABASE_KEY = "sb_publishable_KY8NElnPtYVyB7GRib-Miw_sWyVYQn0";
+
 function getSupabaseUrl(): string {
+  // 1. Variable de entorno configurada en build/Vercel/.env
+  const envUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (envUrl && envUrl.trim() && !envUrl.includes("cfochenzkgjahdphgwqp") && !envUrl.includes("enedqugagdewrnmexayz")) {
+    return envUrl.trim();
+  }
+
+  // 2. LocalStorage si se configuró manualmente
   if (typeof window !== 'undefined') {
     const custom = localStorage.getItem('custom_supabase_url');
-    if (custom && custom.trim()) return custom.trim();
+    if (custom && custom.trim() && !custom.includes("cfochenzkgjahdphgwqp") && !custom.includes("enedqugagdewrnmexayz")) {
+      return custom.trim();
+    }
   }
-  return import.meta.env.VITE_SUPABASE_URL ?? "https://cfochenzkgjahdphgwqp.supabase.co";
+
+  // 3. Conexión maestra oficial por defecto
+  return DEFAULT_SUPABASE_URL;
 }
 
 function getSupabaseKey(): string {
+  // 1. Variable de entorno
+  const envKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (envKey && envKey.trim()) return envKey.trim();
+
+  // 2. LocalStorage si se configuró manualmente
   if (typeof window !== 'undefined') {
     const custom = localStorage.getItem('custom_supabase_key');
     if (custom && custom.trim()) return custom.trim();
   }
-  return import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNmb2NoZW56a2dqYWhkcGhnd3FwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0MTUyNDMsImV4cCI6MjA4OTk5MTI0M30.whws1t0C2_ToQOTzpdEyuV4k4q3_zg41LcnFqiLGpLU";
+
+  // 3. Clave maestra oficial por defecto
+  return DEFAULT_SUPABASE_KEY;
 }
 
 function createDefaultClient() {
