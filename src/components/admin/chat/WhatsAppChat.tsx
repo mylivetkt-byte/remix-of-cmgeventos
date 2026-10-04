@@ -587,7 +587,7 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
 
   const handleSimulateIncomingAiMessage = async (queryText: string) => {
     if (!activeChat) return;
-    const cleanId = cleanPhone(activeChat.id);
+    const cleanId = activeChat.id.replace(/[^\d]/g, "");
 
     // 1. Agregar mensaje entrante simulado del usuario
     const userMsg: Message = {
@@ -638,7 +638,7 @@ export function WhatsAppChat({ selectedContact }: WhatsAppChatProps) {
 
   const handleSuggestAiReply = async () => {
     if (!activeChat) return;
-    const cleanId = cleanPhone(activeChat.id);
+    const cleanId = activeChat.id.replace(/[^\d]/g, "");
     const lastIncoming = [...messages].reverse().find((m) => !m.fromMe)?.body || newMessage || "Hola";
 
     setTypingState(true);

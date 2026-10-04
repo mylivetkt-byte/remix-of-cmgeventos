@@ -376,7 +376,7 @@ export async function saveOmniRouteConfig(config: Partial<OmniRouteConfig>): Pro
 export async function generateOmniRouteReply(
   userMessage: string,
   context: {
-    attendee: AttendeeProfile | null;
+    attendee: Awaited<ReturnType<typeof lookupAttendeeProfile>> | null;
     currentEvent: any;
     auditorioDireccion: string;
     auditorioTelefono: string;

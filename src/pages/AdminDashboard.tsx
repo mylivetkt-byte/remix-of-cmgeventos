@@ -1275,7 +1275,7 @@ const AdminDashboard = () => {
                             }
                             {(() => {
                               const currentEvt = eventsList.data?.find((e) => e.id === r.event_id);
-                              const isPaidEvent = Boolean(currentEvt?.es_de_pago && (Number(currentEvt?.precio || 0) > 0));
+                              const isPaidEvent = Boolean((currentEvt as any)?.es_de_pago && (Number((currentEvt as any)?.precio || 0) > 0));
 
                               if (!isPaidEvent) {
                                 return (
