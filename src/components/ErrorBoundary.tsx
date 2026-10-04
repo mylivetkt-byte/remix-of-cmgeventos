@@ -15,8 +15,9 @@ export class ErrorBoundary extends Component<Props, State> {
     // Si el error es por archivos desactualizados tras una actualización, recargamos una vez.
     const msg = String(error?.message || "");
     if (/dynamically imported module|Importing a module script failed|Loading chunk|Failed to fetch/i.test(msg)) {
-      if (!sessionStorage.getItem("app_reloaded_once")) {
-        sessionStorage.setItem("app_reloaded_once", "1");
+      const last = Number(sessionStorage.getItem("app_reloaded_at") || 0);
+      if (Date.now() - last > 15000) {
+        sessionStorage.setItem("app_reloaded_at", String(Date.now()));
         window.location.reload();
       }
     }

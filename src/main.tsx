@@ -21,4 +21,14 @@ if (typeof Node === "function" && Node.prototype) {
   };
 }
 
+// Si tras una actualización el navegador pide archivos viejos, recargar (máx. 1 vez cada 15 s)
+window.addEventListener("vite:preloadError", (e) => {
+  const last = Number(sessionStorage.getItem("app_reloaded_at") || 0);
+  if (Date.now() - last > 15000) {
+    e.preventDefault();
+    sessionStorage.setItem("app_reloaded_at", String(Date.now()));
+    window.location.reload();
+  }
+});
+
 createRoot(document.getElementById("root")!).render(<App />);
