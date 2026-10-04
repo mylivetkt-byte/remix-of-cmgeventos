@@ -406,7 +406,7 @@ export async function generateOmniRouteReply(
   const attendeeInfo = attendee
     ? `- Estado en el Sistema: REGISTRADO OFICIALMENTE ✅
 - Nombre del Asistente: ${attendee.nombreCompleto}
-- Teléfono: ${attendee.telefono || "Asignado"}
+- Teléfono: ${attendee.realPhone || "Asignado"}
 - ID de Registro: ${attendee.id}
 - Evento al que está inscrito: ${currentEvent.nombre} (${currentEvent.fechaTexto})
 - Lugar del Evento: ${currentEvent.lugar || auditorioDireccion}
