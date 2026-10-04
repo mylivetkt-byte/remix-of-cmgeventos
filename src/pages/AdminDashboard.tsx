@@ -1275,7 +1275,7 @@ const AdminDashboard = () => {
                             }
                             {(() => {
                               const currentEvt = eventsList.data?.find((e) => e.id === r.event_id);
-                              const isPaidEvent = Boolean(currentEvt?.es_de_pago && (Number(currentEvt?.precio || 0) > 0));
+                              const isPaidEvent = Boolean((currentEvt as any)?.es_de_pago && (Number((currentEvt as any)?.precio || 0) > 0));
 
                               if (!isPaidEvent) {
                                 return (
@@ -1356,7 +1356,7 @@ const AdminDashboard = () => {
                                 className="w-8 h-8 rounded-lg flex items-center justify-center bg-teal-600 hover:bg-teal-500 text-white shadow transition-colors">
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
-                              {Boolean(eventsList.data?.find((e) => e.id === r.event_id)?.es_de_pago) && (
+                              {Boolean((eventsList.data?.find((e) => e.id === r.event_id) as any)?.es_de_pago) && (
                                 <button onClick={() => openPaymentModal(r)} title="Registrar / Editar Pago"
                                   className="h-8 px-2.5 rounded-lg flex items-center gap-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow transition-colors">
                                   💰 Pago

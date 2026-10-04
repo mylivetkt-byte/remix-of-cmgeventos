@@ -27,6 +27,7 @@ import {
   Check,
   AlertTriangle,
   Zap,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -95,8 +96,8 @@ export function ChatbotManager() {
           .limit(6);
         if (data) {
           setRecentAttendees(data);
-          if (data.length > 0 && data[0].telefono) {
-            setTestPhone(data[0].telefono);
+          if (data.length > 0 && (data[0] as any).telefono) {
+            setTestPhone((data[0] as any).telefono);
           }
         }
       } catch (_) {}

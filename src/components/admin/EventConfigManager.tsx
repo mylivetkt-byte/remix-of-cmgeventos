@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
 import { Loader2, Save, Upload, ImageIcon, Eye, EyeOff, Key } from "lucide-react";
 import { toDateTimeLocalInput, toColombiaISO } from "@/lib/date-utils";
 
