@@ -31,6 +31,12 @@ import {
   ShieldCheck,
   Users,
   BarChart3,
+  Paperclip,
+  Image as ImageIcon,
+  FileText,
+  X,
+  CheckCircle2,
+  Link as LinkIcon,
 } from "lucide-react";
 
 const DEFAULT_TEMPLATE = `Hola {{nombre}} 👋
@@ -57,7 +63,9 @@ interface WhatsAppCrmProps {
 
 export function WhatsAppCrm({ initialContacts }: WhatsAppCrmProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const mediaFileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef(false);
+
   const [contacts, setContacts] = useState<CrmContact[]>([]);
   const [fileName, setFileName] = useState("");
   const [template, setTemplate] = useState(DEFAULT_TEMPLATE);
@@ -68,6 +76,14 @@ export function WhatsAppCrm({ initialContacts }: WhatsAppCrmProps) {
   const [sendingStatus, setSendingStatus] = useState<string>("");
   const [progress, setProgress] = useState({ sent: 0, failed: 0, total: 0 });
   const [showAnalytics, setShowAnalytics] = useState(false);
+
+  // Estados para Adjunto de Imagen o PDF
+  const [mediaUrl, setMediaUrl] = useState<string>("");
+  const [mediaType, setMediaType] = useState<"image" | "pdf" | "document" | null>(null);
+  const [mediaFileName, setMediaFileName] = useState<string>("");
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string>("");
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [mediaSourceMode, setMediaSourceMode] = useState<"local" | "url">("local");
 
   // Cargar contactos iniciales si vienen desde el Módulo de Contactos
   useEffect(() => {
@@ -122,6 +138,80 @@ export function WhatsAppCrm({ initialContacts }: WhatsAppCrmProps) {
       setLoadingFile(false);
       if (fileRef.current) fileRef.current.value = "";
     }
+  };
+
+  // Manejar carga local de Imagen o PDF
+  const handleMediaUpload = async (file: File) => {
+    if (!file) return;
+
+    const isImage = file.type.startsWith("image/");
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+
+    if (!isImage && !isPdf) {
+      toast.error("Formato no soportado. Selecciona una Imagen (PNG, JPG, WEBP) o un documento PDF.");
+      return;
+    }
+
+    const maxMB = 25;
+    if (file.size > maxMB * 1024 * 1024) {
+      toast.error(`El archivo supera el límite recomendado de ${maxMB}MB.`);
+      return;
+    }
+
+    setUploadingMedia(true);
+    const typeKey = isImage ? "image" : "pdf";
+    setMediaType(typeKey);
+    setMediaFileName(file.name);
+
+    if (isImage) {
+      const localPreview = URL.createObjectURL(file);
+      setMediaPreviewUrl(localPreview);
+    } else {
+      setMediaPreviewUrl("");
+    }
+
+    try {
+      const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const storagePath = `crm-media/${Date.now()}_${cleanName}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("invitations")
+        .upload(storagePath, file, {
+          upsert: true,
+          contentType: file.type,
+        });
+
+      if (uploadError) {
+        console.warn("Respaldo local Base64 por error en storage:", uploadError);
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          setMediaUrl(result);
+          toast.success(`${isImage ? "Imagen" : "Documento PDF"} "${file.name}" cargado correctamente`);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        const { data: publicUrlData } = supabase.storage.from("invitations").getPublicUrl(storagePath);
+        const publicUrl = publicUrlData.publicUrl;
+        setMediaUrl(publicUrl);
+        toast.success(`${isImage ? "Imagen" : "Documento PDF"} "${file.name}" cargado y listo para envío masivo`);
+      }
+    } catch (err: any) {
+      console.error("Error al procesar archivo:", err);
+      toast.error("Error al procesar el archivo adjunto");
+    } finally {
+      setUploadingMedia(false);
+      if (mediaFileInputRef.current) mediaFileInputRef.current.value = "";
+    }
+  };
+
+  const clearMedia = () => {
+    setMediaUrl("");
+    setMediaType(null);
+    setMediaFileName("");
+    setMediaPreviewUrl("");
+    if (mediaFileInputRef.current) mediaFileInputRef.current.value = "";
+    toast.info("Adjunto eliminado de la campaña");
   };
 
   const handleLoadFromContactsModule = () => {
@@ -186,25 +276,37 @@ export function WhatsAppCrm({ initialContacts }: WhatsAppCrmProps) {
       await sleep(typingTime);
     }
 
-    setSendingStatus(`Enviando mensaje a ${contact.nombre}...`);
+    setSendingStatus(`Enviando mensaje ${mediaUrl ? "+ adjunto " : ""}a ${contact.nombre}...`);
+
+    const payload: Record<string, any> = {
+      phone: contact.telefono,
+      message: messageContent,
+    };
+
+    if (mediaUrl) {
+      payload.mediaUrl = mediaUrl;
+      payload.mediaType = mediaType || (mediaUrl.toLowerCase().includes(".pdf") ? "pdf" : "image");
+      if (mediaFileName) payload.filename = mediaFileName;
+    }
+
     const res = await fetch(`${cleanUrl}/send`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ phone: contact.telefono, message: messageContent }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "No se pudo enviar");
   };
 
   const startCampaign = async () => {
-    if (!template.trim()) {
-      toast.error("Escribe el mensaje de la campaña");
+    if (!template.trim() && !mediaUrl) {
+      toast.error("Escribe un mensaje o adjunta una imagen/PDF para la campaña");
       return;
     }
-    if (!/\{\{\s*nombres?\s*\}\}/i.test(template)) {
+    if (template.trim() && !/\{\{\s*nombres?\s*\}\}/i.test(template)) {
       toast.error("Incluye {{nombre}} para personalizar cada mensaje");
       return;
     }
@@ -279,7 +381,7 @@ export function WhatsAppCrm({ initialContacts }: WhatsAppCrmProps) {
               Envío Masivo Personalizado de WhatsApp
             </h2>
             <p className="text-sm text-slate-600 font-medium leading-relaxed mt-1">
-              Carga tu lista por Excel/CSV o importa desde tu Agenda. Mensajes 100% personalizados con protección Anti-Baneo.
+              Carga tu lista por Excel/CSV o importa desde tu Agenda. Envía mensajes personalizados con Imagen o PDF adjunto y protección Anti-Baneo.
             </p>
           </div>
 
@@ -366,16 +468,200 @@ export function WhatsAppCrm({ initialContacts }: WhatsAppCrmProps) {
               📩 Cargar Plantilla RSVP (1 / 2)
             </Button>
           </div>
-          <Textarea value={template} onChange={(e) => setTemplate(e.target.value)} disabled={sending} className="min-h-[220px] rounded-xl border-slate-300 text-sm font-medium" placeholder="Hola {{nombre}}, ..." />
+          <Textarea value={template} onChange={(e) => setTemplate(e.target.value)} disabled={sending} className="min-h-[200px] rounded-xl border-slate-300 text-sm font-medium" placeholder="Hola {{nombre}}, ..." />
           <p className="text-xs text-slate-500 font-medium">Variables: {"{{nombre}}"}, {"{{whatsapp}}"}. Columnas extra del Excel también funcionan.</p>
+
+          {/* Adjunto opcional: Imagen o PDF */}
+          <div className="space-y-3 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-teal-600" />
+                Adjunto Masivo (Imagen o PDF)
+              </Label>
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setMediaSourceMode("local")}
+                  className={`text-xs font-extrabold px-2.5 py-1 rounded-lg transition-all ${
+                    mediaSourceMode === "local" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  Subir Local
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMediaSourceMode("url")}
+                  className={`text-xs font-extrabold px-2.5 py-1 rounded-lg transition-all ${
+                    mediaSourceMode === "url" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  Enlace URL
+                </button>
+              </div>
+            </div>
+
+            {mediaSourceMode === "local" ? (
+              <div>
+                {!mediaUrl && !uploadingMedia ? (
+                  <div
+                    onClick={() => mediaFileInputRef.current?.click()}
+                    className="border-2 border-dashed border-slate-300 hover:border-teal-500 bg-slate-50/70 hover:bg-teal-50/50 transition-all rounded-2xl p-4 text-center cursor-pointer space-y-2"
+                  >
+                    <div className="flex justify-center items-center gap-3 text-slate-600">
+                      <div className="p-2 bg-teal-100/80 rounded-xl text-teal-700">
+                        <ImageIcon className="w-5 h-5" />
+                      </div>
+                      <div className="p-2 bg-rose-100/80 rounded-xl text-rose-700">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                    </div>
+                    <p className="text-xs font-bold text-slate-800">
+                      Haz clic para cargar una Imagen (PNG, JPG, WEBP) o Documento PDF local
+                    </p>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      El archivo se enviará en masa junto con el mensaje personalizado a cada contacto.
+                    </p>
+                  </div>
+                ) : uploadingMedia ? (
+                  <div className="flex items-center justify-center gap-3 p-4 bg-teal-50 border border-teal-200 rounded-2xl text-teal-800 text-xs font-bold">
+                    <Loader2 className="w-5 h-5 animate-spin text-teal-600" />
+                    Procesando y subiendo archivo para envío masivo...
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3.5 bg-teal-50/80 border border-teal-200 rounded-2xl">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {mediaType === "image" ? (
+                        mediaPreviewUrl ? (
+                          <img src={mediaPreviewUrl} alt="Preview" className="w-12 h-12 object-cover rounded-xl border border-teal-300 shrink-0" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center text-teal-700 shrink-0">
+                            <ImageIcon className="w-6 h-6" />
+                          </div>
+                        )
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-rose-100 flex items-center justify-center text-rose-700 shrink-0">
+                          <FileText className="w-6 h-6" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-xs font-extrabold text-slate-900 truncate">
+                          {mediaFileName || "Archivo adjunto"}
+                        </p>
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-teal-800 bg-white px-2 py-0.5 rounded-full border border-teal-200 mt-0.5">
+                          <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                          {mediaType === "image" ? "Imagen Lista para Envío" : "PDF Listo para Envío"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearMedia}
+                      disabled={sending}
+                      className="text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl h-9 px-2.5 font-bold text-xs"
+                    >
+                      <X className="w-4 h-4 mr-1" /> Quitar
+                    </Button>
+                  </div>
+                )}
+                <input
+                  ref={mediaFileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf,.pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleMediaUpload(f);
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="relative">
+                  <Input
+                    type="url"
+                    value={mediaUrl}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setMediaUrl(val);
+                      if (val) {
+                        const isPdf = val.toLowerCase().includes(".pdf");
+                        setMediaType(isPdf ? "pdf" : "image");
+                        setMediaFileName(val.split("/").pop() || "archivo-remoto");
+                      } else {
+                        setMediaType(null);
+                        setMediaFileName("");
+                      }
+                    }}
+                    placeholder="https://ejemplo.com/flyer-evento.png o documento.pdf"
+                    className="h-11 rounded-xl border-slate-300 font-semibold text-xs pr-8"
+                  />
+                  {mediaUrl && (
+                    <button
+                      type="button"
+                      onClick={clearMedia}
+                      className="absolute right-2.5 top-3 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Pega un enlace público directo a una imagen (.jpg, .png) o documento PDF.
+                </p>
+              </div>
+            )}
+          </div>
+
           <div>
             <Label className="text-sm font-bold text-slate-900 mb-1.5 block">Retardo base entre mensajes (ms)</Label>
             <Input type="number" min={500} step={100} value={delayMs} onChange={(e) => setDelayMs(Number(e.target.value) || 1500)} disabled={sending} className="h-11 rounded-xl border-slate-300 font-semibold max-w-[200px]" />
           </div>
         </div>
+
         <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 space-y-4 shadow-xs">
-          <Label className="text-sm font-bold text-slate-900">Vista previa personalizada</Label>
-          <div className="min-h-[220px] whitespace-pre-wrap rounded-2xl border border-teal-200 bg-teal-50/60 p-4 text-sm font-medium text-slate-800">{preview}</div>
+          <div className="flex items-center justify-between">
+            <Label className="text-sm font-bold text-slate-900">Vista previa personalizada</Label>
+            {mediaUrl && (
+              <Badge className="bg-teal-100 text-teal-900 border-teal-300 font-extrabold text-xs">
+                📎 Mensaje + Adjunto ({mediaType === "pdf" ? "PDF" : "Imagen"})
+              </Badge>
+            )}
+          </div>
+
+          <div className="min-h-[220px] rounded-2xl border border-teal-200 bg-teal-50/60 p-4 text-sm font-medium text-slate-800 space-y-3">
+            {/* Si hay adjunto, renderizar preview visual estilo WhatsApp */}
+            {mediaUrl && (
+              <div className="bg-white rounded-xl p-2 border border-teal-200 shadow-xs">
+                {mediaType === "image" ? (
+                  <div className="space-y-1">
+                    <img
+                      src={mediaPreviewUrl || mediaUrl}
+                      alt="Adjunto"
+                      className="max-h-48 w-full object-cover rounded-lg border border-slate-100"
+                      onError={(e) => {
+                        (e.target as HTMLElement).style.display = "none";
+                      }}
+                    />
+                    <p className="text-[10px] font-bold text-slate-500 px-1 truncate">📷 {mediaFileName || "Imagen adjunta"}</p>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 p-2.5 bg-rose-50 border border-rose-200 rounded-lg">
+                    <FileText className="w-8 h-8 text-rose-600 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-extrabold text-rose-950 truncate">{mediaFileName || "Documento.pdf"}</p>
+                      <p className="text-[10px] text-rose-700 font-semibold">Documento PDF adjunto</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="whitespace-pre-wrap">{preview}</div>
+          </div>
+
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 text-center">
               <p className="text-xs font-bold text-slate-500 uppercase">Total</p>
@@ -453,3 +739,4 @@ export function WhatsAppCrm({ initialContacts }: WhatsAppCrmProps) {
     </div>
   );
 }
+
